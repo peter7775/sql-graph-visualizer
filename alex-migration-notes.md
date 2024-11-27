@@ -1,0 +1,1 @@
+# pravidla migrace dat pro Alex databázi

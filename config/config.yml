@@ -1,0 +1,27 @@
+mysql:
+  host: localhost
+  port: 3306
+  user: root
+  password: password
+  database: mydb
+
+neo4j:
+  uri: bolt://localhost:7687
+  user: neo4j
+  password: password
+
+migrations:
+  - source_table: users
+    target_label: User
+    mappings:
+      - source: id
+        target: userId
+      - source: name
+        target: name
+  - source_table: products
+    target_label: Product
+    mappings:
+      - source: id
+        target: productId
+      - source: name
+        target: name

@@ -14,10 +14,10 @@ func NewClient() (*Client, error) {
     username := viper.GetString("neo4j.username")
     password := viper.GetString("neo4j.password")
 
-    driver, err := neo4j.NewDriver(uri, neo4j.BasicAuth(username, password, ""))
+    driver, err := neo4j.NewDriverWithContext(uri, neo4j.BasicAuth(username, password, ""))
     if err != nil {
         return nil, err
     }
 
-    return &Client{driver}, nil
+    return &Client{driver.}, nil
 }

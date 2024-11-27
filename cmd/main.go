@@ -3,7 +3,6 @@ package main
 import (
     "fmt"
     "log"
-    "neo4j-mysql-bridge/internal/analysis"
     "neo4j-mysql-bridge/internal/mysql"
     "neo4j-mysql-bridge/internal/neo4j"
     "neo4j-mysql-bridge/internal/visualization"
