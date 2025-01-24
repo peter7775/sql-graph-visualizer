@@ -1,14 +1,14 @@
 mysql:
   host: localhost
-  port: 3306
+  port: 3307
   user: root
-  password: password
-  database: source_db
+  password: testpass
+  database: testdb
 
 neo4j:
   uri: bolt://localhost:7687
   user: neo4j
-  password: password
+  password: testpass
 
 transform_rules:
   # Pravidlo pro vytvoření uzlů osob
