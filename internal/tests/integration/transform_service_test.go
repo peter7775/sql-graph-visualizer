@@ -1,3 +1,10 @@
+/*
+ * Copyright (c) 2025 Petr Miroslav Stepanek <petrstepanek99@gmail.com>
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
+
 package integration
 
 import (
@@ -6,23 +13,28 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"net"
 	"net/http"
 	"os"
+	"os/exec"
+	"os/signal"
 	"path/filepath"
 	"strings"
 	"testing"
 	"time"
 
-	"github.com/peter7775/alevisualizer/internal/application/services/transform"
-	"github.com/peter7775/alevisualizer/internal/domain/aggregates/graph"
-	transformagg "github.com/peter7775/alevisualizer/internal/domain/aggregates/transform"
-	"github.com/peter7775/alevisualizer/internal/domain/repositories/mysql"
-	transformvo "github.com/peter7775/alevisualizer/internal/domain/valueobjects/transform"
+	"mysql-graph-visualizer/internal/application/services/transform"
+	"mysql-graph-visualizer/internal/domain/aggregates/graph"
+	transformagg "mysql-graph-visualizer/internal/domain/aggregates/transform"
+	"mysql-graph-visualizer/internal/domain/repositories/mysql"
+	transformvo "mysql-graph-visualizer/internal/domain/valueobjects/transform"
 
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
 )
+
+var addr = "127.0.0.1:3000"
 
 type mockRuleRepo struct{}
 
@@ -456,7 +468,8 @@ func findProjectRoot() string {
 	}
 }
 
-func startVisualizationServer(t *testing.T, neo4jRepo *mockNeo4jRepo) {
+func startVisualizationServer(t *testing.T, neo4jRepo *mockNeo4jRepo) *http.Server {
+	log.Printf("Začínám spouštět vizualizační server")
 	mux := http.NewServeMux()
 
 	// API endpoint pro data grafu
@@ -495,6 +508,7 @@ func startVisualizationServer(t *testing.T, neo4jRepo *mockNeo4jRepo) {
 				"properties": node.Properties,
 			}
 			response.Nodes = append(response.Nodes, nodeData)
+			log.Printf("Přidávám uzel: %v", nodeData)
 		}
 
 		// Přidáme vztahy
@@ -506,16 +520,22 @@ func startVisualizationServer(t *testing.T, neo4jRepo *mockNeo4jRepo) {
 				"properties": rel.Properties,
 			}
 			response.Relationships = append(response.Relationships, relData)
+			log.Printf("Přidávám vztah: %v", relData)
 		}
 
 		// Nastavíme hlavičky
 		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Access-Control-Allow-Origin", "*")
 
 		// Vypíšeme data pro debug
 		log.Printf("Odesílám odpověď: %d uzlů, %d vztahů", len(response.Nodes), len(response.Relationships))
 
 		// Odešleme odpověď
-		json.NewEncoder(w).Encode(response)
+		if err := json.NewEncoder(w).Encode(response); err != nil {
+			log.Printf("Chyba při serializaci odpovědi: %v", err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
 	})
 
 	// Servírujeme statické soubory
@@ -527,21 +547,54 @@ func startVisualizationServer(t *testing.T, neo4jRepo *mockNeo4jRepo) {
 
 	// Servírujeme HTML stránku
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		log.Printf("Požadavek na hlavní stránku")
 		http.ServeFile(w, r, filepath.Join(webRoot, "templates", "visualization.html"))
 	})
 
-	// Spustíme server na pozadí
-	addr := "localhost:8081"
-	log.Printf("Spouštím server na %s", addr)
+	// Vytvoříme listener
+	listener, err := net.Listen("tcp", addr)
+	if err != nil {
+		log.Printf("Port %s je obsazený: %v", addr, err)
+		// Pokusíme se ukončit proces na daném portu
+		exec.Command("fuser", "-k", "3000/tcp").Run()
+		time.Sleep(time.Second)
+		listener, err = net.Listen("tcp", addr)
+		if err != nil {
+			t.Fatalf("Nelze vytvořit listener: %v", err)
+		}
+	}
+	log.Printf("Listener vytvořen na %s", addr)
+
+	// Spustíme server
+	server := &http.Server{
+		Handler: mux,
+	}
+
 	go func() {
-		if err := http.ListenAndServe(addr, mux); err != nil {
+		log.Printf("Spouštím server na %s", addr)
+		if err := server.Serve(listener); err != nil && err != http.ErrServerClosed {
 			log.Printf("Server ukončen s chybou: %v", err)
 		}
 	}()
 
-	// Počkáme chvíli na nastartování serveru
-	time.Sleep(100 * time.Millisecond)
-	log.Printf("Vizualizace je dostupná na http://%s", addr)
+	// Počkáme na nastartování serveru
+	for i := 0; i < 10; i++ {
+		log.Printf("Pokus %d o připojení k serveru", i+1)
+		resp, err := http.Get("http://localhost:3000")
+		if err == nil {
+			resp.Body.Close()
+			log.Printf("Server je připraven")
+			break
+		}
+		log.Printf("Server není připraven: %v", err)
+		time.Sleep(500 * time.Millisecond)
+		if i == 9 {
+			t.Fatal("Server se nepodařilo spustit")
+		}
+	}
+
+	log.Printf("Vizualizace je dostupná na http://localhost:3000")
+	return server
 }
 
 func TestTransformService_Integration(t *testing.T) {
@@ -622,10 +675,18 @@ func TestTransformService_Integration(t *testing.T) {
 	assert.Equal(t, 2, deptNodes, "Očekávány 2 uzly typu Department")
 
 	// Spuštění vizualizačního serveru
-	startVisualizationServer(t, neo4jRepo)
+	server := startVisualizationServer(t, neo4jRepo)
 
 	// Čekáme na uživatelský vstup před ukončením
-	fmt.Printf("Test dokončen. Vizualizace je dostupná na http://%s\n", addr)
-	fmt.Println("Stiskněte Enter pro ukončení...")
-	fmt.Scanln()
+	fmt.Printf("Test dokončen. Vizualizace je dostupná na http://localhost:3000\nStiskněte Ctrl+C pro ukončení...\n")
+
+	// Čekáme na signál ukončení
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt)
+	<-c
+
+	// Ukončíme server
+	if err := server.Shutdown(context.Background()); err != nil {
+		log.Printf("Chyba při ukončování serveru: %v", err)
+	}
 }

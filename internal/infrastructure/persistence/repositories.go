@@ -1,10 +1,17 @@
+/*
+ * Copyright (c) 2025 Petr Miroslav Stepanek <petrstepanek99@gmail.com>
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
+
 package infrastructure
 
 import (
-	"github.com/peter7775/alevisualizer/internal/domain/models"
-	"github.com/peter7775/alevisualizer/internal/domain/repositories"
-	"github.com/peter7775/alevisualizer/internal/mysql"
-	"github.com/peter7775/alevisualizer/internal/neo4j"
+	"mysql-graph-visualizer/internal/domain/models"
+	"mysql-graph-visualizer/internal/domain/repositories"
+	"mysql-graph-visualizer/internal/mysql"
+	"mysql-graph-visualizer/internal/neo4j"
 )
 
 func NewMySQLRepository(config models.Config) (repositories.MySQLRepository, error) {

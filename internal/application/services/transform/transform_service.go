@@ -1,11 +1,18 @@
+/*
+ * Copyright (c) 2025 Petr Miroslav Stepanek <petrstepanek99@gmail.com>
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
+
 package transform
 
 import (
-	"github.com/peter7775/alevisualizer/internal/application/ports"
-	"github.com/peter7775/alevisualizer/internal/domain/aggregates/graph"
-	"github.com/peter7775/alevisualizer/internal/domain/valueobjects/transform"
 	"context"
 	"fmt"
+	"mysql-graph-visualizer/internal/application/ports"
+	"mysql-graph-visualizer/internal/domain/aggregates/graph"
+	"mysql-graph-visualizer/internal/domain/valueobjects/transform"
 )
 
 type TransformService struct {
@@ -38,7 +45,7 @@ func (s *TransformService) TransformAndStore(ctx context.Context) error {
 	}
 
 	graphAggregate := graph.NewGraphAggregate("")
-	
+
 	// Seskupíme data podle tabulek
 	tableData := make(map[string][]map[string]interface{})
 	for _, item := range data {

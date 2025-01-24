@@ -1,4 +1,4 @@
-module github.com/peter7775/alevisualizer
+module mysql-graph-visualizer
 
 go 1.22
 

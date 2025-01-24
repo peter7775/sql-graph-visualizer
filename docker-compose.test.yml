@@ -1,5 +1,4 @@
-version: '3.8'
-
+---
 services:
   mysql-test:
     image: mysql:8.0
@@ -28,6 +27,12 @@ services:
       - "7474:7474"  # HTTP
     volumes:
       - ./testdata/neo4j/import:/import
+    healthcheck:
+      test: ["CMD", "cypher-shell", "-u", "neo4j", "-p", "testpass", "RETURN 1;"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
 
   test-runner:
     build:
@@ -37,10 +42,10 @@ services:
       mysql-test:
         condition: service_healthy
       neo4j-test:
-        condition: service_started
+        condition: service_healthy
     environment:
       MYSQL_HOST: mysql-test
-      MYSQL_PORT: 3306
+      MYSQL_PORT: 3306  # Toto je interní port v Docker síti
       MYSQL_USER: root
       MYSQL_PASSWORD: testpass
       MYSQL_DATABASE: testdb
@@ -48,15 +53,10 @@ services:
       NEO4J_USER: neo4j
       NEO4J_PASSWORD: testpass
     volumes:
-      - .:/go/src/github.com/peter7775/alevisualizer
+      - .:/go/src/mysql-graph-visualizer
     logging:
       driver: "json-file"
       options:
         max-size: "10m"
         max-file: "3"
-    restart: "no"
-    healthcheck:
-      test: ["CMD", "wget", "--spider", "-q", "http://neo4j-test:7474"]
-      interval: 10s
-      timeout: 10s
-      retries: 5 
+    restart: "no" 

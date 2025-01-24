@@ -1,9 +1,16 @@
+/*
+ * Copyright (c) 2025 Petr Miroslav Stepanek <petrstepanek99@gmail.com>
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
+
 package handlers
 
 import (
-	"github.com/peter7775/alevisualizer/internal/application/services/visualization"
-	"github.com/peter7775/alevisualizer/internal/domain/valueobjects"
 	"encoding/json"
+	"mysql-graph-visualizer/internal/application/services/visualization"
+	"mysql-graph-visualizer/internal/domain/valueobjects"
 	"net/http"
 )
 
@@ -45,6 +52,12 @@ func (h *VisualizationHandler) ExportGraph(w http.ResponseWriter, r *http.Reques
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(data)
+}
+
+func (h *VisualizationHandler) GetConfig(w http.ResponseWriter, r *http.Request) {
+	config := h.service.GetConfig()
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(config)
 }
 
 // Implementace handlerů

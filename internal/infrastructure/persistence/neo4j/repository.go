@@ -1,9 +1,16 @@
+/*
+ * Copyright (c) 2025 Petr Miroslav Stepanek <petrstepanek99@gmail.com>
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
+
 package neo4j
 
 import (
-	"github.com/peter7775/alevisualizer/internal/application/ports"
-	"github.com/peter7775/alevisualizer/internal/domain/aggregates/graph"
 	"fmt"
+	"mysql-graph-visualizer/internal/application/ports"
+	"mysql-graph-visualizer/internal/domain/aggregates/graph"
 
 	"github.com/neo4j/neo4j-go-driver/v4/neo4j"
 )

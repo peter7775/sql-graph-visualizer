@@ -1,7 +1,15 @@
+/*
+ * Copyright (c) 2025 Petr Miroslav Stepanek <petrstepanek99@gmail.com>
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
+
 class GraphVisualizer {
     constructor() {
         this.viz = null;
-        this.config = null;
+        this.data = null;
+        this.network = null;
         this.currentLayout = 'force';
         this.filters = {
             nodes: new Set(),
@@ -12,74 +20,139 @@ class GraphVisualizer {
     }
 
     async initialize() {
-        const response = await fetch('/api/visualization/config');
-        this.config = await response.json();
+        try {
+            console.log('Načítám data z API...');
+            const response = await fetch('/api/graph');
+            if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            this.data = await response.json();
+            console.log('Načtená data:', this.data);
         
-        await this.createVisualization();
+            await this.createVisualization();
+            } catch (error) {
+                console.error('Chyba při načítání dat:', error);
+            }
     }
+
+
 
     async createVisualization() {
-        const vizConfig = {
-            container_id: "viz",
-            server_url: this.config.neo4j.uri,
-            server_user: this.config.neo4j.username,
-            server_password: this.config.neo4j.password,
-            labels: {
-                "User": {
-                    caption: "name",
-                    size: "pagerank",
-                    community: "community",
-                    title_properties: ["name", "email", "role"]
+        const container = document.getElementById('viz');
+        
+        // Připravíme data pro vis.js
+        console.log('Zpracovávám uzly:', this.data.nodes);
+        const nodes = new vis.DataSet(this.data.nodes.map(node => {
+            // Dekódování base64 hodnot
+            const properties = {};
+            for (let key in node.properties) {
+                try {
+                    properties[key] = atob(node.properties[key]);
+                } catch (e) {
+                    properties[key] = node.properties[key];
+                }
+            }
+            
+            const label = properties.name || node.id;
+            console.log('Vytvářím uzel:', { id: node.id, label, properties });
+            return {
+                id: node.id,
+                label: label,
+                title: JSON.stringify(properties, null, 2),
+                group: node.label,
+                color: node.label === 'Person' ? '#97C2FC' : '#FB7E81'
+            };
+        }));
+
+        console.log('Zpracovávám vztahy:', this.data.relationships);
+        const edges = new vis.DataSet(this.data.relationships.map(rel => {
+            console.log('Vytvářím vztah:', rel);
+            return {
+                from: rel.from,
+                to: rel.to,
+                label: rel.type || 'VZTAH',
+                title: JSON.stringify(rel.properties, null, 2),
+                arrows: 'to'
+            };
+        }));
+
+        const options = {
+            nodes: {
+                shape: 'dot',
+                size: 30,
+                font: {
+                    size: 14,
+                    face: 'Tahoma'
                 },
-                "Department": {
-                    caption: "name",
-                    size: "pagerank",
-                    community: "community",
-                    title_properties: ["name", "description"]
+                borderWidth: 2,
+                shadow: true
+            },
+            edges: {
+                width: 2,
+                font: {
+                    size: 14,
+                    face: 'Tahoma'
+                },
+                arrows: {
+                    to: {
+                        enabled: true,
+                        scaleFactor: 1
+                    }
+                },
+                shadow: true
+            },
+            physics: {
+                enabled: true,
+                solver: 'forceAtlas2Based',
+                forceAtlas2Based: {
+                    gravitationalConstant: -26,
+                    centralGravity: 0.005,
+                    springLength: 230,
+                    springConstant: 0.18
+                },
+                stabilization: {
+                    enabled: true,
+                    iterations: 1000,
+                    updateInterval: 25
                 }
             },
-            relationships: {
-                "MANAGES": {
-                    thickness: "weight",
-                    caption: false
-                },
-                "BELONGS_TO": {
-                    thickness: "weight",
-                    caption: false
-                }
-            },
-            initial_cypher: this.buildQuery()
+            interaction: {
+                hover: true,
+                tooltipDelay: 200,
+                hideEdgesOnDrag: true,
+                navigationButtons: true,
+                keyboard: true
+            }
         };
 
-        this.viz = new NeoVis.default(vizConfig);
-        this.viz.render();
-    }
+        console.log('Vytvářím síť s daty:', { nodes: nodes.get(), edges: edges.get() });
+        this.network = new vis.Network(container, { nodes, edges }, options);
 
-    buildQuery() {
-        let query = 'MATCH (n)';
-        
-        if (this.filters.nodes.size > 0) {
-            query += ` WHERE n:${Array.from(this.filters.nodes).join(' OR n:')}`;
-        }
-        
-        query += ' MATCH (n)-[r]->(m)';
-        
-        if (this.filters.relations.size > 0) {
-            query += ` WHERE type(r) IN ['${Array.from(this.filters.relations).join("','")}']`;
-        }
-        
-        return query + ' RETURN n, r, m LIMIT 100';
+        this.network.on('stabilizationProgress', function(params) {
+            console.log('Stabilizace:', Math.round(params.iterations/params.total * 100), '%');
+        });
+
+        this.network.on('stabilizationIterationsDone', function() {
+            console.log('Stabilizace dokončena');
+        });
     }
 
     initializeEventListeners() {
         // Vyhledávání
         const searchInput = document.getElementById('search');
-        searchInput.addEventListener('input', _.debounce(async (e) => {
-            const term = e.target.value;
-            if (term.length < 2) return;
+        searchInput.addEventListener('input', _.debounce((e) => {
+            const term = e.target.value.toLowerCase();
+            if (term.length < 2) {
+                const container = document.getElementById('searchResults');
+                container.classList.add('d-none');
+                return;
+            }
             
-            const response = await fetch(`/api/visualization/search?term=${encodeURIComponent(term)}`);
-            const results = await response.json();
+            const results = this.data.nodes.filter(node => {
+                const properties = Object.values(node.properties || {}).map(v => String(v).toLowerCase());
+                return node.label.toLowerCase().includes(term) || 
+                       properties.some(v => v.includes(term));
+            });
             this.showSearchResults(results);
         }, 300));
 
@@ -89,99 +162,114 @@ class GraphVisualizer {
             this.updateLayout();
         });
 
-        // Filtry
-        document.getElementById('filterNodes').addEventListener('click', () => {
-            this.showNodeFilterModal();
-        });
-
-        document.getElementById('filterRelations').addEventListener('click', () => {
-            this.showRelationFilterModal();
-        });
-
-        // Export
-        document.getElementById('export').addEventListener('click', () => {
-            this.exportGraph();
-        });
-
         // Vyčištění
         document.getElementById('clear').addEventListener('click', () => {
-            this.clearFilters();
+            if (this.network) {
+                this.network.fit();
+            }
         });
     }
 
-    async showSearchResults(results) {
+    showSearchResults(results) {
         const container = document.getElementById('searchResults');
         container.innerHTML = '';
         container.classList.remove('d-none');
 
+        if (results.length === 0) {
+            const div = document.createElement('div');
+            div.className = 'p-2 text-muted';
+            div.textContent = 'Žádné výsledky';
+            container.appendChild(div);
+            return;
+        }
+
         results.forEach(result => {
             const div = document.createElement('div');
             div.className = 'p-2 border-bottom';
-            div.textContent = result.name;
+            const name = result.properties.name || result.id;
+            div.textContent = `${result.label}: ${name}`;
             div.addEventListener('click', () => {
-                this.focusNode(result.id);
+                if (this.network) {
+                    this.network.focus(result.id, {
+                        scale: 1.5,
+                        animation: {
+                            duration: 1000,
+                            easingFunction: 'easeInOutQuad'
+                        }
+                    });
+                    this.network.selectNodes([result.id]);
+                }
+                container.classList.add('d-none');
             });
             container.appendChild(div);
         });
     }
 
     updateLayout() {
-        // Implementace různých layoutů
+        if (!this.network) return;
+
+        const options = {
+            physics: {
+                enabled: true,
+                stabilization: {
+                    enabled: true,
+                    iterations: 1000,
+                    updateInterval: 25
+                }
+            }
+        };
+
         switch(this.currentLayout) {
             case 'hierarchical':
-                this.viz.updateWithOptions({ layout: { hierarchical: true } });
+                options.layout = {
+                    hierarchical: {
+                        direction: 'UD',
+                        sortMethod: 'directed',
+                        nodeSpacing: 150,
+                        treeSpacing: 200
+                    }
+                };
                 break;
             case 'circular':
-                this.viz.updateWithOptions({ layout: { circular: true } });
+                options.layout = {
+                    improvedLayout: true,
+                    randomSeed: 2
+                };
+                options.physics = {
+                    enabled: true,
+                    solver: 'forceAtlas2Based',
+                    forceAtlas2Based: {
+                        gravitationalConstant: -50,
+                        centralGravity: 0.01,
+                        springLength: 200,
+                        springConstant: 0.08
+                    }
+                };
                 break;
             default:
-                this.viz.updateWithOptions({ layout: { randomSeed: 1 } });
+                options.layout = {
+                    improvedLayout: true,
+                    randomSeed: 1
+                };
+                options.physics = {
+                    enabled: true,
+                    solver: 'forceAtlas2Based',
+                    forceAtlas2Based: {
+                        gravitationalConstant: -26,
+                        centralGravity: 0.005,
+                        springLength: 230,
+                        springConstant: 0.18
+                    }
+                };
         }
-    }
 
-    async exportGraph() {
-        const format = await this.showExportDialog();
-        const response = await fetch('/api/visualization/export', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ format })
-        });
-
-        if (format === 'image') {
-            const blob = await response.blob();
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = 'graph.png';
-            a.click();
-        } else {
-            const data = await response.json();
-            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = 'graph.json';
-            a.click();
-        }
-    }
-
-    showExportDialog() {
-        return new Promise(resolve => {
-            // Implementace dialogu pro výběr formátu exportu
-        });
-    }
-
-    clearFilters() {
-        this.filters.nodes.clear();
-        this.filters.relations.clear();
-        this.createVisualization();
+        this.network.setOptions(options);
     }
 }
 
 // Inicializace při načtení stránky
 window.addEventListener('load', () => {
+    console.log('Stránka načtena, inicializuji vizualizaci...');
     const visualizer = new GraphVisualizer();
     visualizer.initialize();
 }); 
