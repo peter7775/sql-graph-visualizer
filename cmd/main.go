@@ -1,37 +1,65 @@
 package main
 
 import (
-    "fmt"
-    "log"
-    "neo4j-mysql-bridge/internal/mysql"
-    "neo4j-mysql-bridge/internal/neo4j"
-    "neo4j-mysql-bridge/internal/visualization"
+	"log"
+	"net/http"
+
+	"github.com/gorilla/mux"
+
+	"github.com/peter7775/alevisualizer/internal/config"
+	"github.com/peter7775/alevisualizer/internal/infrastructure"
+	"github.com/peter7775/alevisualizer/internal/interfaces"
+	"github.com/peter7775/alevisualizer/internal/interfaces/http/handlers"
+	"github.com/peter7775/alevisualizer/internal/services"
 )
 
 func main() {
-    mysqlClient, err := mysql.NewClient()
-    if err != nil {
-        log.Fatalf("Failed to connect to MySQL: %v", err)
-    }
-    defer mysqlClient.Close()
+	// Initialize configuration
+	config, err := config.Load()
+	if err != nil {
+		log.Fatalf("Failed to load configuration: %v", err)
+	}
 
-    neo4jClient, err := neo4j.NewClient()
-    if err != nil {
-        log.Fatalf("Failed to connect to Neo4j: %v", err)
-    }
-    defer neo4jClient.Close()
+	// Initialize repositories
+	mysqlRepo, err := infrastructure.NewMySQLRepository(config.MySQL)
+	if err != nil {
+		log.Fatalf("Failed to connect to MySQL: %v", err)
+	}
+	defer mysqlRepo.Close()
 
-    // Transform data
-    transformer := analysis.NewTransformer()
-    mysqlData := []mysql.DataType{} // Replace with a function to fetch data from MySQL
-    transformedData := transformer.TransformData(mysqlData)
+	neo4jRepo, err := infrastructure.NewNeo4jRepository(config.Neo4j)
+	if err != nil {
+		log.Fatalf("Failed to connect to Neo4j: %v", err)
+	}
+	defer neo4jRepo.Close()
 
-    // Import transformed data to Neo4j
-    // Example: neo4jClient.InsertData(transformedData)
+	// Initialize services
+	dataTransformService := services.NewDataTransformService(mysqlRepo, neo4jRepo)
+	visualizationService := services.NewVisualizationService(neo4jRepo)
 
-    // Start visualization
-    visualizer := visualization.NewVisualizer()
-    visualizer.ServeVisualization()
+	// Setup router
+	router := mux.NewRouter()
+	setupRoutes(router, config, visualizationService)
 
-    fmt.Println("Data transfer and visualization complete!")
+	// Start HTTP server for visualization
+	server := interfaces.NewHTTPServer(config.Server, router)
+
+	// Run data transformation
+	if err := dataTransformService.TransformAndStore(); err != nil {
+		log.Fatalf("Failed to transform and store data: %v", err)
+	}
+
+	// Start server
+	if err := server.Start(); err != nil {
+		log.Fatalf("Server failed: %v", err)
+	}
+}
+
+func setupRoutes(router *mux.Router, config *config.Config, visualizationService *services.VisualizationService) {
+	vizHandler := handlers.NewVisualizationHandler(visualizationService)
+
+	router.HandleFunc("/api/visualization/config", vizHandler.GetConfig).Methods("GET")
+	router.HandleFunc("/visualization", func(w http.ResponseWriter, r *http.Request) {
+		http.ServeFile(w, r, "web/templates/visualization.html")
+	}).Methods("GET")
 }

@@ -3,25 +3,84 @@ mysql:
   port: 3306
   user: root
   password: password
-  database: mydb
+  database: source_db
 
 neo4j:
   uri: bolt://localhost:7687
   user: neo4j
   password: password
 
-migrations:
-  - source_table: users
-    target_label: User
-    mappings:
-      - source: id
-        target: userId
-      - source: name
-        target: name
-  - source_table: products
-    target_label: Product
-    mappings:
-      - source: id
-        target: productId
-      - source: name
-        target: name
+transform_rules:
+  # Pravidlo pro vytvoření uzlů osob
+  - name: "users_to_nodes"
+    source_table: "users"
+    rule_type: "node"
+    target_type: "Person"
+    field_mappings:
+      id: "id"
+      name: "name"
+      email: "email"
+      role: "position"
+    
+  # Pravidlo pro vytvoření uzlů oddělení
+  - name: "departments_to_nodes"
+    source_table: "departments"
+    rule_type: "node"
+    target_type: "Department"
+    field_mappings:
+      id: "id"
+      name: "name"
+      code: "department_code"
+  
+  # Pravidlo pro vytvoření směrované relace mezi osobami a odděleními
+  - name: "user_department_relation"
+    source_table: "user_departments"
+    rule_type: "relationship"
+    relationship_type: "WORKS_IN"
+    direction: "outgoing"  # možnosti: outgoing, incoming, both
+    source_node:
+      type: "Person"
+      key: "user_id"
+      target_field: "id"
+    target_node:
+      type: "Department"
+      key: "department_id"
+      target_field: "id"
+    properties:
+      since: "start_date"
+      role: "position"
+
+  # Pravidlo pro vytvoření obousměrné relace mezi odděleními (např. spolupráce)
+  - name: "department_collaboration"
+    source_table: "department_collaborations"
+    rule_type: "relationship"
+    relationship_type: "COLLABORATES_WITH"
+    direction: "both"  # obousměrná relace
+    source_node:
+      type: "Department"
+      key: "department_id_1"
+      target_field: "id"
+    target_node:
+      type: "Department"
+      key: "department_id_2"
+      target_field: "id"
+    properties:
+      since: "start_date"
+      project_count: "num_projects"
+      
+  # Pravidlo pro vytvoření příchozí relace (např. reportování)
+  - name: "department_reporting"
+    source_table: "department_hierarchy"
+    rule_type: "relationship"
+    relationship_type: "REPORTS_TO"
+    direction: "incoming"  # příchozí relace
+    source_node:
+      type: "Department"
+      key: "child_department_id"
+      target_field: "id"
+    target_node:
+      type: "Department"
+      key: "parent_department_id"
+      target_field: "id"
+    properties:
+      level: "hierarchy_level"
