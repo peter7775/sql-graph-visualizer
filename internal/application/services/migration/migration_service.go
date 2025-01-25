@@ -9,6 +9,7 @@ package migration
 
 import (
 	"context"
+	"fmt"
 	"mysql-graph-visualizer/internal/application/ports"
 	"mysql-graph-visualizer/internal/application/services/transform"
 	"mysql-graph-visualizer/internal/domain/valueobjects"
@@ -25,6 +26,9 @@ func NewMigrationService(
 	neo4jPort ports.Neo4jPort,
 	transform *transform.TransformService,
 ) *MigrationService {
+	if mysqlPort == nil || neo4jPort == nil || transform == nil {
+		panic("ports and transform service must not be nil")
+	}
 	return &MigrationService{
 		mysqlPort: mysqlPort,
 		neo4jPort: neo4jPort,
@@ -33,5 +37,8 @@ func NewMigrationService(
 }
 
 func (s *MigrationService) MigrateData(ctx context.Context, config valueobjects.TransformConfig) error {
-	return s.transform.TransformAndStore(ctx, config)
+	if ctx == nil {
+		return fmt.Errorf("context must not be nil")
+	}
+	return s.transform.TransformAndStore(ctx)
 }

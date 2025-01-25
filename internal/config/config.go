@@ -28,7 +28,7 @@ type Config struct {
 func Load() (*Config, error) {
 	cfg := &Config{}
 	cfg.MySQL.Host = "mysql-test"
-	cfg.MySQL.Port = 3306
+	cfg.MySQL.Port = 3307
 	cfg.MySQL.User = "root"
 	cfg.MySQL.Password = "testpass"
 	cfg.MySQL.Database = "testdb"

@@ -350,7 +350,7 @@ func getMySQLConfig() *mysql.MySQLConfig {
 	// Hledání config.yml
 	var configPath string
 	for {
-		testPath := filepath.Join(wd, "config/config.yml")
+		testPath := filepath.Join(wd, "config/config-test.yml")
 		if _, err := os.Stat(testPath); err == nil {
 			configPath = testPath
 			break

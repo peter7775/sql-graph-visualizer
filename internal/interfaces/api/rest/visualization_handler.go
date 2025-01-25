@@ -8,16 +8,15 @@
 package rest
 
 import (
-	"mysql-graph-visualizer/internal/application/dto"
-	"mysql-graph-visualizer/internal/application/services"
+	"mysql-graph-visualizer/internal/application/services/visualization"
 	"net/http"
 )
 
 type VisualizationHandler struct {
-	visualizationService *services.VisualizationService
+	visualizationService *visualization.VisualizationService
 }
 
-func NewVisualizationHandler(service *services.VisualizationService) *VisualizationHandler {
+func NewVisualizationHandler(service *visualization.VisualizationService) *VisualizationHandler {
 	return &VisualizationHandler{
 		visualizationService: service,
 	}
