@@ -9,6 +9,7 @@ package transform
 
 import (
 	"fmt"
+	"log"
 	"mysql-graph-visualizer/internal/domain/entities"
 	"mysql-graph-visualizer/internal/domain/valueobjects/transform"
 )
@@ -16,11 +17,18 @@ import (
 type TransformRuleAggregate struct {
 	entities.BaseEntity
 	Rule transform.TransformRule
+	Name string
+	Description string
+	Priority int
+	IsActive bool
+	Conditions map[string]interface{}
+	Actions map[string]interface{}
 }
 
 func (t *TransformRuleAggregate) ApplyRules(data []map[string]interface{}) []interface{} {
 	var results []interface{}
 	for _, record := range data {
+		log.Printf("Aplikuji pravidlo na záznam: %+v", record)
 		result, err := t.ApplyRule(record)
 		if err == nil && result != nil {
 			results = append(results, result)
@@ -30,6 +38,9 @@ func (t *TransformRuleAggregate) ApplyRules(data []map[string]interface{}) []int
 }
 
 func (t *TransformRuleAggregate) ApplyRule(data map[string]interface{}) (interface{}, error) {
+	log.Printf("Aplikuji pravidlo: %+v", t.Rule)
+	log.Printf("Aktuální FieldMappings: %+v", t.Rule.FieldMappings)
+	log.Printf("Kontrola FieldMappings před transformací: %+v", t.Rule.FieldMappings)
 	switch t.Rule.RuleType {
 	case transform.NodeRule:
 		return t.transformToNode(data)
@@ -44,9 +55,15 @@ func (t *TransformRuleAggregate) transformToNode(data map[string]interface{}) (m
 	result := make(map[string]interface{})
 	result["_type"] = t.Rule.TargetType
 
+	log.Printf("FieldMappings: %+v", t.Rule.FieldMappings)
+	// log.Printf("Zpracovávám data: %+v", data)
+
 	for sourceField, targetField := range t.Rule.FieldMappings {
 		if value, exists := data[sourceField]; exists {
+			log.Printf("Mapping field %s to %s with value %v", sourceField, targetField, value)
 			result[targetField] = value
+		} else {
+			log.Printf("Field %s not found in data", sourceField)
 		}
 	}
 
@@ -57,6 +74,11 @@ func (t *TransformRuleAggregate) transformToRelationship(data map[string]interfa
 	result := make(map[string]interface{})
 	result["_type"] = t.Rule.RelationType
 	result["_direction"] = t.Rule.Direction
+
+	// Kontrola, zda SourceNode a TargetNode nejsou nil
+	if t.Rule.SourceNode == nil || t.Rule.TargetNode == nil {
+		return nil, fmt.Errorf("SourceNode nebo TargetNode je nil")
+	}
 
 	// Nastavení source a target node
 	result["source"] = map[string]interface{}{

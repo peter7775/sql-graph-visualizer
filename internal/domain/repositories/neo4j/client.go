@@ -9,6 +9,7 @@ package neo4j
 
 import (
 	"fmt"
+	"log"
 
 	"mysql-graph-visualizer/internal/domain/models"
 
@@ -89,6 +90,30 @@ func (c *Client) StoreGraph(graph *models.Graph) error {
 	session := c.driver.NewSession(neo4j.SessionConfig{})
 	defer session.Close()
 
-	// Implementace ukládání grafu
+	log.Printf("Počet uzlů k uložení: %d", len(graph.Nodes))
+
+	// Uložení uzlů
+	for _, node := range graph.Nodes {
+		query := "CREATE (n:" + node.Label + ") SET n = $props"
+		if _, err := session.Run(query, map[string]interface{}{
+			"props": node.Properties,
+		}); err != nil {
+			return err
+		}
+		log.Printf("Uložen uzel: typ=%s, vlastnosti=%+v", node.Label, node.Properties)
+	}
+
+	// Uložení vztahů
+	for _, rel := range graph.Relations {
+		query := "MATCH (a {id: $sourceId}), (b {id: $targetId}) CREATE (a)-[r:" + rel.Type + "]->(b) SET r = $props"
+		if _, err := session.Run(query, map[string]interface{}{
+			"sourceId": rel.From,
+			"targetId": rel.To,
+			"props":    rel.Properties,
+		}); err != nil {
+			return err
+		}
+	}
+
 	return nil
 }

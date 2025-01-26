@@ -10,6 +10,7 @@ package transform
 import (
 	"context"
 	"fmt"
+	"log"
 	"mysql-graph-visualizer/internal/application/ports"
 	"mysql-graph-visualizer/internal/domain/aggregates/graph"
 	"mysql-graph-visualizer/internal/domain/valueobjects/transform"
@@ -39,7 +40,10 @@ func (s *TransformService) TransformAndStore(ctx context.Context) error {
 		return err
 	}
 
+	log.Printf("Načteno %d záznamů z MySQL", len(data))
+
 	rules, err := s.ruleRepo.GetAllRules(ctx)
+	log.Printf("Pravidla: %+v", rules)
 	if err != nil {
 		return err
 	}
@@ -57,8 +61,10 @@ func (s *TransformService) TransformAndStore(ctx context.Context) error {
 	// Aplikujeme pravidla na příslušná data
 	for _, rule := range rules {
 		sourceTable := rule.Rule.SourceTable
+		log.Printf("Aplikuji pravidlo na tabulku: %s", sourceTable)
 		if items, ok := tableData[sourceTable]; ok {
 			transformedData := rule.ApplyRules(items)
+			log.Printf("Transformováno %d záznamů pro tabulku %s", len(transformedData), sourceTable)
 			for _, item := range transformedData {
 				if err := s.updateGraph(item, graphAggregate); err != nil {
 					return err
@@ -67,6 +73,8 @@ func (s *TransformService) TransformAndStore(ctx context.Context) error {
 		}
 	}
 
+	log.Printf("Počet uzlů k uložení: %d", len(graphAggregate.GetNodes()))
+	log.Printf("Ukládám graf do Neo4j")
 	return s.neo4jPort.StoreGraph(graphAggregate)
 }
 
@@ -75,8 +83,10 @@ func (s *TransformService) updateGraph(data interface{}, graph *graph.GraphAggre
 	case map[string]interface{}:
 		if nodeType, ok := transformed["_type"].(string); ok {
 			if _, hasSource := transformed["source"]; hasSource {
+				log.Printf("Přidávám vztah do grafu: %+v", transformed)
 				return s.createRelationship(transformed, graph)
 			}
+			log.Printf("Přidávám uzel do grafu: %+v", transformed)
 			return s.createNode(nodeType, transformed, graph)
 		}
 	}
@@ -93,6 +103,7 @@ func (s *TransformService) createNode(nodeType string, data map[string]interface
 	}
 
 	delete(data, "_type")
+	log.Printf("Ukládám uzel do grafu: typ=%s, data=%+v", nodeType, data)
 	return graph.AddNode(nodeType, data)
 }
 
@@ -102,6 +113,8 @@ func (s *TransformService) createRelationship(data map[string]interface{}, graph
 	source := data["source"].(map[string]interface{})
 	target := data["target"].(map[string]interface{})
 	properties := data["properties"].(map[string]interface{})
+
+	log.Printf("Ukládám vztah do grafu: typ=%s, směr=%s, zdroj=%+v, cíl=%+v, vlastnosti=%+v", relType, direction, source, target, properties)
 
 	return graph.AddRelationship(
 		relType,

@@ -474,12 +474,11 @@ func startVisualizationServer(t *testing.T, neo4jRepo *mockNeo4jRepo) *http.Serv
 
 	// API endpoint pro data grafu
 	mux.HandleFunc("/api/graph", func(w http.ResponseWriter, r *http.Request) {
-		log.Printf("Požadavek na API endpoint /api/graph")
-
+		log.Printf("Zpracovávám požadavek na /api/graph")
 		// Získáme celý graf
 		graphInterface, err := neo4jRepo.ExportGraph("")
 		if err != nil {
-			log.Printf("Chyba při získávání dat: %v", err)
+			log.Printf("Chyba při získávání dat z Neo4j: %v", err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
@@ -491,6 +490,7 @@ func startVisualizationServer(t *testing.T, neo4jRepo *mockNeo4jRepo) *http.Serv
 			return
 		}
 
+		log.Printf("Data úspěšně získána z Neo4j")
 		// Převedeme na JSON
 		response := struct {
 			Nodes         []map[string]interface{} `json:"nodes"`
@@ -523,12 +523,10 @@ func startVisualizationServer(t *testing.T, neo4jRepo *mockNeo4jRepo) *http.Serv
 			log.Printf("Přidávám vztah: %v", relData)
 		}
 
+		log.Printf("Odesílám odpověď: %d uzlů, %d vztahů", len(response.Nodes), len(response.Relationships))
 		// Nastavíme hlavičky
 		w.Header().Set("Content-Type", "application/json")
 		w.Header().Set("Access-Control-Allow-Origin", "*")
-
-		// Vypíšeme data pro debug
-		log.Printf("Odesílám odpověď: %d uzlů, %d vztahů", len(response.Nodes), len(response.Relationships))
 
 		// Odešleme odpověď
 		if err := json.NewEncoder(w).Encode(response); err != nil {
@@ -536,6 +534,7 @@ func startVisualizationServer(t *testing.T, neo4jRepo *mockNeo4jRepo) *http.Serv
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
+		log.Printf("Odpověď úspěšně odeslána")
 	})
 
 	// Servírujeme statické soubory

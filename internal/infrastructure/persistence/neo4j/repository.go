@@ -9,7 +9,7 @@ package neo4j
 
 import (
 	"fmt"
-	"mysql-graph-visualizer/internal/application/ports"
+	"log"
 	"mysql-graph-visualizer/internal/domain/aggregates/graph"
 
 	"github.com/neo4j/neo4j-go-driver/v4/neo4j"
@@ -19,8 +19,12 @@ type Neo4jRepository struct {
 	driver neo4j.Driver
 }
 
-func NewNeo4jRepository(driver neo4j.Driver) ports.Neo4jPort {
-	return &Neo4jRepository{driver: driver}
+func NewNeo4jRepository(uri, username, password string) (*Neo4jRepository, error) {
+    driver, err := neo4j.NewDriver(uri, neo4j.BasicAuth(username, password, ""))
+    if err != nil {
+        return nil, err
+    }
+    return &Neo4jRepository{driver: driver}, nil
 }
 
 func (r *Neo4jRepository) StoreGraph(graph *graph.GraphAggregate) error {
@@ -35,9 +39,21 @@ func (r *Neo4jRepository) StoreGraph(graph *graph.GraphAggregate) error {
 		}); err != nil {
 			return err
 		}
+		log.Printf("Uložen uzel: typ=%s, vlastnosti=%+v", node.Type, node.Properties)
 	}
 
-	// Uložení vztahů - zatím přeskočíme, protože nemáme implementovaný přístup k vztahům
+	// Uložení vztahů
+	for _, rel := range graph.GetRelationships() {
+		query := "MATCH (a {id: $sourceId}), (b {id: $targetId}) CREATE (a)-[r:" + rel.Type + "]->(b) SET r = $props"
+		if _, err := session.Run(query, map[string]interface{}{
+			"sourceId": rel.SourceNode.ID,
+			"targetId": rel.TargetNode.ID,
+			"props":    rel.Properties,
+		}); err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
@@ -78,11 +94,21 @@ func (r *Neo4jRepository) ExportGraph(query string) (interface{}, error) {
 		return nil, err
 	}
 
-	if result.Next() {
-		return result.Record().GetByIndex(0), nil
+	graphAgg := graph.NewGraphAggregate("")
+
+	for result.Next() {
+		record := result.Record()
+		node := record.GetByIndex(0).(neo4j.Node)
+
+		// Přidáme uzel do grafu
+		graphAgg.AddNode(node.Labels[0], node.Props)
 	}
 
-	return nil, nil
+	if err = result.Err(); err != nil {
+		return nil, err
+	}
+
+	return graphAgg, nil
 }
 
 func (r *Neo4jRepository) Close() error {

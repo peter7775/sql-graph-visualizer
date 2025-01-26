@@ -43,24 +43,13 @@ class GraphVisualizer {
         // Připravíme data pro vis.js
         console.log('Zpracovávám uzly:', this.data.nodes);
         const nodes = new vis.DataSet(this.data.nodes.map(node => {
-            // Dekódování base64 hodnot
-            const properties = {};
-            for (let key in node.properties) {
-                try {
-                    properties[key] = atob(node.properties[key]);
-                } catch (e) {
-                    properties[key] = node.properties[key];
-                }
-            }
-            
-            const label = properties.name || node.id;
-            console.log('Vytvářím uzel:', { id: node.id, label, properties });
+            // Přímo přiřadíme vlastnosti bez dekódování base64
+            const properties = node.properties;
             return {
                 id: node.id,
-                label: label,
+                label: node.label,
                 title: JSON.stringify(properties, null, 2),
-                group: node.label,
-                color: node.label === 'Person' ? '#97C2FC' : '#FB7E81'
+                properties: properties
             };
         }));
 

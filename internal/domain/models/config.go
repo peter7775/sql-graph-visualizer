@@ -7,16 +7,21 @@
 
 package models
 
-type TransformationConfig struct {
-	Name      string           `yaml:"name"`
-	Source    SourceConfig     `yaml:"source"`
-	Nodes     []NodeConfig     `yaml:"nodes"`
-	Relations []RelationConfig `yaml:"relations"`
-}
 
-type SourceConfig struct {
-	Type  string `yaml:"type"` // "table" nebo "query"
-	Value string `yaml:"value"`
+type TransformationConfig struct {
+	Name          string           `yaml:"name"`
+	Source        SourceConfig     `yaml:"source"`
+	Nodes         []NodeConfig     `yaml:"nodes"`
+	Relations     []RelationConfig `yaml:"relations"`
+	FieldMappings map[string]string `yaml:"field_mappings"`
+	SourceNode    RelationNode     `yaml:"source_node"`
+	TargetNode    RelationNode     `yaml:"target_node"`
+	RelationType  string           `yaml:"relationship_type,omitempty"`
+	TargetType    string           `yaml:"target_type,omitempty"`
+	RuleType      string           `yaml:"rule_type,omitempty"`
+	Direction     string           `yaml:"direction,omitempty"`
+	Properties    map[string]string `yaml:"properties,omitempty"`
+	Priority      int              `yaml:"priority,omitempty"`
 }
 
 type NodeConfig struct {
@@ -36,24 +41,13 @@ type RelationConfig struct {
 }
 
 type RelationNode struct {
-	Label string `yaml:"label"`
-	Match string `yaml:"match"`
+	Type       string `yaml:"type"`
+	Key        string `yaml:"key"`
+	TargetField string `yaml:"target_field"`
 }
 
-type Config struct {
-	Neo4j struct {
-		URI      string
-		User     string
-		Password string
-	}
-	MySQL struct {
-		Host     string
-		Port     int
-		User     string
-		Password string
-		Database string
-	}
-	Server struct {
-		Port int
-	}
+// Oprava neukončeného řetězce v SourceConfig
+type SourceConfig struct {
+	Type  string `yaml:"type"` // "table" nebo "query"
+	Value string `yaml:"value"`
 }

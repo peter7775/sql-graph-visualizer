@@ -25,12 +25,16 @@ func NewVisualizationHandler(service *visualization.VisualizationService) *Visua
 func (h *VisualizationHandler) HandleVisualization(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	searchDTO := dto.SearchDTO{} // parse from request
-
-	result, err := h.visualizationService.VisualizeGraph(ctx, searchDTO)
+	result, err := h.visualizationService.Visualize(ctx, searchDTO)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	w.Write(result)
+	}
+
 	// Return response
-}
+

@@ -3,15 +3,16 @@ module mysql-graph-visualizer
 go 1.22
 
 require (
-	github.com/go-sql-driver/mysql v1.6.0
-	github.com/gorilla/mux v1.8.1
+	github.com/go-sql-driver/mysql v1.8.1
 	github.com/neo4j/neo4j-go-driver/v4 v4.4.7
 	github.com/spf13/viper v1.15.0
 	github.com/stretchr/testify v1.8.1
+	gopkg.in/yaml.v2 v2.4.0
 	gopkg.in/yaml.v3 v3.0.1
 )
 
 require (
+	filippo.io/edwards25519 v1.1.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/fsnotify/fsnotify v1.6.0 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect

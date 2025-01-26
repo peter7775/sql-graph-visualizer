@@ -1,0 +1,20 @@
+---
+services:
+
+  neo4j-test:
+    image: neo4j:4.4
+    environment:
+      NEO4J_AUTH: neo4j/testpass
+      NEO4J_dbms_memory_pagecache_size: 1G
+      NEO4J_dbms_memory_heap_initial__size: 1G
+      NEO4J_dbms_memory_heap_max__size: 1G
+    ports:
+      - "7687:7687"  # Bolt
+      - "7474:7474"  # HTTP
+    healthcheck:
+      test: ["CMD", "cypher-shell", "-u", "neo4j", "-p", "testpass", "RETURN 1;"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
+

@@ -10,12 +10,12 @@ package infrastructure
 import (
 	"mysql-graph-visualizer/internal/domain/models"
 	"mysql-graph-visualizer/internal/domain/repositories"
-	"mysql-graph-visualizer/internal/mysql"
-	"mysql-graph-visualizer/internal/neo4j"
+	mysqlClient "mysql-graph-visualizer/internal/domain/repositories/mysql"
+	neo4jClient "mysql-graph-visualizer/internal/domain/repositories/neo4j"
 )
 
 func NewMySQLRepository(config models.Config) (repositories.MySQLRepository, error) {
-	client, err := mysql.NewMySQLClient(mysql.MySQLConfig{
+	client, err := mysqlClient.NewMySQLClient(mysqlClient.MySQLConfig{
 		Host:     config.MySQL.Host,
 		Port:     config.MySQL.Port,
 		User:     config.MySQL.User,
@@ -29,7 +29,7 @@ func NewMySQLRepository(config models.Config) (repositories.MySQLRepository, err
 }
 
 func NewNeo4jRepository(config models.Config) (repositories.Neo4jRepository, error) {
-	client, err := neo4j.NewNeo4jClient(neo4j.Neo4jConfig{
+	client, err := neo4jClient.NewNeo4jClient(neo4jClient.Neo4jConfig{
 		URI:      config.Neo4j.URI,
 		User:     config.Neo4j.User,
 		Password: config.Neo4j.Password,

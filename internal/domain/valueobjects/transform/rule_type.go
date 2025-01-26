@@ -42,3 +42,21 @@ func (rt RuleType) Validate() bool {
 		return false
 	}
 }
+
+func ParseDirection(direction string) Direction {
+	switch direction {
+	case "inbound":
+		return Inbound
+	case "outbound":
+		return Outbound
+	default:
+		return Unknown
+	}
+}
+
+// Ensure the Direction constants are defined
+const (
+	Unknown Direction = iota
+	Inbound
+	Outbound
+)

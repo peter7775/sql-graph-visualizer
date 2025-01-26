@@ -29,3 +29,4 @@ func Load() (*models.Config, error) {
 
 	return &config, nil
 }
+

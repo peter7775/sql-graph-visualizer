@@ -7,7 +7,20 @@
 
 package config
 
+import (
+	"mysql-graph-visualizer/internal/domain/models"
+
+	"io/ioutil"
+
+	"gopkg.in/yaml.v2"
+)
+
 type Config struct {
+	Neo4j struct {
+		URI      string
+		User     string
+		Password string
+	}
 	MySQL struct {
 		Host     string
 		Port     int
@@ -15,29 +28,22 @@ type Config struct {
 		Password string
 		Database string
 	}
-	Neo4j struct {
-		URI      string
-		Username string
-		Password string
-	}
 	Server struct {
 		Port int
 	}
+	TransformRules []models.TransformationConfig `yaml:"transform_rules"`
 }
 
-func Load() (*Config, error) {
-	cfg := &Config{}
-	cfg.MySQL.Host = "mysql-test"
-	cfg.MySQL.Port = 3307
-	cfg.MySQL.User = "root"
-	cfg.MySQL.Password = "testpass"
-	cfg.MySQL.Database = "testdb"
+func LoadConfig(filePath string) (*Config, error) {
+	data, err := ioutil.ReadFile(filePath)
+	if err != nil {
+		return nil, err
+	}
 
-	cfg.Neo4j.URI = "bolt://neo4j-test:7687"
-	cfg.Neo4j.Username = "neo4j"
-	cfg.Neo4j.Password = "testpass"
+	var config Config
+	if err := yaml.Unmarshal(data, &config); err != nil {
+		return nil, err
+	}
 
-	cfg.Server.Port = 8080
-
-	return cfg, nil
+	return &config, nil
 }
