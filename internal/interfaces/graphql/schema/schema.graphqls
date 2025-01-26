@@ -1,0 +1,15 @@
+type Node {
+id: ID!
+label: String!
+properties: Properties
+}
+
+type Properties {
+key: String
+value: String
+}
+
+type Query {
+nodes: [Node!]!
+}
+

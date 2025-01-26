@@ -48,6 +48,37 @@ type RelationNode struct {
 
 // Oprava neukončeného řetězce v SourceConfig
 type SourceConfig struct {
-	Type  string `yaml:"type"` // "table" nebo "query"
-	Value string `yaml:"value"`
+	Type        string `yaml:"type"` // "table" nebo "query"
+	Value       string `yaml:"value"`
+	SourceTable string `yaml:"source_table"`
+}
+
+type MySQLConfig struct {
+	Host     string `yaml:"host"`
+	Port     int    `yaml:"port"`
+	User     string `yaml:"user"`
+	Password string `yaml:"password"`
+	Database string `yaml:"database"`
+}
+
+type Neo4jConfig struct {
+	URI      string `yaml:"uri"`
+	User     string `yaml:"user"`
+	Password string `yaml:"password"`
+}
+
+type Config struct {
+	MySQL struct {
+		Host     string `yaml:"host"`
+		Port     int    `yaml:"port"`
+		User     string `yaml:"user"`
+		Password string `yaml:"password"`
+		Database string `yaml:"database"`
+	} `yaml:"mysql"`
+	Neo4j struct {
+		URI      string `yaml:"uri"`
+		User     string `yaml:"user"`
+		Password string `yaml:"password"`
+	} `yaml:"neo4j"`
+	TransformRules []map[string]interface{} `yaml:"transform_rules"`
 }

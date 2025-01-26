@@ -9,10 +9,10 @@ package neo4j
 
 import (
 	"fmt"
-	"log"
 	"mysql-graph-visualizer/internal/domain/aggregates/graph"
 
 	"github.com/neo4j/neo4j-go-driver/v4/neo4j"
+	"github.com/sirupsen/logrus"
 )
 
 type Neo4jRepository struct {
@@ -20,11 +20,14 @@ type Neo4jRepository struct {
 }
 
 func NewNeo4jRepository(uri, username, password string) (*Neo4jRepository, error) {
-    driver, err := neo4j.NewDriver(uri, neo4j.BasicAuth(username, password, ""))
-    if err != nil {
-        return nil, err
-    }
-    return &Neo4jRepository{driver: driver}, nil
+	logrus.Infof("Vytvářím Neo4j driver s URI: %s, uživatel: %s", uri, username)
+	driver, err := neo4j.NewDriver(uri, neo4j.BasicAuth(username, password, ""))
+	if err != nil {
+		logrus.Errorf("Chyba při vytváření Neo4j driveru: %v", err)
+		return nil, err
+	}
+	logrus.Infof("Neo4j driver úspěšně vytvořen")
+	return &Neo4jRepository{driver: driver}, nil
 }
 
 func (r *Neo4jRepository) StoreGraph(graph *graph.GraphAggregate) error {
@@ -39,7 +42,7 @@ func (r *Neo4jRepository) StoreGraph(graph *graph.GraphAggregate) error {
 		}); err != nil {
 			return err
 		}
-		log.Printf("Uložen uzel: typ=%s, vlastnosti=%+v", node.Type, node.Properties)
+		logrus.Infof("Uložen uzel: typ=%s, vlastnosti=%+v", node.Type, node.Properties)
 	}
 
 	// Uložení vztahů
@@ -89,7 +92,15 @@ func (r *Neo4jRepository) ExportGraph(query string) (interface{}, error) {
 	session := r.driver.NewSession(neo4j.SessionConfig{})
 	defer session.Close()
 
-	result, err := session.Run(query, nil)
+	result, err := session.Run(`
+	MATCH (n)
+	OPTIONAL MATCH (n)-[r]->(m)
+	RETURN n, r, m
+	UNION
+	MATCH (n)
+	WHERE NOT (n)--()
+	RETURN n, null AS r, null AS m
+	`, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -113,4 +124,32 @@ func (r *Neo4jRepository) ExportGraph(query string) (interface{}, error) {
 
 func (r *Neo4jRepository) Close() error {
 	return r.driver.Close()
+}
+
+func (r *Neo4jRepository) NewSession(config neo4j.SessionConfig) neo4j.Session {
+	return r.driver.NewSession(config)
+}
+
+func (r *Neo4jRepository) FetchNodes(nodeType string) ([]map[string]interface{}, error) {
+	session := r.driver.NewSession(neo4j.SessionConfig{})
+	defer session.Close()
+
+	query := fmt.Sprintf("MATCH (n:%s) RETURN n", nodeType)
+	result, err := session.Run(query, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	var nodes []map[string]interface{}
+	for result.Next() {
+		record := result.Record()
+		node := record.GetByIndex(0).(neo4j.Node)
+		nodes = append(nodes, node.Props)
+	}
+
+	if err = result.Err(); err != nil {
+		return nil, err
+	}
+
+	return nodes, nil
 }

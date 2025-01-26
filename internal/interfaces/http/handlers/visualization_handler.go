@@ -9,6 +9,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"log"
 	"mysql-graph-visualizer/internal/application/services/visualization"
 	"mysql-graph-visualizer/internal/domain/valueobjects"
 	"net/http"
@@ -56,8 +57,13 @@ func (h *VisualizationHandler) ExportGraph(w http.ResponseWriter, r *http.Reques
 
 func (h *VisualizationHandler) GetConfig(w http.ResponseWriter, r *http.Request) {
 	config := h.service.GetConfig()
+	log.Printf("Config: %+v", config)
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(config)
+	if err := json.NewEncoder(w).Encode(config); err != nil {
+		http.Error(w, "Chyba při kódování JSON", http.StatusInternalServerError)
+		log.Printf("Chyba při kódování JSON: %v", err)
+		return
+	}
 }
 
 // Implementace handlerů

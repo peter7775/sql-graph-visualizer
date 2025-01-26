@@ -13,5 +13,6 @@ type Neo4jPort interface {
 	StoreGraph(graph *graph.GraphAggregate) error
 	SearchNodes(criteria string) ([]*graph.GraphAggregate, error)
 	ExportGraph(query string) (interface{}, error)
+	FetchNodes(nodeType string) ([]map[string]interface{}, error)
 	Close() error
 }

@@ -10,10 +10,11 @@ package transform
 import (
 	"context"
 	"fmt"
-	"log"
 	"mysql-graph-visualizer/internal/application/ports"
 	"mysql-graph-visualizer/internal/domain/aggregates/graph"
 	"mysql-graph-visualizer/internal/domain/valueobjects/transform"
+
+	"github.com/sirupsen/logrus"
 )
 
 type TransformService struct {
@@ -40,10 +41,10 @@ func (s *TransformService) TransformAndStore(ctx context.Context) error {
 		return err
 	}
 
-	log.Printf("Načteno %d záznamů z MySQL", len(data))
+	logrus.Infof("Načteno %d záznamů z MySQL", len(data))
 
 	rules, err := s.ruleRepo.GetAllRules(ctx)
-	log.Printf("Pravidla: %+v", rules)
+	logrus.Infof("Pravidla: %+v", rules)
 	if err != nil {
 		return err
 	}
@@ -58,13 +59,51 @@ func (s *TransformService) TransformAndStore(ctx context.Context) error {
 		}
 	}
 
-	// Aplikujeme pravidla na příslušná data
+	// Načítání uzlů z Neo4j
+	nodePHPActionNodes, err := s.neo4jPort.FetchNodes("NodePHPAction")
+	if err != nil {
+		return fmt.Errorf("chyba při načítání uzlů NodePHPAction z Neo4j: %v", err)
+	}
+
+	phpActionNodes, err := s.neo4jPort.FetchNodes("PHPAction")
+	if err != nil {
+		return fmt.Errorf("chyba při načítání uzlů PHPAction z Neo4j: %v", err)
+	}
+
+	// Použití uzlů pro relace
 	for _, rule := range rules {
-		sourceTable := rule.Rule.SourceTable
-		log.Printf("Aplikuji pravidlo na tabulku: %s", sourceTable)
-		if items, ok := tableData[sourceTable]; ok {
+		if rule.Rule.RuleType == transform.RelationshipRule {
+			logrus.Infof("Zpracovávám pravidlo pro relaci: %+v", rule)
+			transformedData := rule.ApplyRules(append(nodePHPActionNodes, phpActionNodes...))
+			logrus.Infof("Transformováno %d záznamů", len(transformedData))
+			for _, item := range transformedData {
+				if err := s.updateGraph(item, graphAggregate); err != nil {
+					return err
+				}
+			}
+		} else if rule.Rule.SourceSQL != "" && rule.Rule.RuleType != transform.RelationshipRule {
+			logrus.Infof("Vykonávám SQL dotaz: %s", rule.Rule.SourceSQL)
+			items, err := s.mysqlPort.ExecuteQuery(rule.Rule.SourceSQL)
+			if err != nil {
+				return fmt.Errorf("chyba při vykonávání SQL dotazu: %v", err)
+			}
+			logrus.Infof("Data vrácená SQL dotazem: %+v", items)
 			transformedData := rule.ApplyRules(items)
-			log.Printf("Transformováno %d záznamů pro tabulku %s", len(transformedData), sourceTable)
+			logrus.Infof("Transformováno %d záznamů", len(transformedData))
+			for _, item := range transformedData {
+				if err := s.updateGraph(item, graphAggregate); err != nil {
+					return err
+				}
+			}
+		} else {
+			sourceTable := rule.Rule.SourceTable
+			logrus.Infof("Aplikuji pravidlo na tabulku: %s", sourceTable)
+			items, ok := tableData[sourceTable]
+			if !ok {
+				items = []map[string]interface{}{}
+			}
+			transformedData := rule.ApplyRules(items)
+			logrus.Infof("Transformováno %d záznamů", len(transformedData))
 			for _, item := range transformedData {
 				if err := s.updateGraph(item, graphAggregate); err != nil {
 					return err
@@ -73,8 +112,8 @@ func (s *TransformService) TransformAndStore(ctx context.Context) error {
 		}
 	}
 
-	log.Printf("Počet uzlů k uložení: %d", len(graphAggregate.GetNodes()))
-	log.Printf("Ukládám graf do Neo4j")
+	logrus.Infof("Počet uzlů k uložení: %d", len(graphAggregate.GetNodes()))
+	logrus.Infof("Ukládám graf do Neo4j")
 	return s.neo4jPort.StoreGraph(graphAggregate)
 }
 
@@ -83,10 +122,13 @@ func (s *TransformService) updateGraph(data interface{}, graph *graph.GraphAggre
 	case map[string]interface{}:
 		if nodeType, ok := transformed["_type"].(string); ok {
 			if _, hasSource := transformed["source"]; hasSource {
-				log.Printf("Přidávám vztah do grafu: %+v", transformed)
+				logrus.Infof("Přidávám vztah do grafu: %+v", transformed)
 				return s.createRelationship(transformed, graph)
 			}
-			log.Printf("Přidávám uzel do grafu: %+v", transformed)
+			logrus.Infof("Přidávám uzel do grafu: %+v", transformed)
+			if _, hasName := transformed["name"]; !hasName {
+				transformed["name"] = "default_name"
+			}
 			return s.createNode(nodeType, transformed, graph)
 		}
 	}
@@ -103,7 +145,7 @@ func (s *TransformService) createNode(nodeType string, data map[string]interface
 	}
 
 	delete(data, "_type")
-	log.Printf("Ukládám uzel do grafu: typ=%s, data=%+v", nodeType, data)
+	logrus.Infof("Ukládám uzel do grafu: typ=%s, data=%+v", nodeType, data)
 	return graph.AddNode(nodeType, data)
 }
 
@@ -114,7 +156,7 @@ func (s *TransformService) createRelationship(data map[string]interface{}, graph
 	target := data["target"].(map[string]interface{})
 	properties := data["properties"].(map[string]interface{})
 
-	log.Printf("Ukládám vztah do grafu: typ=%s, směr=%s, zdroj=%+v, cíl=%+v, vlastnosti=%+v", relType, direction, source, target, properties)
+	logrus.Infof("Ukládám vztah do grafu: typ=%s, směr=%s, zdroj=%+v, cíl=%+v, vlastnosti=%+v", relType, direction, source, target, properties)
 
 	return graph.AddRelationship(
 		relType,

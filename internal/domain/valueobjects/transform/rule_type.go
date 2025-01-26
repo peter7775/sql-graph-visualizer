@@ -23,6 +23,7 @@ type NodeMapping struct {
 type TransformRule struct {
 	Name          string            `yaml:"name"`
 	SourceTable   string            `yaml:"source_table"`
+	SourceSQL     string            `yaml:"source_sql,omitempty"`
 	RuleType      RuleType          `yaml:"rule_type"`
 	TargetType    string            `yaml:"target_type"`
 	Direction     Direction         `yaml:"direction,omitempty"`
@@ -45,12 +46,14 @@ func (rt RuleType) Validate() bool {
 
 func ParseDirection(direction string) Direction {
 	switch direction {
-	case "inbound":
-		return Inbound
-	case "outbound":
-		return Outbound
+	case "incoming":
+		return Incoming
+	case "outgoing":
+		return Outgoing
+	case "both":
+		return Both
 	default:
-		return Unknown
+		return Outgoing // Výchozí hodnota
 	}
 }
 

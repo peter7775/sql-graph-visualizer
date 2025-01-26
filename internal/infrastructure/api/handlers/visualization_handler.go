@@ -9,7 +9,7 @@ package handlers
 
 import (
 	"encoding/json"
-	"mysql-graph-visualizer/internal/domain/services"
+	"mysql-graph-visualizer/internal/application/services/graph"
 	"net/http"
 )
 

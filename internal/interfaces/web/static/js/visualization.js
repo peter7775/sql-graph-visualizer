@@ -5,6 +5,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+
 class GraphVisualizer {
     constructor() {
         this.viz = null;
@@ -19,111 +20,94 @@ class GraphVisualizer {
         this.initializeEventListeners();
     }
 
-    async initialize() {
+    async fetchConfig() {
         try {
-            console.log('Načítám data z API...');
-            const response = await fetch('/api/graph');
+            const response = await fetch("http://localhost:8080/config");
             if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
+                throw new Error(`HTTP error! status: ${response.status}`);
             }
-            this.data = await response.json();
-            console.log('Načtená data:', this.data);
-        
-            await this.createVisualization();
-            } catch (error) {
-                console.error('Chyba při načítání dat:', error);
+            const contentType = response.headers.get("content-type");
+            if (!contentType || !contentType.includes("application/json")) {
+                throw new TypeError("Odpověď není JSON");
             }
+            const config = await response.json();
+            return config;
+        } catch (error) {
+            console.error('Chyba při načítání konfigurace:', error);
+            return null;
+        }
     }
 
+    async initialize() {
+        try {
+            console.log('Načítám konfiguraci...');
+            const config = await this.fetchConfig();
+            if (!config) {
+                throw new Error('Konfigurace nebyla načtena.');
+            }
 
-
-    async createVisualization() {
-        const container = document.getElementById('viz');
-        
-        // Připravíme data pro vis.js
-        console.log('Zpracovávám uzly:', this.data.nodes);
-        const nodes = new vis.DataSet(this.data.nodes.map(node => {
-            // Přímo přiřadíme vlastnosti bez dekódování base64
-            const properties = node.properties;
-            return {
-                id: node.id,
-                label: node.label,
-                title: JSON.stringify(properties, null, 2),
-                properties: properties
-            };
-        }));
-
-        console.log('Zpracovávám vztahy:', this.data.relationships);
-        const edges = new vis.DataSet(this.data.relationships.map(rel => {
-            console.log('Vytvářím vztah:', rel);
-            return {
-                from: rel.from,
-                to: rel.to,
-                label: rel.type || 'VZTAH',
-                title: JSON.stringify(rel.properties, null, 2),
-                arrows: 'to'
-            };
-        }));
-
-        const options = {
-            nodes: {
-                shape: 'dot',
-                size: 30,
-                font: {
-                    size: 14,
-                    face: 'Tahoma'
-                },
-                borderWidth: 2,
-                shadow: true
-            },
-            edges: {
-                width: 2,
-                font: {
-                    size: 14,
-                    face: 'Tahoma'
-                },
-                arrows: {
-                    to: {
-                        enabled: true,
-                        scaleFactor: 1
+            console.log('Načítám data z GraphQL...');
+            const query = `
+                query GetNodes {
+                    nodes {
+                        id
+                        label
+                        properties {
+                            key
+                            value
+                        }
                     }
+                }
+            `;
+            const response = await fetch('http://localhost:8080/graphql', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
                 },
-                shadow: true
-            },
-            physics: {
-                enabled: true,
-                solver: 'forceAtlas2Based',
-                forceAtlas2Based: {
-                    gravitationalConstant: -26,
-                    centralGravity: 0.005,
-                    springLength: 230,
-                    springConstant: 0.18
-                },
-                stabilization: {
-                    enabled: true,
-                    iterations: 1000,
-                    updateInterval: 25
+                body: JSON.stringify({ 
+                    query: query,
+                    operationName: 'GetNodes'
+                }),
+            });
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            const result = await response.json();
+            console.log('GraphQL response:', result);
+            this.data = result.data.nodes;
+            console.log('Načtená data:', this.data);
+
+            this.createVisualization(config);
+        } catch (error) {
+            console.error('Chyba při inicializaci:', error);
+        }
+    }
+
+    createVisualization(config) {
+        const vizConfig = {
+            container_id: "viz",
+            server_url: config.Neo4j.URI,
+            server_user: config.Neo4j.User,
+            server_password: config.Neo4j.Password,
+            labels: {
+                "Node": {
+                    "caption": "label",
+                    "size": "pagerank",
+                    "community": "community"
                 }
             },
-            interaction: {
-                hover: true,
-                tooltipDelay: 200,
-                hideEdgesOnDrag: true,
-                navigationButtons: true,
-                keyboard: true
-            }
+            relationships: {
+                "RELATIONSHIP": {
+                    "thickness": "weight",
+                    "caption": false
+                }
+            },
+            initial_cypher: "MATCH (n)-[r]->(m) RETURN n,r,m"
         };
 
-        console.log('Vytvářím síť s daty:', { nodes: nodes.get(), edges: edges.get() });
-        this.network = new vis.Network(container, { nodes, edges }, options);
-
-        this.network.on('stabilizationProgress', function(params) {
-            console.log('Stabilizace:', Math.round(params.iterations/params.total * 100), '%');
-        });
-
-        this.network.on('stabilizationIterationsDone', function() {
-            console.log('Stabilizace dokončena');
-        });
+        this.viz = new NeoVis.default(vizConfig);
+        this.viz.render();
     }
 
     initializeEventListeners() {

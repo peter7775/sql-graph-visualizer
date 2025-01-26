@@ -3,21 +3,22 @@ package configrule
 import (
 	"context"
 	"fmt"
-	"log"
 	"mysql-graph-visualizer/internal/config"
-	"mysql-graph-visualizer/internal/domain/aggregates/transform"
-	transformR "mysql-graph-visualizer/internal/domain/valueobjects/transform"
+	transformAgg "mysql-graph-visualizer/internal/domain/aggregates/transform"
+	transformVal "mysql-graph-visualizer/internal/domain/valueobjects/transform"
+
+	"github.com/sirupsen/logrus"
 )
 
 type RuleRepository struct {
-	rules []*transform.TransformRuleAggregate
+	rules []*transformAgg.TransformRuleAggregate
 }
 
 func NewRuleRepository() *RuleRepository {
-	return &RuleRepository{rules: []*transform.TransformRuleAggregate{}}
+	return &RuleRepository{rules: []*transformAgg.TransformRuleAggregate{}}
 }
 
-func (r *RuleRepository) GetAllRules(ctx context.Context) ([]*transform.TransformRuleAggregate, error) {
+func (r *RuleRepository) GetAllRules(ctx context.Context) ([]*transformAgg.TransformRuleAggregate, error) {
 	if len(r.rules) == 0 {
 		loadedRules, err := r.LoadRulesFromConfig("config/config.yml")
 		if err != nil {
@@ -28,7 +29,7 @@ func (r *RuleRepository) GetAllRules(ctx context.Context) ([]*transform.Transfor
 	return r.rules, nil
 }
 
-func (r *RuleRepository) SaveRule(ctx context.Context, rule *transform.TransformRuleAggregate) error {
+func (r *RuleRepository) SaveRule(ctx context.Context, rule *transformAgg.TransformRuleAggregate) error {
 	r.rules = append(r.rules, rule)
 	return nil
 }
@@ -53,43 +54,73 @@ func (r *RuleRepository) UpdateRulePriority(ctx context.Context, ruleID string, 
 	return fmt.Errorf("rule with ID %s not found", ruleID)
 }
 
-func (r *RuleRepository) LoadRulesFromConfig(filePath string) ([]*transform.TransformRuleAggregate, error) {
-	log.Printf("Načítám pravidla z %s", filePath)
+func (r *RuleRepository) LoadRulesFromConfig(filePath string) ([]*transformAgg.TransformRuleAggregate, error) {
+	logrus.Infof("Načítám pravidla z %s", filePath)
 
-	config, err := config.LoadConfig(filePath)
+	cfg, err := config.Load()
 	if err != nil {
 		return nil, fmt.Errorf("could not load config: %v", err)
 	}
 
-	log.Printf("Načteno %d transform rules z konfigurace", len(config.TransformRules))
+	var rules []*transformAgg.TransformRuleAggregate
+	for _, configRule := range cfg.TransformRules {
+		logrus.Infof("Zpracovávám pravidlo: %+v", configRule)
 
-	var rules []*transform.TransformRuleAggregate
-	for _, rule := range config.TransformRules {
-		log.Printf("Přiřazuji FieldMappings: %+v", rule.FieldMappings)
-		log.Printf("Načtené pravidlo: %+v", rule)
-		if rule.SourceNode.Type == "" || rule.TargetNode.Type == "" {
-			log.Printf("Chyba: SourceNode nebo TargetNode je prázdný pro pravidlo: %+v", rule)
-		}
-		log.Printf("SourceNode: %+v, TargetNode: %+v", rule.SourceNode, rule.TargetNode)
-
-		transformRule := transformR.TransformRule{
-			Name:          rule.Name,
-			SourceTable:   rule.Source.Value, // Assuming Source.Value is the correct field
-			RuleType:      transformR.RuleType(rule.RuleType),
-			TargetType:    rule.TargetType,
-			Direction:     transformR.ParseDirection(rule.Direction),
-			FieldMappings: rule.FieldMappings,
-			RelationType:  rule.RelationType,
-			SourceNode:    &transformR.NodeMapping{Type: rule.SourceNode.Type, Key: rule.SourceNode.Key, TargetField: rule.SourceNode.TargetField},
-			TargetNode:    &transformR.NodeMapping{Type: rule.TargetNode.Type, Key: rule.TargetNode.Key, TargetField: rule.TargetNode.TargetField},
-			Properties:    rule.Properties,
-			Priority:      rule.Priority,
+		// Vytvoření základního pravidla
+		transformRule := transformVal.TransformRule{
+			Name:          configRule.Name,
+			RuleType:      transformVal.RuleType(configRule.RuleType),
+			TargetType:    configRule.TargetType,
+			FieldMappings: configRule.FieldMappings,
+			RelationType:  configRule.RelationType,
+			Direction:     transformVal.ParseDirection(string(configRule.Direction)),
+			Properties:    configRule.Properties,
 		}
 
-		rules = append(rules, &transform.TransformRuleAggregate{Rule: transformRule})
+		// Zpracování source
+		if configRule.Source.Type == "query" {
+			transformRule.SourceSQL = configRule.Source.Value
+		}
+
+		// Pro relationship pravidla zpracujeme source_node a target_node
+		if configRule.RuleType == "relationship" {
+			if configRule.SourceNode.Type != "" {
+				transformRule.SourceNode = &transformVal.NodeMapping{
+					Type:        configRule.SourceNode.Type,
+					Key:         configRule.SourceNode.Key,
+					TargetField: configRule.SourceNode.TargetField,
+				}
+			}
+
+			if configRule.TargetNode.Type != "" {
+				transformRule.TargetNode = &transformVal.NodeMapping{
+					Type:        configRule.TargetNode.Type,
+					Key:         configRule.TargetNode.Key,
+					TargetField: configRule.TargetNode.TargetField,
+				}
+			}
+		}
+
+		// Zpracování properties pokud existují
+		if configRule.Properties != nil {
+			transformRule.Properties = configRule.Properties
+		}
+
+		logrus.Infof("Vytvořeno pravidlo:")
+		logrus.Infof("- Název: %s", transformRule.Name)
+		logrus.Infof("- Typ: %s", transformRule.RuleType)
+		logrus.Infof("- Target Type: %s", transformRule.TargetType)
+		logrus.Infof("- Field Mappings: %+v", transformRule.FieldMappings)
+		logrus.Infof("- Source Node: %+v", transformRule.SourceNode)
+		logrus.Infof("- Target Node: %+v", transformRule.TargetNode)
+		logrus.Infof("- Properties: %+v", transformRule.Properties)
+
+		rules = append(rules, &transformAgg.TransformRuleAggregate{
+			Rule: transformRule,
+			Name: transformRule.Name,
+		})
 	}
 
-	log.Printf("Načteno %d pravidel pro transformaci", len(rules))
-
+	logrus.Infof("Celkem načteno %d pravidel", len(rules))
 	return rules, nil
 }

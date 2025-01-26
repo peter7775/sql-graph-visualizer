@@ -9,11 +9,11 @@ package neo4j
 
 import (
 	"fmt"
-	"log"
 
 	"mysql-graph-visualizer/internal/domain/models"
 
 	"github.com/neo4j/neo4j-go-driver/v4/neo4j"
+	"github.com/sirupsen/logrus"
 )
 
 type Neo4jConfig struct {
@@ -90,7 +90,7 @@ func (c *Client) StoreGraph(graph *models.Graph) error {
 	session := c.driver.NewSession(neo4j.SessionConfig{})
 	defer session.Close()
 
-	log.Printf("Počet uzlů k uložení: %d", len(graph.Nodes))
+	logrus.Infof("Počet uzlů k uložení: %d", len(graph.Nodes))
 
 	// Uložení uzlů
 	for _, node := range graph.Nodes {
@@ -100,7 +100,7 @@ func (c *Client) StoreGraph(graph *models.Graph) error {
 		}); err != nil {
 			return err
 		}
-		log.Printf("Uložen uzel: typ=%s, vlastnosti=%+v", node.Label, node.Properties)
+		logrus.Infof("Uložen uzel: typ=%s, vlastnosti=%+v", node.Label, node.Properties)
 	}
 
 	// Uložení vztahů

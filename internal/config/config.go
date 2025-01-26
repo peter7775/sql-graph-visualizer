@@ -10,8 +10,10 @@ package config
 import (
 	"mysql-graph-visualizer/internal/domain/models"
 
-	"io/ioutil"
+	"os"
+	"path/filepath"
 
+	"github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v2"
 )
 
@@ -35,7 +37,7 @@ type Config struct {
 }
 
 func LoadConfig(filePath string) (*Config, error) {
-	data, err := ioutil.ReadFile(filePath)
+	data, err := os.ReadFile(filePath)
 	if err != nil {
 		return nil, err
 	}
@@ -46,4 +48,26 @@ func LoadConfig(filePath string) (*Config, error) {
 	}
 
 	return &config, nil
+}
+
+func Load() (*Config, error) {
+	return LoadConfig(findProjectRoot() + "/config/config.yml")
+}
+func findProjectRoot() string {
+	wd, err := os.Getwd()
+	if err != nil {
+		logrus.Fatalf("Nelze získat pracovní adresář: %v", err)
+	}
+
+	for {
+		if _, err := os.Stat(filepath.Join(wd, "go.mod")); err == nil {
+			return wd
+		}
+		parent := filepath.Dir(wd)
+		if parent == wd {
+			logrus.Fatalf("Nelze najít kořenový adresář projektu")
+			return ""
+		}
+		wd = parent
+	}
 }

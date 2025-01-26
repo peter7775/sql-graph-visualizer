@@ -10,13 +10,13 @@ package mysql
 import (
 	"database/sql"
 	"fmt"
-	"log"
 	"mysql-graph-visualizer/internal/application/ports"
 	"os"
 
 	"mysql-graph-visualizer/internal/domain/aggregates/transform"
 	transformvo "mysql-graph-visualizer/internal/domain/valueobjects/transform"
 
+	"github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v3"
 )
 
@@ -45,12 +45,19 @@ func (r *MySQLRepository) FetchData() ([]map[string]interface{}, error) {
 			},
 		}
 
-		query := fmt.Sprintf("SELECT * FROM %s", rule.Rule.SourceTable)
+		var query string
+		if ruleConfig.Source.Value != "" {
+			query = ruleConfig.Source.Value
+		} else {
+			query = fmt.Sprintf("SELECT * FROM %s", rule.Rule.SourceTable)
+		}
+		logrus.Infof("Vytvářím SQL dotaz: %s", query)
 		rows, err := r.db.Query(query)
 		if err != nil {
 			return nil, fmt.Errorf("error querying table %s: %v", rule.Rule.SourceTable, err)
 		}
 		defer rows.Close()
+		logrus.Infof("SQL dotaz úspěšně proveden: %s", query)
 
 		columns, err := rows.Columns()
 		if err != nil {
@@ -101,7 +108,7 @@ func getMySQLConfig() *mysqlConfig {
 	// Načtení konfigurace ze souboru
 	configData, err := os.ReadFile("config/config.yml")
 	if err != nil {
-		log.Fatalf("Nelze načíst konfigurační soubor: %v", err)
+		logrus.Fatalf("Nelze načíst konfigurační soubor: %v", err)
 	}
 
 	// Parsování YAML
@@ -109,14 +116,19 @@ func getMySQLConfig() *mysqlConfig {
 		TransformRules []struct {
 			SourceTable string `yaml:"source_table"`
 			RuleType    string `yaml:"rule_type"`
+			Source      struct {
+				Type  string `yaml:"type"`
+				Value string `yaml:"value"`
+			} `yaml:"source"`
 		} `yaml:"transform_rules"`
 	}
 
 	if err := yaml.Unmarshal(configData, &config); err != nil {
-		log.Fatalf("Nelze parsovat konfigurační soubor: %v", err)
+		logrus.Fatalf("Nelze parsovat konfigurační soubor: %v", err)
 	}
 
-	log.Printf("Načtené transform_rules: %+v", config.TransformRules)
+	logrus.Infof("Načtená konfigurace: %+v", config)
+	logrus.Infof("Načtené transform_rules: %+v", config.TransformRules)
 
 	return &mysqlConfig{
 		transform_rules: config.TransformRules,
@@ -128,6 +140,10 @@ type mysqlConfig struct {
 	transform_rules []struct {
 		SourceTable string `yaml:"source_table"`
 		RuleType    string `yaml:"rule_type"`
+		Source      struct {
+			Type  string `yaml:"type"`
+			Value string `yaml:"value"`
+		} `yaml:"source"`
 	}
 }
 
@@ -136,4 +152,38 @@ func applyTransformation(rule struct{ SourceTable string `yaml:"source_table"` }
 	// Zde by měla být logika pro aplikaci transformace
 	// Prozatím vrátíme data beze změny
 	return data, nil
+}
+
+func (r *MySQLRepository) ExecuteQuery(query string) ([]map[string]interface{}, error) {
+	rows, err := r.db.Query(query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	columns, err := rows.Columns()
+	if err != nil {
+		return nil, err
+	}
+
+	var results []map[string]interface{}
+	for rows.Next() {
+		row := make(map[string]interface{})
+		columnPointers := make([]interface{}, len(columns))
+		for i := range columns {
+			columnPointers[i] = new(interface{})
+		}
+
+		if err := rows.Scan(columnPointers...); err != nil {
+			return nil, err
+		}
+
+		for i, colName := range columns {
+			row[colName] = *(columnPointers[i].(*interface{}))
+		}
+
+		results = append(results, row)
+	}
+
+	return results, nil
 }

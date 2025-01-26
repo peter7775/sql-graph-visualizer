@@ -9,9 +9,10 @@ package transform
 
 import (
 	"fmt"
-	"log"
 	"mysql-graph-visualizer/internal/domain/entities"
 	"mysql-graph-visualizer/internal/domain/valueobjects/transform"
+
+	"github.com/sirupsen/logrus"
 )
 
 type TransformRuleAggregate struct {
@@ -25,10 +26,19 @@ type TransformRuleAggregate struct {
 	Actions map[string]interface{}
 }
 
+type NodeMapping struct {
+	Type        string
+	Key         string
+	TargetField string
+}
+
 func (t *TransformRuleAggregate) ApplyRules(data []map[string]interface{}) []interface{} {
 	var results []interface{}
 	for _, record := range data {
-		log.Printf("Aplikuji pravidlo na záznam: %+v", record)
+		logrus.Infof("Aplikuji pravidlo na záznam: %+v", record)
+		logrus.Infof("Zpracovávám záznam: %+v", record)
+		logrus.Infof("SourceNode: %+v", t.Rule.SourceNode)
+		logrus.Infof("TargetNode: %+v", t.Rule.TargetNode)
 		result, err := t.ApplyRule(record)
 		if err == nil && result != nil {
 			results = append(results, result)
@@ -38,9 +48,12 @@ func (t *TransformRuleAggregate) ApplyRules(data []map[string]interface{}) []int
 }
 
 func (t *TransformRuleAggregate) ApplyRule(data map[string]interface{}) (interface{}, error) {
-	log.Printf("Aplikuji pravidlo: %+v", t.Rule)
-	log.Printf("Aktuální FieldMappings: %+v", t.Rule.FieldMappings)
-	log.Printf("Kontrola FieldMappings před transformací: %+v", t.Rule.FieldMappings)
+	logrus.Infof("Aplikuji pravidlo: %+v", t.Rule)
+	logrus.Infof("Aktuální FieldMappings: %+v", t.Rule.FieldMappings)
+	logrus.Infof("Kontrola FieldMappings před transformací: %+v", t.Rule.FieldMappings)
+	logrus.Infof("FieldMappings: %+v", t.Rule.FieldMappings)
+	logrus.Infof("Kontrola SourceNode: %+v", t.Rule.SourceNode)
+	logrus.Infof("Kontrola TargetNode: %+v", t.Rule.TargetNode)
 	switch t.Rule.RuleType {
 	case transform.NodeRule:
 		return t.transformToNode(data)
@@ -55,15 +68,15 @@ func (t *TransformRuleAggregate) transformToNode(data map[string]interface{}) (m
 	result := make(map[string]interface{})
 	result["_type"] = t.Rule.TargetType
 
-	log.Printf("FieldMappings: %+v", t.Rule.FieldMappings)
+	logrus.Infof("FieldMappings: %+v", t.Rule.FieldMappings)
 	// log.Printf("Zpracovávám data: %+v", data)
 
 	for sourceField, targetField := range t.Rule.FieldMappings {
 		if value, exists := data[sourceField]; exists {
-			log.Printf("Mapping field %s to %s with value %v", sourceField, targetField, value)
+			logrus.Infof("Mapping field %s to %s with value %v", sourceField, targetField, value)
 			result[targetField] = value
 		} else {
-			log.Printf("Field %s not found in data", sourceField)
+			logrus.Warnf("Field %s not found in data", sourceField)
 		}
 	}
 
@@ -74,11 +87,6 @@ func (t *TransformRuleAggregate) transformToRelationship(data map[string]interfa
 	result := make(map[string]interface{})
 	result["_type"] = t.Rule.RelationType
 	result["_direction"] = t.Rule.Direction
-
-	// Kontrola, zda SourceNode a TargetNode nejsou nil
-	if t.Rule.SourceNode == nil || t.Rule.TargetNode == nil {
-		return nil, fmt.Errorf("SourceNode nebo TargetNode je nil")
-	}
 
 	// Nastavení source a target node
 	result["source"] = map[string]interface{}{
