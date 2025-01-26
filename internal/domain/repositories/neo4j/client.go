@@ -10,7 +10,7 @@ package neo4j
 import (
 	"fmt"
 
-	"mysql-graph-visualizer/internal/domain/models"
+	"mysql-graph-visualizer/internal/domain/aggregates/graph"
 
 	"github.com/neo4j/neo4j-go-driver/v4/neo4j"
 	"github.com/sirupsen/logrus"
@@ -48,26 +48,10 @@ func (c *Client) InsertData(data interface{}) error {
 	return nil
 }
 
-func (c *Client) SearchNodes(query string, params map[string]interface{}) ([]models.SearchResult, error) {
-	session := c.driver.NewSession(neo4j.SessionConfig{})
-	defer session.Close()
-
-	result, err := session.Run(query, params)
-	if err != nil {
-		return nil, err
-	}
-
-	var searchResults []models.SearchResult
-	for result.Next() {
-		record := result.Record()
-		searchResults = append(searchResults, models.SearchResult{
-			ID:     record.GetByIndex(0).(string),
-			Name:   record.GetByIndex(1).(string),
-			Labels: record.GetByIndex(2).([]string),
-		})
-	}
-
-	return searchResults, nil
+func (c *Client) SearchNodes(criteria string) ([]*graph.GraphAggregate, error) {
+	// Implement the logic to search nodes based on criteria
+	// This is a placeholder implementation
+	return []*graph.GraphAggregate{}, nil
 }
 
 func (c *Client) ExportGraph(query string) (interface{}, error) {
@@ -86,34 +70,67 @@ func (c *Client) ExportGraph(query string) (interface{}, error) {
 	return nil, nil
 }
 
-func (c *Client) StoreGraph(graph *models.Graph) error {
+func (c *Client) StoreGraph(graph *graph.GraphAggregate) error {
 	session := c.driver.NewSession(neo4j.SessionConfig{})
 	defer session.Close()
 
-	logrus.Infof("Počet uzlů k uložení: %d", len(graph.Nodes))
+	logrus.Infof("Počet uzlů k uložení: %d", len(graph.GetNodes()))
 
-	// Uložení uzlů
-	for _, node := range graph.Nodes {
-		query := "CREATE (n:" + node.Label + ") SET n = $props"
-		if _, err := session.Run(query, map[string]interface{}{
-			"props": node.Properties,
-		}); err != nil {
+	// Store node properties as individual keys and values
+	for _, node := range graph.GetNodes() {
+		query := "CREATE (n:Node {id: $id, type: $type"
+		params := map[string]interface{}{
+			"id":   node.ID,
+			"type": node.Type,
+		}
+		for k, v := range node.Properties {
+			query += ", " + k + ": $" + k
+			params[k] = v
+		}
+		query += "})"
+		if _, err := session.Run(query, params); err != nil {
 			return err
 		}
-		logrus.Infof("Uložen uzel: typ=%s, vlastnosti=%+v", node.Label, node.Properties)
+		logrus.Infof("Uložen uzel: typ=%s, vlastnosti=%+v", node.Type, node.Properties)
 	}
 
 	// Uložení vztahů
-	for _, rel := range graph.Relations {
-		query := "MATCH (a {id: $sourceId}), (b {id: $targetId}) CREATE (a)-[r:" + rel.Type + "]->(b) SET r = $props"
+	for _, rel := range graph.GetRelationships() {
+		query := "MATCH (a:Node {id: $fromId}), (b:Node {id: $toId}) CREATE (a)-[r:RELATION {type: $type, properties: $properties}]->(b)"
 		if _, err := session.Run(query, map[string]interface{}{
-			"sourceId": rel.From,
-			"targetId": rel.To,
-			"props":    rel.Properties,
+			"fromId":     rel.SourceNode.ID,
+			"toId":       rel.TargetNode.ID,
+			"type":       rel.Type,
+			"properties": rel.Properties,
 		}); err != nil {
 			return err
 		}
 	}
 
 	return nil
+}
+
+func (c *Client) FetchNodes(nodeType string) ([]map[string]interface{}, error) {
+	logrus.Infof("Načítám uzly typu: %s", nodeType)
+	session := c.driver.NewSession(neo4j.SessionConfig{})
+	defer session.Close()
+
+	result, err := session.Run("MATCH (n:Node {type: $nodeType}) RETURN n", map[string]interface{}{
+		"nodeType": nodeType,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	var nodes []map[string]interface{}
+	for result.Next() {
+		record := result.Record()
+		node := record.GetByIndex(0).(neo4j.Node)
+		properties := node.Props
+		logrus.Infof("Načten uzel: %v", properties)
+		nodes = append(nodes, properties)
+	}
+
+	logrus.Infof("Načteno %d uzlů", len(nodes))
+	return nodes, nil
 }

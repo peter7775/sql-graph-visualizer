@@ -1,10 +1,3 @@
-/*
- * Copyright (c) 2025 Petr Miroslav Stepanek <petrstepanek99@gmail.com>
- *
- * This source code is licensed under the MIT license found in the
- * LICENSE file in the root directory of this source tree.
- */
-
 package integration
 
 import (
@@ -19,109 +12,77 @@ import (
 	"os/exec"
 	"os/signal"
 	"path/filepath"
-	"strings"
 	"testing"
 	"time"
 
-	"mysql-graph-visualizer/internal/application/services/transform"
+	"github.com/sirupsen/logrus"
+	"github.com/stretchr/testify/assert"
+
+	// Adjust the actual import path as needed
+	"mysql-graph-visualizer/internal/application/ports"
+	server "mysql-graph-visualizer/internal/application/services/graphql/server"
+	transformService "mysql-graph-visualizer/internal/application/services/transform"
 	"mysql-graph-visualizer/internal/domain/aggregates/graph"
-	transformagg "mysql-graph-visualizer/internal/domain/aggregates/transform"
-	"mysql-graph-visualizer/internal/domain/repositories/mysql"
-	transformvo "mysql-graph-visualizer/internal/domain/valueobjects/transform"
+	transformAggregates "mysql-graph-visualizer/internal/domain/aggregates/transform"
+	transformObjects "mysql-graph-visualizer/internal/domain/valueobjects/transform"
+	"mysql-graph-visualizer/internal/infrastructure/middleware"
+
+	"mysql-graph-visualizer/internal/config"
+
+	"mysql-graph-visualizer/internal/domain/repositories/neo4j"
 
 	_ "github.com/go-sql-driver/mysql"
-	"github.com/stretchr/testify/assert"
-	"gopkg.in/yaml.v3"
-)
+	// Use an alias for the Neo4j driver import
 
-var addr = "127.0.0.1:3000"
+	"mysql-graph-visualizer/internal/domain/aggregates/serialization"
+
+	neo4jDriver "github.com/neo4j/neo4j-go-driver/v4/neo4j"
+)
 
 type mockRuleRepo struct{}
 
-func (m *mockRuleRepo) GetAllRules(ctx context.Context) ([]*transformagg.TransformRuleAggregate, error) {
-	rules := []*transformagg.TransformRuleAggregate{
-		// Pravidlo pro transformaci uživatelů
+func (m *mockRuleRepo) GetAllRules(ctx context.Context) ([]*transformAggregates.TransformRuleAggregate, error) {
+	return []*transformAggregates.TransformRuleAggregate{
 		{
-			Rule: transformvo.TransformRule{
-				Name:        "users_to_persons",
-				RuleType:    transformvo.NodeRule,
-				SourceTable: "users",
-				TargetType:  "Person",
+			Rule: transformObjects.TransformRule{
+				Name:       "php_actions_to_nodes",
+				RuleType:   transformObjects.NodeRule,
+				SourceSQL:  "SELECT * FROM alex_uzly au WHERE au.id_typu = 17",
+				TargetType: "NodePHPAction",
 				FieldMappings: map[string]string{
-					"id":    "id",
-					"name":  "name",
-					"email": "email",
-					"role":  "role",
+					"id_typu": "id_typu",
+					"infix":   "infix",
+					"nazev":   "name",
+					"prefix":  "prefix",
 				},
 			},
 		},
-		// Pravidlo pro transformaci oddělení
 		{
-			Rule: transformvo.TransformRule{
-				Name:        "departments_to_departments",
-				RuleType:    transformvo.NodeRule,
-				SourceTable: "departments",
-				TargetType:  "Department",
+			Rule: transformObjects.TransformRule{
+				Name:       "php_actions",
+				RuleType:   transformObjects.NodeRule,
+				SourceSQL:  "SELECT * FROM alex_uzly_php_action au JOIN alex_uzly aupa ON au.id_node = aupa.id",
+				TargetType: "PHPAction",
 				FieldMappings: map[string]string{
-					"id":   "id",
-					"name": "name",
-					"code": "code",
+					"id_node": "id_node",
 				},
 			},
 		},
-		// Pravidlo pro transformaci vztahů uživatel-oddělení
-		{
-			Rule: transformvo.TransformRule{
-				Name:        "user_departments_to_works_in",
-				RuleType:    transformvo.RelationshipRule,
-				SourceTable: "user_departments",
-				TargetType:  "WORKS_IN",
-				Direction:   transformvo.Outgoing,
-				SourceNode: &transformvo.NodeMapping{
-					Type:        "Person",
-					Key:         "user_id",
-					TargetField: "id",
-				},
-				TargetNode: &transformvo.NodeMapping{
-					Type:        "Department",
-					Key:         "department_id",
-					TargetField: "id",
-				},
-				FieldMappings: map[string]string{
-					"role":       "role",
-					"start_date": "start_date",
-				},
-			},
-		},
-		// Pravidlo pro transformaci vztahů mezi odděleními
-		{
-			Rule: transformvo.TransformRule{
-				Name:        "department_collaborations_to_collaborates_with",
-				RuleType:    transformvo.RelationshipRule,
-				SourceTable: "department_collaborations",
-				TargetType:  "COLLABORATES_WITH",
-				Direction:   transformvo.Outgoing,
-				SourceNode: &transformvo.NodeMapping{
-					Type:        "Department",
-					Key:         "department_id_1",
-					TargetField: "id",
-				},
-				TargetNode: &transformvo.NodeMapping{
-					Type:        "Department",
-					Key:         "department_id_2",
-					TargetField: "id",
-				},
-				FieldMappings: map[string]string{
-					"start_date":   "start_date",
-					"num_projects": "num_projects",
-				},
-			},
-		},
-	}
-	return rules, nil
+		//{
+		//Rule: transformObjects.TransformRule{
+		//Name:          "php_action_relationship",
+		//RuleType:      transformObjects.RelationshipRule,
+		//RelationType:  "AKCE",
+		//Direction:     transformObjects.Outgoing,
+		//SourceNode:    &transformObjects.NodeMapping{Type: "PHPAction", Key: "id", TargetField: "id"},
+		//TargetNode:    &transformObjects.NodeMapping{Type: "NodePHPAction", Key: "id", TargetField: "id"},
+		//FieldMappings: map[string]string{"id": "id"},
+		//},
+		//},
+	}, nil
 }
 
-func (m *mockRuleRepo) SaveRule(ctx context.Context, rule *transformagg.TransformRuleAggregate) error {
+func (m *mockRuleRepo) SaveRule(ctx context.Context, rule *transformAggregates.TransformRuleAggregate) error {
 	return nil
 }
 
@@ -133,548 +94,213 @@ func (m *mockRuleRepo) UpdateRulePriority(ctx context.Context, ruleID string, pr
 	return nil
 }
 
-type mockMySQLRepo struct {
+type realMySQLRepo struct {
 	db *sql.DB
 }
 
-func NewMockMySQLRepo(db *sql.DB) *mockMySQLRepo {
-	return &mockMySQLRepo{db: db}
+func setupMySQLConnection() (*sql.DB, error) {
+	cfg, err := config.Load()
+	if err != nil {
+		return nil, fmt.Errorf("Chyba při načítání konfigurace: %v", err)
+	}
+	dsn := fmt.Sprintf("%s:%s@tcp(%s:%d)/%s",
+		cfg.MySQL.User,
+		cfg.MySQL.Password,
+		cfg.MySQL.Host,
+		cfg.MySQL.Port,
+		cfg.MySQL.Database,
+	)
+	db, err := sql.Open("mysql", dsn)
+	if err != nil {
+		return nil, fmt.Errorf("Chyba při připojování k MySQL: %v", err)
+	}
+	return db, nil
 }
 
-func (m *mockMySQLRepo) FetchData() ([]map[string]interface{}, error) {
-	var results []map[string]interface{}
-
-	// Načtení uživatelů
-	rows, err := m.db.Query("SELECT * FROM users")
+func (m *realMySQLRepo) ExecuteQuery(query string) ([]map[string]interface{}, error) {
+	logrus.Infof("Executing query: %s", query)
+	rows, err := m.db.Query(query)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("Error executing query: %v", err)
 	}
 	defer rows.Close()
 
-	cols, err := rows.Columns()
+	columns, err := rows.Columns()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("Error getting columns: %v", err)
 	}
 
+	results := make([]map[string]interface{}, 0)
 	for rows.Next() {
-		data := make(map[string]interface{})
-		values := make([]interface{}, len(cols))
-		valuePtrs := make([]interface{}, len(cols))
-		for i := range values {
+		values := make([]interface{}, len(columns))
+		valuePtrs := make([]interface{}, len(columns))
+		for i := range columns {
 			valuePtrs[i] = &values[i]
 		}
 
 		if err := rows.Scan(valuePtrs...); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("Error scanning row: %v", err)
 		}
 
-		for i, col := range cols {
-			if values[i] != nil {
-				data[col] = values[i]
-			}
+		row := make(map[string]interface{})
+		for i, col := range columns {
+			row[col] = values[i]
 		}
-		// Přidáme informaci o zdrojové tabulce
-		data["_table"] = "users"
-		results = append(results, data)
+		results = append(results, row)
+		logrus.Infof("Retrieved row: %v", row)
 	}
 
-	// Načtení oddělení
-	rows, err = m.db.Query("SELECT * FROM departments")
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	cols, err = rows.Columns()
-	if err != nil {
-		return nil, err
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("Error with rows: %v", err)
 	}
 
-	for rows.Next() {
-		data := make(map[string]interface{})
-		values := make([]interface{}, len(cols))
-		valuePtrs := make([]interface{}, len(cols))
-		for i := range values {
-			valuePtrs[i] = &values[i]
-		}
-
-		if err := rows.Scan(valuePtrs...); err != nil {
-			return nil, err
-		}
-
-		for i, col := range cols {
-			if values[i] != nil {
-				data[col] = values[i]
-			}
-		}
-		// Přidáme informaci o zdrojové tabulce
-		data["_table"] = "departments"
-		results = append(results, data)
-	}
-
-	// Načtení vztahů uživatel-oddělení
-	rows, err = m.db.Query("SELECT * FROM user_departments")
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	cols, err = rows.Columns()
-	if err != nil {
-		return nil, err
-	}
-
-	for rows.Next() {
-		data := make(map[string]interface{})
-		values := make([]interface{}, len(cols))
-		valuePtrs := make([]interface{}, len(cols))
-		for i := range values {
-			valuePtrs[i] = &values[i]
-		}
-
-		if err := rows.Scan(valuePtrs...); err != nil {
-			return nil, err
-		}
-
-		for i, col := range cols {
-			if values[i] != nil {
-				data[col] = values[i]
-			}
-		}
-		// Přidáme informaci o zdrojové tabulce
-		data["_table"] = "user_departments"
-		results = append(results, data)
-	}
-
-	// Načtení vztahů mezi odděleními
-	rows, err = m.db.Query("SELECT * FROM department_collaborations")
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	cols, err = rows.Columns()
-	if err != nil {
-		return nil, err
-	}
-
-	for rows.Next() {
-		data := make(map[string]interface{})
-		values := make([]interface{}, len(cols))
-		valuePtrs := make([]interface{}, len(cols))
-		for i := range values {
-			valuePtrs[i] = &values[i]
-		}
-
-		if err := rows.Scan(valuePtrs...); err != nil {
-			return nil, err
-		}
-
-		for i, col := range cols {
-			if values[i] != nil {
-				data[col] = values[i]
-			}
-		}
-		// Přidáme informaci o zdrojové tabulce
-		data["_table"] = "department_collaborations"
-		results = append(results, data)
-	}
-
-	log.Printf("Načteno %d záznamů z MySQL", len(results))
 	return results, nil
 }
 
-func (m *mockMySQLRepo) Close() error {
-	return m.db.Close()
+func (m *realMySQLRepo) FetchData() ([]map[string]interface{}, error) {
+	return nil, nil // Simulace prázdného výsledku
 }
 
-type mockNeo4jRepo struct {
-	nodes []*graph.GraphAggregate
-}
-
-func NewMockNeo4jRepo() *mockNeo4jRepo {
-	return &mockNeo4jRepo{
-		nodes: make([]*graph.GraphAggregate, 0),
-	}
-}
-
-func (m *mockNeo4jRepo) StoreGraph(g *graph.GraphAggregate) error {
-	log.Printf("Ukládám graf s %d uzly a %d vztahy", len(g.GetNodes()), len(g.GetRelationships()))
-	m.nodes = []*graph.GraphAggregate{g}
+func (m *realMySQLRepo) Close() error {
 	return nil
 }
 
-func (m *mockNeo4jRepo) SearchNodes(criteria string) ([]*graph.GraphAggregate, error) {
-	log.Printf("Hledám uzly, k dispozici %d grafů", len(m.nodes))
-	if len(m.nodes) == 0 {
-		return nil, fmt.Errorf("žádná data nejsou k dispozici")
-	}
-
-	// Logování detailů o uzlech
-	for _, g := range m.nodes {
-		nodes := g.GetNodes()
-		relationships := g.GetRelationships()
-		log.Printf("Graf obsahuje %d uzlů a %d vztahů", len(nodes), len(relationships))
-
-		for _, node := range nodes {
-			log.Printf("Uzel: Type=%s, ID=%v, Properties=%v", node.Type, node.ID, node.Properties)
-		}
-
-		for _, rel := range relationships {
-			log.Printf("Vztah: Type=%s, From=%v, To=%v, Properties=%v",
-				rel.Type, rel.SourceNode.ID, rel.TargetNode.ID, rel.Properties)
-		}
-	}
-
-	return m.nodes, nil
+type realNeo4jRepo struct {
+	driver neo4jDriver.Driver
 }
 
-func (m *mockNeo4jRepo) ExportGraph(query string) (interface{}, error) {
-	if len(m.nodes) == 0 {
-		return nil, fmt.Errorf("žádná data nejsou k dispozici")
-	}
-	return m.nodes[0], nil
-}
-
-func (m *mockNeo4jRepo) Close() error {
-	return nil
-}
-
-func getMySQLConfig() *mysql.MySQLConfig {
-	// Načtení konfigurace ze souboru
-	wd, err := os.Getwd()
+func setupNeo4jConnection() (neo4jDriver.Driver, error) {
+	cfg, err := config.Load()
 	if err != nil {
-		log.Fatalf("Nelze získat pracovní adresář: %v", err)
+		return nil, fmt.Errorf("Chyba při načítání konfigurace: %v", err)
 	}
-
-	// Hledání config.yml
-	var configPath string
-	for {
-		testPath := filepath.Join(wd, "config/config-test.yml")
-		if _, err := os.Stat(testPath); err == nil {
-			configPath = testPath
-			break
-		}
-		parent := filepath.Dir(wd)
-		if parent == wd {
-			log.Fatalf("Nelze najít config.yml")
-			return nil
-		}
-		wd = parent
-	}
-
-	// Načtení konfigurace
-	configData, err := os.ReadFile(configPath)
+	driver, err := neo4jDriver.NewDriver(cfg.Neo4j.URI, neo4jDriver.BasicAuth(cfg.Neo4j.User, cfg.Neo4j.Password, ""))
 	if err != nil {
-		log.Fatalf("Nelze načíst konfigurační soubor: %v", err)
-		return nil
+		return nil, fmt.Errorf("Chyba při připojování k Neo4j: %v", err)
 	}
-
-	// Parsování YAML
-	var config struct {
-		MySQL struct {
-			Host     string `yaml:"host"`
-			Port     int    `yaml:"port"`
-			User     string `yaml:"user"`
-			Password string `yaml:"password"`
-			Database string `yaml:"database"`
-		} `yaml:"mysql"`
-	}
-
-	if err := yaml.Unmarshal(configData, &config); err != nil {
-		log.Fatalf("Nelze parsovat konfigurační soubor: %v", err)
-		return nil
-	}
-
-	return &mysql.MySQLConfig{
-		Host:     config.MySQL.Host,
-		Port:     config.MySQL.Port,
-		User:     config.MySQL.User,
-		Password: config.MySQL.Password,
-		Database: config.MySQL.Database,
-	}
+	return driver, nil
 }
 
-func cleanDatabase(t *testing.T, db *sql.DB) {
-	tables := []string{
-		"department_collaborations",
-		"user_departments",
-		"users",
-		"departments",
-	}
+func (m *realNeo4jRepo) StoreGraph(g *graph.GraphAggregate) error {
+	// Start a new session for Neo4j
+	session := m.driver.NewSession(neo4jDriver.SessionConfig{AccessMode: neo4jDriver.AccessModeWrite})
+	defer session.Close()
 
-	for _, table := range tables {
-		_, err := db.Exec("DROP TABLE IF EXISTS " + table)
-		assert.NoError(t, err)
-	}
-}
-
-func initTestDatabase(t *testing.T, db *sql.DB) {
-	// Vyčištění databáze
-	cleanDatabase(t, db)
-
-	// Načtení init.sql z kořene projektu
-	wd, err := os.Getwd()
-	assert.NoError(t, err)
-
-	// Hledáme cestu k testdata/mysql/init.sql
-	var initSQLPath string
-	for {
-		testPath := filepath.Join(wd, "testdata", "mysql", "init.sql")
-		if _, err := os.Stat(testPath); err == nil {
-			initSQLPath = testPath
-			break
-		}
-		parent := filepath.Dir(wd)
-		if parent == wd {
-			t.Fatal("Nelze najít testdata/mysql/init.sql")
-			return
-		}
-		wd = parent
-	}
-
-	// Načtení init.sql
-	initSQL, err := os.ReadFile(initSQLPath)
-	assert.NoError(t, err)
-
-	// Rozdělení na jednotlivé příkazy a spuštění
-	statements := strings.Split(string(initSQL), ";")
-	for _, stmt := range statements {
-		stmt = strings.TrimSpace(stmt)
-		if stmt == "" {
-			continue
-		}
-		_, err = db.Exec(stmt)
-		assert.NoError(t, err)
-	}
-}
-
-func findProjectRoot() string {
-	wd, err := os.Getwd()
-	if err != nil {
-		log.Fatalf("Nelze získat pracovní adresář: %v", err)
-	}
-
-	for {
-		if _, err := os.Stat(filepath.Join(wd, "go.mod")); err == nil {
-			return wd
-		}
-		parent := filepath.Dir(wd)
-		if parent == wd {
-			log.Fatalf("Nelze najít kořenový adresář projektu")
-			return ""
-		}
-		wd = parent
-	}
-}
-
-func startVisualizationServer(t *testing.T, neo4jRepo *mockNeo4jRepo) *http.Server {
-	log.Printf("Začínám spouštět vizualizační server")
-	mux := http.NewServeMux()
-
-	// API endpoint pro data grafu
-	mux.HandleFunc("/api/graph", func(w http.ResponseWriter, r *http.Request) {
-		log.Printf("Zpracovávám požadavek na /api/graph")
-		// Získáme celý graf
-		graphInterface, err := neo4jRepo.ExportGraph("")
-		if err != nil {
-			log.Printf("Chyba při získávání dat z Neo4j: %v", err)
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-
-		g, ok := graphInterface.(*graph.GraphAggregate)
-		if !ok {
-			log.Printf("Neplatný typ grafu")
-			http.Error(w, "Interní chyba serveru", http.StatusInternalServerError)
-			return
-		}
-
-		log.Printf("Data úspěšně získána z Neo4j")
-		// Převedeme na JSON
-		response := struct {
-			Nodes         []map[string]interface{} `json:"nodes"`
-			Relationships []map[string]interface{} `json:"relationships"`
-		}{
-			Nodes:         make([]map[string]interface{}, 0),
-			Relationships: make([]map[string]interface{}, 0),
-		}
-
-		// Přidáme uzly
+	// Begin a transaction
+	_, err := session.WriteTransaction(func(tx neo4jDriver.Transaction) (interface{}, error) {
+		// Create nodes
 		for _, node := range g.GetNodes() {
-			nodeData := map[string]interface{}{
-				"id":         node.ID,
-				"label":      node.Type,
-				"properties": node.Properties,
+			nodeID := serialization.GenerateUniqueID() // Generování unikátního ID
+			node.Properties["id"] = nodeID             // Nastavení unikátního ID v mapě vlastností
+			_, err := tx.Run(
+				"CREATE (n:Node {id: $id, type: $type, properties: $properties})",
+				map[string]interface{}{
+					"id":         nodeID,
+					"type":       node.Type,
+					"properties": node.Properties,
+				},
+			)
+			if err != nil {
+				return nil, fmt.Errorf("Error creating node: %v", err)
 			}
-			response.Nodes = append(response.Nodes, nodeData)
-			log.Printf("Přidávám uzel: %v", nodeData)
 		}
 
-		// Přidáme vztahy
+		// Create relationships
 		for _, rel := range g.GetRelationships() {
-			relData := map[string]interface{}{
-				"from":       rel.SourceNode.ID,
-				"to":         rel.TargetNode.ID,
-				"type":       rel.Type,
-				"properties": rel.Properties,
+			_, err := tx.Run(
+				"MATCH (a:Node {id: $fromId}), (b:Node {id: $toId}) CREATE (a)-[r:RELATION {type: $type, properties: $properties}]->(b)",
+				map[string]interface{}{
+					"fromId":     rel.SourceNode.ID,
+					"toId":       rel.TargetNode.ID,
+					"type":       rel.Type,
+					"properties": rel.Properties,
+				},
+			)
+			if err != nil {
+				return nil, fmt.Errorf("Error creating relationship: %v", err)
 			}
-			response.Relationships = append(response.Relationships, relData)
-			log.Printf("Přidávám vztah: %v", relData)
 		}
 
-		log.Printf("Odesílám odpověď: %d uzlů, %d vztahů", len(response.Nodes), len(response.Relationships))
-		// Nastavíme hlavičky
-		w.Header().Set("Content-Type", "application/json")
-		w.Header().Set("Access-Control-Allow-Origin", "*")
-
-		// Odešleme odpověď
-		if err := json.NewEncoder(w).Encode(response); err != nil {
-			log.Printf("Chyba při serializaci odpovědi: %v", err)
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		log.Printf("Odpověď úspěšně odeslána")
+		return nil, nil
 	})
 
-	// Servírujeme statické soubory
-	webRoot := filepath.Join(findProjectRoot(), "internal", "interfaces", "web")
-	log.Printf("Používám web root: %s", webRoot)
-
-	fs := http.FileServer(http.Dir(filepath.Join(webRoot, "static")))
-	mux.Handle("/static/", http.StripPrefix("/static/", fs))
-
-	// Servírujeme HTML stránku
-	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		log.Printf("Požadavek na hlavní stránku")
-		http.ServeFile(w, r, filepath.Join(webRoot, "templates", "visualization.html"))
-	})
-
-	// Vytvoříme listener
-	listener, err := net.Listen("tcp", addr)
 	if err != nil {
-		log.Printf("Port %s je obsazený: %v", addr, err)
-		// Pokusíme se ukončit proces na daném portu
-		exec.Command("fuser", "-k", "3000/tcp").Run()
-		time.Sleep(time.Second)
-		listener, err = net.Listen("tcp", addr)
-		if err != nil {
-			t.Fatalf("Nelze vytvořit listener: %v", err)
-		}
-	}
-	log.Printf("Listener vytvořen na %s", addr)
-
-	// Spustíme server
-	server := &http.Server{
-		Handler: mux,
+		return fmt.Errorf("Error storing graph: %v", err)
 	}
 
-	go func() {
-		log.Printf("Spouštím server na %s", addr)
-		if err := server.Serve(listener); err != nil && err != http.ErrServerClosed {
-			log.Printf("Server ukončen s chybou: %v", err)
-		}
-	}()
-
-	// Počkáme na nastartování serveru
-	for i := 0; i < 10; i++ {
-		log.Printf("Pokus %d o připojení k serveru", i+1)
-		resp, err := http.Get("http://localhost:3000")
-		if err == nil {
-			resp.Body.Close()
-			log.Printf("Server je připraven")
-			break
-		}
-		log.Printf("Server není připraven: %v", err)
-		time.Sleep(500 * time.Millisecond)
-		if i == 9 {
-			t.Fatal("Server se nepodařilo spustit")
-		}
-	}
-
-	log.Printf("Vizualizace je dostupná na http://localhost:3000")
-	return server
+	return nil
 }
 
-func TestTransformService_Integration(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping integration test")
+func (m *realNeo4jRepo) SearchNodes(criteria string) ([]*graph.GraphAggregate, error) {
+	return nil, nil
+}
+
+func (m *realNeo4jRepo) ExportGraph(query string) (interface{}, error) {
+	return nil, nil
+}
+
+func (m *realNeo4jRepo) Close() error {
+	return nil
+}
+
+func (m *realNeo4jRepo) FetchNodes(nodeType string) ([]map[string]interface{}, error) {
+	// Simulace vrácení uzlů jako mapy
+	return []map[string]interface{}{
+		{"id": 1, "type": nodeType, "properties": map[string]interface{}{"name": "Node1"}},
+		{"id": 2, "type": nodeType, "properties": map[string]interface{}{"name": "Node2"}},
+	}, nil
+}
+
+const addr = "localhost:3000"
+
+func TestIntegrationTransformRulesAndVisualization(t *testing.T) {
+	ctx := context.Background()
+
+	// Inicializace Neo4j klienta
+	cfg, err := config.Load()
+	if err != nil {
+		t.Fatalf("Chyba při načítání konfigurace: %v", err)
 	}
+	neo4jConfig := neo4j.Neo4jConfig{
+		URI:      cfg.Neo4j.URI,
+		User:     cfg.Neo4j.User,
+		Password: cfg.Neo4j.Password,
+	}
+	neo4jClient, err := neo4j.NewNeo4jClient(neo4jConfig)
+	if err != nil {
+		t.Fatalf("Chyba při vytváření Neo4j klienta: %v", err)
+	}
+	defer neo4jClient.Close()
 
-	// Inicializace MySQL s testovacími daty
-	config := getMySQLConfig()
-	dsn := fmt.Sprintf("%s:%s@tcp(%s:%d)/%s",
-		config.User,
-		config.Password,
-		config.Host,
-		config.Port,
-		config.Database,
-	)
+	// Spustit GraphQL server s neo4jPort
+	go server.StartGraphQLServer(neo4jClient)
 
-	log.Printf("Připojuji se k MySQL na %s:%d", config.Host, config.Port)
-	db, err := sql.Open("mysql", dsn)
-	assert.NoError(t, err)
+	mockRepo := &mockRuleRepo{}
+
+	// Set up real MySQL connection
+	db, err := setupMySQLConnection()
+	if err != nil {
+		t.Fatalf("Chyba při připojování k MySQL: %v", err)
+	}
 	defer db.Close()
 
-	// Test připojení
-	err = db.Ping()
-	if err != nil {
-		t.Fatalf("Nelze se připojit k MySQL: %v", err)
-	}
-	log.Printf("Připojení k MySQL úspěšné")
+	// Use the real MySQL connection
+	mysqlRepo := &realMySQLRepo{db: db}
 
-	// Inicializace testovací databáze
-	log.Printf("Inicializuji testovací databázi")
-	initTestDatabase(t, db)
+	// Use the Neo4j Client for storing the graph
+	service := transformService.NewTransformService(mysqlRepo, neo4jClient, mockRepo)
 
-	// Kontrola dat v MySQL
-	var count int
-	err = db.QueryRow("SELECT COUNT(*) FROM users").Scan(&count)
-	assert.NoError(t, err)
-	log.Printf("Počet uživatelů v MySQL: %d", count)
-
-	err = db.QueryRow("SELECT COUNT(*) FROM departments").Scan(&count)
-	assert.NoError(t, err)
-	log.Printf("Počet oddělení v MySQL: %d", count)
-
-	mysqlRepo := NewMockMySQLRepo(db)
-	neo4jRepo := NewMockNeo4jRepo()
-
-	// Vytvoření služby
-	service := transform.NewTransformService(mysqlRepo, neo4jRepo, &mockRuleRepo{})
-
-	// Test transformace a uložení
-	log.Printf("Spouštím transformaci")
-	err = service.TransformAndStore(context.Background())
+	// Spustit transformaci
+	err = service.TransformAndStore(ctx)
 	assert.NoError(t, err)
 
-	// Ověření výsledků v Neo4j
-	log.Printf("Kontroluji výsledky v Neo4j")
-	results, err := neo4jRepo.SearchNodes("")
+	// Ověřit, že transformace proběhla
+	results, err := neo4jClient.SearchNodes("")
 	assert.NoError(t, err)
-	assert.Len(t, results, 1)
+	assert.NotEmpty(t, results, "Nodes should be processed")
 
-	// Kontrola počtu uzlů podle typu
-	nodes := results[0].GetNodes()
-	log.Printf("Celkový počet uzlů v Neo4j: %d", len(nodes))
-
-	personNodes := 0
-	deptNodes := 0
-	for _, node := range nodes {
-		switch node.Type {
-		case "Person":
-			personNodes++
-			log.Printf("Nalezen Person uzel: %v", node.Properties)
-		case "Department":
-			deptNodes++
-			log.Printf("Nalezen Department uzel: %v", node.Properties)
-		}
-	}
-	assert.Equal(t, 2, personNodes, "Očekávány 2 uzly typu Person")
-	assert.Equal(t, 2, deptNodes, "Očekávány 2 uzly typu Department")
-
-	// Spuštění vizualizačního serveru
-	server := startVisualizationServer(t, neo4jRepo)
+	// Spustit vizualizační server
+	server := startVisualizationServer(neo4jClient)
 
 	// Čekáme na uživatelský vstup před ukončením
 	fmt.Printf("Test dokončen. Vizualizace je dostupná na http://localhost:3000\nStiskněte Ctrl+C pro ukončení...\n")
@@ -688,4 +314,178 @@ func TestTransformService_Integration(t *testing.T) {
 	if err := server.Shutdown(context.Background()); err != nil {
 		log.Printf("Chyba při ukončování serveru: %v", err)
 	}
+}
+
+func startVisualizationServer(neo4jRepo ports.Neo4jPort) *http.Server {
+	logrus.Infof("Začínám spouštět vizualizační server")
+	mux := http.NewServeMux()
+
+	// Aktualizace CORS nastavení
+	corsOptions := middleware.CORSOptions{
+		AllowedOrigins:   []string{"*"}, // Povolí všechny origins pro testování
+		AllowedMethods:   []string{"GET", "POST", "OPTIONS", "PUT", "DELETE"},
+		AllowedHeaders:   []string{"Content-Type", "Authorization", "Apollo-Require-Preflight"},
+		AllowCredentials: true,
+	}
+	corsHandler := middleware.NewCORSHandler(corsOptions)
+	handler := corsHandler(mux)
+
+	// API endpoint pro data grafu
+	mux.HandleFunc("/api/graph", func(w http.ResponseWriter, r *http.Request) {
+		// Nastavení CORS hlaviček
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS, PUT, DELETE")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, Apollo-Require-Preflight")
+		w.Header().Set("Access-Control-Allow-Credentials", "true")
+
+		// Handle preflight OPTIONS request
+		if r.Method == "OPTIONS" {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+
+		logrus.Infof("Požadavek na API endpoint /api/graph")
+
+		// Získáme celý graf
+		graphInterface, err := neo4jRepo.ExportGraph("MATCH (n)-[r]->(m) RETURN n, r, m")
+		if err != nil {
+			logrus.Errorf("Chyba při získávání dat: %v", err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		g, ok := graphInterface.(*graph.GraphAggregate)
+		if !ok {
+			logrus.Warnf("Neplatný typ grafu")
+			http.Error(w, "Interní chyba serveru", http.StatusInternalServerError)
+			return
+		}
+
+		// Převedeme na JSON
+		response := struct {
+			Nodes         []map[string]interface{} `json:"nodes"`
+			Relationships []map[string]interface{} `json:"relationships"`
+		}{
+			Nodes:         make([]map[string]interface{}, 0),
+			Relationships: make([]map[string]interface{}, 0),
+		}
+
+		// Přidáme uzly
+		for _, node := range g.GetNodes() {
+			nodeData := map[string]interface{}{
+				"id":         serialization.SerializeID(node.ID),
+				"label":      node.Type,
+				"properties": node.Properties,
+			}
+			response.Nodes = append(response.Nodes, nodeData)
+			logrus.Infof("Přidávám uzel: %v", nodeData)
+		}
+
+		// Přidáme vztahy
+		for _, rel := range g.GetRelationships() {
+			relData := map[string]interface{}{
+				"from":       serialization.SerializeID(rel.SourceNode.ID),
+				"to":         serialization.SerializeID(rel.TargetNode.ID),
+				"type":       rel.Type,
+				"properties": rel.Properties,
+			}
+			response.Relationships = append(response.Relationships, relData)
+			logrus.Infof("Přidávám vztah: %v", relData)
+		}
+
+		// Vypíšeme data pro debug
+		logrus.Infof("Odesílám odpověď: %d uzlů, %d vztahů", len(response.Nodes), len(response.Relationships))
+
+		// Odešleme odpověď
+		if err := json.NewEncoder(w).Encode(response); err != nil {
+			logrus.Errorf("Chyba při serializaci odpovědi: %v", err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+	})
+
+	webRoot := filepath.Join(findProjectRoot(), "internal", "interfaces", "web")
+	logrus.Infof("Používám web root: %s", webRoot)
+
+	fs := http.FileServer(http.Dir(filepath.Join(webRoot, "static")))
+	mux.Handle("/static/", http.StripPrefix("/static/", fs))
+
+	// Servírujeme HTML stránku
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		logrus.Infof("Požadavek na hlavní stránku")
+		http.ServeFile(w, r, filepath.Join(webRoot, "templates", "visualization.html"))
+	})
+
+	// Vytvoříme listener
+	listener, err := net.Listen("tcp", addr)
+	if err != nil {
+		logrus.Warnf("Port %s je obsazený: %v", addr, err)
+		// Pokusíme se ukončit proces na daném portu
+		exec.Command("fuser", "-k", "3000/tcp").Run()
+		time.Sleep(time.Second)
+		listener, err = net.Listen("tcp", addr)
+		if err != nil {
+			logrus.Fatalf("Nelze vytvořit listener: %v", err)
+		}
+	}
+	logrus.Infof("Listener vytvořen na %s", addr)
+
+	// Spustíme server
+	server := &http.Server{
+		Handler: handler,
+	}
+
+	go func() {
+		logrus.Warnf("Spouštím server na %s", addr)
+		if err := server.Serve(listener); err != nil && err != http.ErrServerClosed {
+			logrus.Fatalf("Server ukončen s chybou: %v", err)
+		}
+	}()
+
+	// Wait for interrupt signal to gracefully shutdown the server with a timeout of 5 seconds.
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, os.Interrupt)
+	<-quit
+	logrus.Println("Ukončuji server...")
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	if err := server.Shutdown(ctx); err != nil {
+		logrus.Fatalf("Chyba při ukončování serveru: %v", err)
+	}
+	logrus.Println("Server úspěšně ukončen")
+
+	logrus.Infof("Vizualizace je dostupná na http://localhost:3000")
+	return server
+}
+
+func findProjectRoot() string {
+	wd, err := os.Getwd()
+	if err != nil {
+		logrus.Fatalf("Nelze získat pracovní adresář: %v", err)
+	}
+
+	for {
+		if _, err := os.Stat(filepath.Join(wd, "go.mod")); err == nil {
+			return wd
+		}
+		parent := filepath.Dir(wd)
+		if parent == wd {
+			logrus.Fatalf("Nelze najít kořenový adresář projektu")
+			return ""
+		}
+		wd = parent
+	}
+}
+
+func GetConfig(w http.ResponseWriter, r *http.Request) {
+	config := map[string]interface{}{
+		"neo4j": map[string]string{
+			"uri":      "bolt://localhost:7687",
+			"username": "neo4j",
+			"password": "password",
+		},
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(config)
 }

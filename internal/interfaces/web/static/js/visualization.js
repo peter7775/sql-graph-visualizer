@@ -85,6 +85,8 @@ class GraphVisualizer {
     }
 
     createVisualization(config) {
+        console.log('Konfigurace Neo4j:', config);
+
         const vizConfig = {
             container_id: "viz",
             server_url: config.Neo4j.URI,
@@ -105,6 +107,8 @@ class GraphVisualizer {
             },
             initial_cypher: "MATCH (n)-[r]->(m) RETURN n,r,m"
         };
+
+        console.log('Konfigurace vizualizace:', vizConfig);
 
         this.viz = new NeoVis.default(vizConfig);
         this.viz.render();

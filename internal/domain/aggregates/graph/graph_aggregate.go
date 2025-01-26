@@ -13,6 +13,8 @@ import (
 	"mysql-graph-visualizer/internal/domain/events"
 	"mysql-graph-visualizer/internal/domain/valueobjects"
 	"mysql-graph-visualizer/internal/domain/valueobjects/transform"
+
+	"github.com/sirupsen/logrus"
 )
 
 type GraphAggregate struct {
@@ -53,6 +55,7 @@ func (g *GraphAggregate) AddNode(nodeType string, properties map[string]interfac
 	node.Properties = properties
 	g.nodes = append(g.nodes, node)
 	g.events = append(g.events, events.NewNodeAddedEvent(g.ID, node.ID))
+	logrus.Infof("Přidávám uzel: typ=%s, vlastnosti=%+v", nodeType, properties)
 	return nil
 }
 
