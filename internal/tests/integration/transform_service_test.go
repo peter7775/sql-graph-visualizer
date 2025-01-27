@@ -1,3 +1,10 @@
+/*
+ * Copyright (c) 2025 Petr Miroslav Stepanek <petrstepanek99@gmail.com>
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
+
 package integration
 
 import (
@@ -47,7 +54,7 @@ func (m *mockRuleRepo) GetAllRules(ctx context.Context) ([]*transformAggregates.
 			Rule: transformObjects.TransformRule{
 				Name:       "php_actions_to_nodes",
 				RuleType:   transformObjects.NodeRule,
-				SourceSQL:  "SELECT DISTINCT au.id as id, au.id_typu, au.infix, au.nazev, au.prefix FROM alex_uzly au WHERE au.id_typu = 17",
+				SourceSQL:  "SELECT DISTINCT au.id as id, au.id_typu, au.infix, au.nazev, au.prefix FROM testdata_uzly au WHERE au.id_typu = 17",
 				TargetType: "NodePHPAction",
 				FieldMappings: map[string]string{
 					"id":      "id",
@@ -62,7 +69,7 @@ func (m *mockRuleRepo) GetAllRules(ctx context.Context) ([]*transformAggregates.
 			Rule: transformObjects.TransformRule{
 				Name:       "php_actions",
 				RuleType:   transformObjects.NodeRule,
-				SourceSQL:  "SELECT DISTINCT au.id_node as id, au.php_code FROM alex_uzly_php_action au JOIN alex_uzly aupa ON au.id_node = aupa.id",
+				SourceSQL:  "SELECT DISTINCT au.id_node as id, au.php_code FROM testdata_uzly_php_action au JOIN testdata_uzly aupa ON au.id_node = aupa.id",
 				TargetType: "PHPAction",
 				FieldMappings: map[string]string{
 					"id":       "id",
@@ -313,12 +320,12 @@ func TestIntegrationTransformRulesAndVisualization(t *testing.T) {
 	mysqlRepo := &realMySQLRepo{db: db}
 
 	// Kontrola SQL dotazů
-	results1, err := mysqlRepo.ExecuteQuery("SELECT DISTINCT au.id as id, au.id_typu, au.infix, au.nazev, au.prefix FROM alex_uzly au WHERE au.id_typu = 17")
+	results1, err := mysqlRepo.ExecuteQuery("SELECT DISTINCT au.id as id, au.id_typu, au.infix, au.nazev, au.prefix FROM testdata_uzly au WHERE au.id_typu = 17")
 	assert.NoError(t, err)
 	t.Logf("První SQL dotaz vrátil %d záznamů: %v", len(results1), results1)
 
 	// Test druhého SQL dotazu
-	results2, err := mysqlRepo.ExecuteQuery("SELECT DISTINCT au.id_node as id, au.php_code FROM alex_uzly_php_action au JOIN alex_uzly aupa ON au.id_node = aupa.id")
+	results2, err := mysqlRepo.ExecuteQuery("SELECT DISTINCT au.id_node as id, au.php_code FROM testdata_uzly_php_action au JOIN testdata_uzly aupa ON au.id_node = aupa.id")
 	assert.NoError(t, err)
 	t.Logf("Druhý SQL dotaz vrátil %d záznamů: %v", len(results2), results2)
 

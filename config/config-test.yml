@@ -3,7 +3,7 @@ mysql:
   port: 3307
   user: root
   password: testpass
-  database: testdb
+  database: testdata
 
 neo4j:
   uri: bolt://localhost:7687

@@ -3,84 +3,147 @@ mysql:
   port: 3307
   user: root
   password: testpass
-  database: testdb
+  database: testdata
 
 neo4j:
-  uri: bolt://localhost:7687
-  user: neo4j
-  password: testpass
+  uri: "bolt://127.0.0.1:7687"
+  user: "neo4j"
+  password: "testpass"
 
 transform_rules:
-  # Pravidlo pro vytvoření uzlů osob
-  - name: "users_to_nodes"
-    source_table: "users"
-    rule_type: "node"
-    target_type: "Person"
-    field_mappings:
-      id: "id"
-      name: "name"
-      email: "email"
-      role: "position"
-    
-  # Pravidlo pro vytvoření uzlů oddělení
-  - name: "departments_to_nodes"
-    source_table: "departments"
-    rule_type: "node"
-    target_type: "Department"
-    field_mappings:
-      id: "id"
-      name: "name"
-      code: "department_code"
-  
-  # Pravidlo pro vytvoření směrované relace mezi osobami a odděleními
-  - name: "user_department_relation"
-    source_table: "user_departments"
-    rule_type: "relationship"
-    relationship_type: "WORKS_IN"
-    direction: "outgoing"  # možnosti: outgoing, incoming, both
-    source_node:
-      type: "Person"
-      key: "user_id"
-      target_field: "id"
-    target_node:
-      type: "Department"
-      key: "department_id"
-      target_field: "id"
-    properties:
-      since: "start_date"
-      role: "position"
+  # Pravidlo pro vytvoření uzlů 
+  #- name: "testdata-uzly_to_nodes"
+    #source_table: "testdata_uzly"
+    #rule_type: "node"
+    #target_type: "Uzly"
+    #field_mappings:
+      #id: "id"
+      #infix: "infix"
+      #id_utyp: "id_utyp"
 
-  # Pravidlo pro vytvoření obousměrné relace mezi odděleními (např. spolupráce)
-  - name: "department_collaboration"
-    source_table: "department_collaborations"
+  ## Pravidlo pro vytvoření uzlů PHP akce
+  - name: "php_actions_to_nodes"
+    rule_type: "node"
+    source:
+      type: "query"
+      value: "SELECT * FROM testdata_uzly au WHERE au.id_typu = 17"
+    target_type: "NodePHPAction"
+    field_mappings:
+      id: "id"
+      id_typu: "id_typu"
+      infix: "infix"
+      nazev: "name"
+      prefix: "prefix"
+
+  ## Pravidlo pro vytvoření uzlů PHP akce
+  - name: "php_actions"
+    rule_type: "node"
+    source:
+      type: "query"
+      value: "SELECT * FROM testdata_uzly_php_action au JOIN testdata_uzly aupa ON au.id_node = aupa.id"
+    target_type: "PHPAction"
+    field_mappings:
+      id: "id"
+      php_code: "php_code"
+
+  - name: "php_action_relationship"
     rule_type: "relationship"
-    relationship_type: "COLLABORATES_WITH"
-    direction: "both"  # obousměrná relace
+    relationship_type: "AKCE"
+    direction: "outgoing"
     source_node:
-      type: "Department"
-      key: "department_id_1"
+      type: "PHPAction"
+      key: "id"
       target_field: "id"
     target_node:
-      type: "Department"
-      key: "department_id_2"
+      type: "NodePHPAction"
+      key: "id"
       target_field: "id"
-    properties:
-      since: "start_date"
-      project_count: "num_projects"
-      
-  # Pravidlo pro vytvoření příchozí relace (např. reportování)
-  - name: "department_reporting"
-    source_table: "department_hierarchy"
-    rule_type: "relationship"
-    relationship_type: "REPORTS_TO"
-    direction: "incoming"  # příchozí relace
-    source_node:
-      type: "Department"
-      key: "child_department_id"
-      target_field: "id"
-    target_node:
-      type: "Department"
-      key: "parent_department_id"
-      target_field: "id"
-    properties:
-      level: "hierarchy_level"
+    field_mappings:
+      id: "id"
+
+  #
+  # Pravidlo pro vytvoření směrované relace mezi osobami a odděleními
+  #- name: "testdata_uzly"
+    #source_table: "testdata_uzly"
+    #rule_type: "relationship"
+    #relationship_type: "WORKS_IN"
+    #direction: "outgoing"  # možnosti: outgoing, incoming, both
+    #source_node:
+      #type: "Uzly"
+      #key: "id"
+      #target_field: "id"
+    #target_node:
+      #type: "int"
+      #key: "id"
+      #target_field: "id"
+    #properties:
+      #since: "start_date"
+      #role: "position"
+#
+  ## Pravidlo pro vytvoření obousměrné relace mezi odděleními (např. spolupráce)
+  #- name: "department_collaboration"
+    #source_table: "department_collaborations"
+    #rule_type: "relationship"
+    #relationship_type: "COLLABORATES_WITH"
+    #direction: "both"  # obousměrná relace
+    #source_node:
+      #type: "Department"
+      #key: "department_id_1"
+      #target_field: "id"
+    #target_node:
+      #type: "Department"
+      #key: "department_id_2"
+      #target_field: "id"
+    #properties:
+      #since: "start_date"
+      #project_count: "num_projects"
+      #
+  ## Pravidlo pro vytvoření příchozí relace (např. reportování)
+  #- name: "department_reporting"
+    #source_table: "department_hierarchy"
+    #rule_type: "relationship"
+    #relationship_type: "REPORTS_TO"
+    #direction: "incoming"  # příchozí relace
+    #source_node:
+      #type: "Department"
+      #key: "child_department_id"
+      #target_field: "id"
+    #target_node:
+      #type: "Department"
+      #key: "parent_department_id"
+      #target_field: "id"
+    #properties:
+      #level: "hierarchy_level"
+
+  #- name: "param_groups_to_nodes"
+    #source:
+      #type: "query"
+      #value: "SELECT * FROM testdata_uzly au WHERE au.prefix LIKE '%/sys/param_app/param_groups%'"
+    #rule_type: "node"
+    #target_type: "Folder"
+    #field_mappings:
+      #id: "id"
+      #infix: "infix"
+      #prefix: "prefix"
+      #nazev: "name"
+      #id_typu: "id_typu"
+
+  #- name: "relationship"
+    #source:
+      #type: "query"
+      #value: "SELECT * FROM testdata_uzly_php_action au JOIN testdata_uzly aupa ON aupa.id_node = au.id WHERE au.id_typu = 17"
+    #rule_type: "relationship"
+    #relationship_type: "AKCE"
+    #direction: "outgoing"
+    #source_node:
+      #type: "PHPAction"
+      #key: "id"
+      #target_field: "id"
+    #target_node:
+      #type: "NodePHPAction"
+      #key: "id"
+      #target_field: "id"
+    #properties:
+      #since: "start_date"
+      #role: "position"
+#
