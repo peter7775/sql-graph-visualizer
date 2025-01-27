@@ -9,244 +9,190 @@
 class GraphVisualizer {
     constructor() {
         this.viz = null;
-        this.data = null;
         this.network = null;
-        this.currentLayout = 'force';
-        this.filters = {
-            nodes: new Set(),
-            relations: new Set()
-        };
-        
-        this.initializeEventListeners();
-    }
-
-    async fetchConfig() {
-        try {
-            const response = await fetch("http://localhost:8080/config");
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            const contentType = response.headers.get("content-type");
-            if (!contentType || !contentType.includes("application/json")) {
-                throw new TypeError("Odpověď není JSON");
-            }
-            const config = await response.json();
-            return config;
-        } catch (error) {
-            console.error('Chyba při načítání konfigurace:', error);
-            return null;
-        }
+        this.initialize();
     }
 
     async initialize() {
+        console.log('Inicializace vizualizace...');
+        
         try {
-            console.log('Načítám konfiguraci...');
-            const config = await this.fetchConfig();
-            if (!config) {
-                throw new Error('Konfigurace nebyla načtena.');
-            }
-
-            console.log('Načítám data z GraphQL...');
-            const query = `
-                query GetNodes {
-                    nodes {
-                        id
-                        label
-                        properties {
-                            key
-                            value
-                        }
-                    }
-                }
-            `;
-            const response = await fetch('http://localhost:8080/graphql', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Accept': 'application/json',
-                },
-                body: JSON.stringify({ 
-                    query: query,
-                    operationName: 'GetNodes'
-                }),
-            });
+            const response = await fetch('/config');
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
-            const result = await response.json();
-            console.log('GraphQL response:', result);
-            this.data = result.data.nodes;
-            console.log('Načtená data:', this.data);
+            const serverConfig = await response.json();
+            console.log('Načtena konfigurace ze serveru:', serverConfig);
 
-            this.createVisualization(config);
+            const container = document.getElementById('viz');
+            if (!container) {
+                throw new Error('Container "viz" nebyl nalezen!');
+            }
+            console.log('Container nalezen:', container);
+
+            // Připojení k Neo4j a načtení dat
+            const driver = neo4j.driver(
+                serverConfig.neo4j.uri,
+                neo4j.auth.basic(serverConfig.neo4j.username, serverConfig.neo4j.password)
+            );
+            
+            const session = driver.session();
+            try {
+                const result = await session.run(`
+                    MATCH (n)
+                    WITH n LIMIT 100
+                    OPTIONAL MATCH (n)-[r]-(m)
+                    RETURN n, r, m
+                `);
+                console.log('Data z Neo4j:', result);
+
+                // Převod dat do formátu pro vis.js
+                const nodes = new vis.DataSet();
+                const edges = new vis.DataSet();
+                const processedNodes = new Set();
+
+                result.records.forEach(record => {
+                    const sourceNode = record.get('n');
+                    const relationship = record.get('r');
+                    const targetNode = record.get('m');
+
+                    if (sourceNode && !processedNodes.has(sourceNode.identity.toString())) {
+                        processedNodes.add(sourceNode.identity.toString());
+                        nodes.add({
+                            id: sourceNode.identity.toString(),
+                            label: sourceNode.properties.name || 
+                                  sourceNode.properties.nazev || 
+                                  sourceNode.properties.php_code || 
+                                  sourceNode.properties.id || 
+                                  'N/A',
+                            title: Object.entries(sourceNode.properties)
+                                .map(([key, value]) => `${key}: ${value}`)
+                                .join('\n'),
+                            color: '#97C2FC'
+                        });
+                    }
+
+                    if (targetNode && !processedNodes.has(targetNode.identity.toString())) {
+                        processedNodes.add(targetNode.identity.toString());
+                        nodes.add({
+                            id: targetNode.identity.toString(),
+                            label: targetNode.properties.name || 
+                                  targetNode.properties.nazev || 
+                                  targetNode.properties.php_code || 
+                                  targetNode.properties.id || 
+                                  'N/A',
+                            title: Object.entries(targetNode.properties)
+                                .map(([key, value]) => `${key}: ${value}`)
+                                .join('\n'),
+                            color: '#97C2FC'
+                        });
+                    }
+
+                    if (relationship) {
+                        edges.add({
+                            from: sourceNode.identity.toString(),
+                            to: targetNode.identity.toString(),
+                            label: relationship.type,
+                            arrows: 'to'
+                        });
+                    }
+                });
+
+                console.log('Nodes:', nodes.get());
+                console.log('Edges:', edges.get());
+
+                // Konfigurace sítě
+                const options = {
+                    nodes: {
+                        shape: 'dot',
+                        size: 25,
+                        font: {
+                            size: 14,
+                            face: 'Arial',
+                            vadjust: 3,
+                            background: 'white',
+                            strokeWidth: 0,
+                            color: '#000000'
+                        },
+                        borderWidth: 2
+                    },
+                    edges: {
+                        arrows: { to: true },
+                        color: '#848484',
+                        font: {
+                            size: 12,
+                            align: 'middle',
+                            background: 'white'
+                        },
+                        width: 1,
+                        smooth: {
+                            type: 'continuous'
+                        }
+                    },
+                    physics: {
+                        enabled: true,
+                        solver: 'forceAtlas2Based',
+                        forceAtlas2Based: {
+                            gravitationalConstant: -50,
+                            centralGravity: 0.01,
+                            springLength: 100,
+                            springConstant: 0.08
+                        },
+                        stabilization: {
+                            enabled: true,
+                            iterations: 1000,
+                            updateInterval: 25
+                        }
+                    }
+                };
+
+                // Vytvoření sítě
+                const data = { nodes, edges };
+                this.network = new vis.Network(container, data, options);
+                console.log('Síť vytvořena:', this.network);
+
+                // Event listeners
+                this.network.on('stabilizationProgress', function(params) {
+                    console.log('Stabilizace:', Math.round(params.iterations/params.total * 100), '%');
+                });
+
+                this.network.on('stabilizationIterationsDone', function() {
+                    console.log('Stabilizace dokončena');
+                });
+
+                this.initializeEventListeners();
+
+            } catch (error) {
+                console.error('Chyba při načítání dat z Neo4j:', error);
+            } finally {
+                await session.close();
+                await driver.close();
+            }
+
         } catch (error) {
-            console.error('Chyba při inicializaci:', error);
+            console.error('Chyba při inicializaci vizualizace:', error);
         }
-    }
-
-    createVisualization(config) {
-        console.log('Konfigurace Neo4j:', config);
-
-        const vizConfig = {
-            container_id: "viz",
-            server_url: config.Neo4j.URI,
-            server_user: config.Neo4j.User,
-            server_password: config.Neo4j.Password,
-            labels: {
-                "Node": {
-                    "caption": "label",
-                    "size": "pagerank",
-                    "community": "community"
-                }
-            },
-            relationships: {
-                "RELATIONSHIP": {
-                    "thickness": "weight",
-                    "caption": false
-                }
-            },
-            initial_cypher: "MATCH (n)-[r]->(m) RETURN n,r,m"
-        };
-
-        console.log('Konfigurace vizualizace:', vizConfig);
-
-        this.viz = new NeoVis.default(vizConfig);
-        this.viz.render();
     }
 
     initializeEventListeners() {
-        // Vyhledávání
-        const searchInput = document.getElementById('search');
-        searchInput.addEventListener('input', _.debounce((e) => {
-            const term = e.target.value.toLowerCase();
-            if (term.length < 2) {
-                const container = document.getElementById('searchResults');
-                container.classList.add('d-none');
-                return;
-            }
-            
-            const results = this.data.nodes.filter(node => {
-                const properties = Object.values(node.properties || {}).map(v => String(v).toLowerCase());
-                return node.label.toLowerCase().includes(term) || 
-                       properties.some(v => v.includes(term));
-            });
-            this.showSearchResults(results);
-        }, 300));
-
-        // Změna layoutu
-        document.getElementById('layout').addEventListener('change', (e) => {
-            this.currentLayout = e.target.value;
-            this.updateLayout();
-        });
-
-        // Vyčištění
-        document.getElementById('clear').addEventListener('click', () => {
-            if (this.network) {
-                this.network.fit();
-            }
-        });
-    }
-
-    showSearchResults(results) {
-        const container = document.getElementById('searchResults');
-        container.innerHTML = '';
-        container.classList.remove('d-none');
-
-        if (results.length === 0) {
-            const div = document.createElement('div');
-            div.className = 'p-2 text-muted';
-            div.textContent = 'Žádné výsledky';
-            container.appendChild(div);
-            return;
-        }
-
-        results.forEach(result => {
-            const div = document.createElement('div');
-            div.className = 'p-2 border-bottom';
-            const name = result.properties.name || result.id;
-            div.textContent = `${result.label}: ${name}`;
-            div.addEventListener('click', () => {
-                if (this.network) {
-                    this.network.focus(result.id, {
-                        scale: 1.5,
-                        animation: {
-                            duration: 1000,
-                            easingFunction: 'easeInOutQuad'
-                        }
-                    });
-                    this.network.selectNodes([result.id]);
-                }
-                container.classList.add('d-none');
-            });
-            container.appendChild(div);
-        });
-    }
-
-    updateLayout() {
         if (!this.network) return;
 
-        const options = {
-            physics: {
-                enabled: true,
-                stabilization: {
-                    enabled: true,
-                    iterations: 1000,
-                    updateInterval: 25
-                }
+        this.network.on('click', (params) => {
+            if (params.nodes.length > 0) {
+                console.log('Kliknutí na uzel:', params.nodes[0]);
             }
-        };
+        });
 
-        switch(this.currentLayout) {
-            case 'hierarchical':
-                options.layout = {
-                    hierarchical: {
-                        direction: 'UD',
-                        sortMethod: 'directed',
-                        nodeSpacing: 150,
-                        treeSpacing: 200
-                    }
-                };
-                break;
-            case 'circular':
-                options.layout = {
-                    improvedLayout: true,
-                    randomSeed: 2
-                };
-                options.physics = {
-                    enabled: true,
-                    solver: 'forceAtlas2Based',
-                    forceAtlas2Based: {
-                        gravitationalConstant: -50,
-                        centralGravity: 0.01,
-                        springLength: 200,
-                        springConstant: 0.08
-                    }
-                };
-                break;
-            default:
-                options.layout = {
-                    improvedLayout: true,
-                    randomSeed: 1
-                };
-                options.physics = {
-                    enabled: true,
-                    solver: 'forceAtlas2Based',
-                    forceAtlas2Based: {
-                        gravitationalConstant: -26,
-                        centralGravity: 0.005,
-                        springLength: 230,
-                        springConstant: 0.18
-                    }
-                };
-        }
-
-        this.network.setOptions(options);
+        this.network.on('doubleClick', (params) => {
+            if (params.nodes.length > 0) {
+                console.log('Dvojklik na uzel:', params.nodes[0]);
+            }
+        });
     }
 }
 
-// Inicializace při načtení stránky
+// Inicializace po načtení stránky
 window.addEventListener('load', () => {
-    console.log('Stránka načtena, inicializuji vizualizaci...');
-    const visualizer = new GraphVisualizer();
-    visualizer.initialize();
+    console.log('Stránka načtena, spouštím vizualizaci...');
+    new GraphVisualizer();
 }); 

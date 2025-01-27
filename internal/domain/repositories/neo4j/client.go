@@ -134,3 +134,8 @@ func (c *Client) FetchNodes(nodeType string) ([]map[string]interface{}, error) {
 	logrus.Infof("Načteno %d uzlů", len(nodes))
 	return nodes, nil
 }
+
+// GetDriver vrací Neo4j driver pro přímý přístup
+func (c *Client) GetDriver() neo4j.Driver {
+	return c.driver
+}
