@@ -8,7 +8,7 @@
 
 ## use
 
-- complete conversion of SQL database to Neo4j according to specified rules
+- complete conversion of SQL database to Neo4j according to personaly define rules (in config.yml file)
 - visualization of the analysis of SQL database elements that we need to see - rewriting new relations as logical or functional relations (as opposed to SQL relation data)
 - in the next stage the possibility to turn the process around quite easily - i.e. to design Neo4j graph structure and convert it to MySQL
 
