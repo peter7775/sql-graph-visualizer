@@ -18,7 +18,7 @@ Project is written in Go in Domain Drive Design software architecture style. For
 
 ## config
 
-## main functionality
+## transformation rules description
 
 ## test
 
