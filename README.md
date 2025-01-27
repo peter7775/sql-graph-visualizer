@@ -1,4 +1,4 @@
-# SQL database visualisation as graph
+# SQL database conversion and visualisation as graph
 
 ## basic functionality:
 - conversion of part or the whole SQL database into Neo4j graph database with its subsequent visualization
