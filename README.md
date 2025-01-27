@@ -10,4 +10,13 @@
 - visualization of the analysis of SQL database elements that we need to see - rewriting new relations as logical or functional relations (as opposed to SQL relation data)
 - in the next stage the possibility to turn the process around quite easily - i.e. to design Neo4j graph structure and convert it to MySQL
 
+## architecture
+Project is written in Go in Domain Drive Design software architecture style. For visualization is used GraphQL and Neovis.JS.
+
+## config
+
+## main functionality
+
+## test
+
 
