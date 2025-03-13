@@ -1,4 +1,5 @@
-# SQL database conversion and visualisation as graph
+# SQL database conversion and visualisation as graph 
+**in development**
 
 ## basic functionality:
 
