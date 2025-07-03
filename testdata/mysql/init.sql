@@ -31,7 +31,7 @@ CREATE TABLE department_collaborations (
     FOREIGN KEY (department_id_2) REFERENCES departments(id)
 );
 
--- Testovací data
+-- test data
 INSERT INTO users VALUES 
 (1, 'John Doe', 'john@example.com', 'Developer'),
 (2, 'Jane Smith', 'jane@example.com', 'Manager');
