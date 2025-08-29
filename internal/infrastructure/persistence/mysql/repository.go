@@ -37,7 +37,7 @@ func (r *MySQLRepository) FetchData() ([]map[string]interface{}, error) {
 
 	// Načtení dat z tabulek definovaných v transform_rules
 	for _, ruleConfig := range config.transform_rules {
-		rule := transform.TransformRuleAggregate{
+		rule := transform.RuleAggregate{
 			Rule: transformvo.TransformRule{
 				SourceTable: ruleConfig.SourceTable,
 				RuleType:    transformvo.RuleType(ruleConfig.RuleType),
@@ -148,7 +148,9 @@ type mysqlConfig struct {
 }
 
 // Přidání funkce applyTransformation
-func applyTransformation(rule struct{ SourceTable string `yaml:"source_table"` }, data map[string]interface{}) (map[string]interface{}, error) {
+func applyTransformation(rule struct {
+	SourceTable string `yaml:"source_table"`
+}, data map[string]interface{}) (map[string]interface{}, error) {
 	// Zde by měla být logika pro aplikaci transformace
 	// Prozatím vrátíme data beze změny
 	return data, nil

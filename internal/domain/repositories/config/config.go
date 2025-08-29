@@ -8,9 +8,9 @@
 package config
 
 import (
+	"mysql-graph-visualizer/internal/domain/models"
 	"os"
 	"path/filepath"
-	"mysql-graph-visualizer/internal/domain/models"
 
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"

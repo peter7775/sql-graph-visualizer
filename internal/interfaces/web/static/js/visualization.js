@@ -14,7 +14,7 @@ class GraphVisualizer {
     }
 
     async initialize() {
-        console.log('Inicializace vizualizace...');
+        console.log('Initializing visualization...');
         
         try {
             const response = await fetch('/config');
@@ -22,15 +22,14 @@ class GraphVisualizer {
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
             const serverConfig = await response.json();
-            console.log('Načtena konfigurace ze serveru:', serverConfig);
+            console.log('Server configuration loaded:', serverConfig);
 
             const container = document.getElementById('viz');
             if (!container) {
-                throw new Error('Container "viz" nebyl nalezen!');
+                throw new Error('Container "viz" was not found!');
             }
-            console.log('Container nalezen:', container);
+            console.log('Container found:', container);
 
-            // Připojení k Neo4j a načtení dat
             const driver = neo4j.driver(
                 serverConfig.neo4j.uri,
                 neo4j.auth.basic(serverConfig.neo4j.username, serverConfig.neo4j.password)
@@ -44,9 +43,8 @@ class GraphVisualizer {
                     OPTIONAL MATCH (n)-[r]-(m)
                     RETURN n, r, m
                 `);
-                console.log('Data z Neo4j:', result);
+                console.log('Data from Neo4j:', result);
 
-                // Převod dat do formátu pro vis.js
                 const nodes = new vis.DataSet();
                 const edges = new vis.DataSet();
                 const processedNodes = new Set();
@@ -101,7 +99,6 @@ class GraphVisualizer {
                 console.log('Nodes:', nodes.get());
                 console.log('Edges:', edges.get());
 
-                // Konfigurace sítě
                 const options = {
                     nodes: {
                         shape: 'dot',
@@ -146,31 +143,29 @@ class GraphVisualizer {
                     }
                 };
 
-                // Vytvoření sítě
                 const data = { nodes, edges };
                 this.network = new vis.Network(container, data, options);
-                console.log('Síť vytvořena:', this.network);
+                console.log('Network created:', this.network);
 
-                // Event listeners
                 this.network.on('stabilizationProgress', function(params) {
-                    console.log('Stabilizace:', Math.round(params.iterations/params.total * 100), '%');
+                    console.log('Stabilization:', Math.round(params.iterations/params.total * 100), '%');
                 });
 
                 this.network.on('stabilizationIterationsDone', function() {
-                    console.log('Stabilizace dokončena');
+                    console.log('Stabilization completed');
                 });
 
                 this.initializeEventListeners();
 
             } catch (error) {
-                console.error('Chyba při načítání dat z Neo4j:', error);
+                console.error('Error loading data from Neo4j:', error);
             } finally {
                 await session.close();
                 await driver.close();
             }
 
         } catch (error) {
-            console.error('Chyba při inicializaci vizualizace:', error);
+            console.error('Error initializing visualization:', error);
         }
     }
 
@@ -179,20 +174,19 @@ class GraphVisualizer {
 
         this.network.on('click', (params) => {
             if (params.nodes.length > 0) {
-                console.log('Kliknutí na uzel:', params.nodes[0]);
+                console.log('Node clicked:', params.nodes[0]);
             }
         });
 
         this.network.on('doubleClick', (params) => {
             if (params.nodes.length > 0) {
-                console.log('Dvojklik na uzel:', params.nodes[0]);
+                console.log('Node double-clicked:', params.nodes[0]);
             }
         });
     }
 }
 
-// Inicializace po načtení stránky
 window.addEventListener('load', () => {
-    console.log('Stránka načtena, spouštím vizualizaci...');
+    console.log('Page loaded, starting visualization...');
     new GraphVisualizer();
-}); 
+});

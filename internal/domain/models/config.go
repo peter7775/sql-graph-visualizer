@@ -7,21 +7,20 @@
 
 package models
 
-
 type TransformationConfig struct {
-	Name          string           `yaml:"name"`
-	Source        SourceConfig     `yaml:"source"`
-	Nodes         []NodeConfig     `yaml:"nodes"`
-	Relations     []RelationConfig `yaml:"relations"`
+	Name          string            `yaml:"name"`
+	Source        SourceConfig      `yaml:"source"`
+	Nodes         []NodeConfig      `yaml:"nodes"`
+	Relations     []RelationConfig  `yaml:"relations"`
 	FieldMappings map[string]string `yaml:"field_mappings"`
-	SourceNode    RelationNode     `yaml:"source_node"`
-	TargetNode    RelationNode     `yaml:"target_node"`
-	RelationType  string           `yaml:"relationship_type,omitempty"`
-	TargetType    string           `yaml:"target_type,omitempty"`
-	RuleType      string           `yaml:"rule_type,omitempty"`
-	Direction     string           `yaml:"direction,omitempty"`
+	SourceNode    RelationNode      `yaml:"source_node"`
+	TargetNode    RelationNode      `yaml:"target_node"`
+	RelationType  string            `yaml:"relationship_type,omitempty"`
+	TargetType    string            `yaml:"target_type,omitempty"`
+	RuleType      string            `yaml:"rule_type,omitempty"`
+	Direction     string            `yaml:"direction,omitempty"`
 	Properties    map[string]string `yaml:"properties,omitempty"`
-	Priority      int              `yaml:"priority,omitempty"`
+	Priority      int               `yaml:"priority,omitempty"`
 }
 
 type NodeConfig struct {
@@ -41,14 +40,13 @@ type RelationConfig struct {
 }
 
 type RelationNode struct {
-	Type       string `yaml:"type"`
-	Key        string `yaml:"key"`
+	Type        string `yaml:"type"`
+	Key         string `yaml:"key"`
 	TargetField string `yaml:"target_field"`
 }
 
-// Oprava neukončeného řetězce v SourceConfig
 type SourceConfig struct {
-	Type        string `yaml:"type"` // "table" nebo "query"
+	Type        string `yaml:"type"`
 	Value       string `yaml:"value"`
 	SourceTable string `yaml:"source_table"`
 }

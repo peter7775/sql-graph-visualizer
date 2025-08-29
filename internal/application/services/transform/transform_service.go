@@ -44,23 +44,21 @@ func (s *TransformService) TransformAndStore(ctx context.Context) error {
 		return err
 	}
 
-	logrus.Infof("Načteno %d záznamů z MySQL", len(data))
+	logrus.Infof("Loaded %d records from MySQL", len(data))
 
 	rules, err := s.ruleRepo.GetAllRules(ctx)
-	logrus.Infof("Pravidla: %+v", rules)
+	logrus.Infof("Rules: %+v", rules)
 	if err != nil {
 		return err
 	}
 
 	graphAggregate := graph.NewGraphAggregate("")
 
-	// Funkce pro konverzi mapových hodnot na podporované typy
 	convertMapValues := func(item map[string]interface{}) map[string]interface{} {
 		result := make(map[string]interface{})
 		for k, v := range item {
 			switch val := v.(type) {
 			case map[string]interface{}:
-				// Převedeme mapu na JSON string
 				if jsonStr, err := json.Marshal(val); err == nil {
 					result[k] = string(jsonStr)
 				} else {
@@ -73,7 +71,6 @@ func (s *TransformService) TransformAndStore(ctx context.Context) error {
 		return result
 	}
 
-	// Seskupíme data podle tabulek s konverzí mapových hodnot
 	tableData := make(map[string][]map[string]interface{})
 	for _, item := range data {
 		if tableName, ok := item["_table"].(string); ok {
@@ -82,43 +79,41 @@ func (s *TransformService) TransformAndStore(ctx context.Context) error {
 		}
 	}
 
-	// Načítání uzlů z Neo4j
 	nodePHPActionNodes, err := s.neo4jPort.FetchNodes("NodePHPAction")
 	if err != nil {
-		return fmt.Errorf("chyba při načítání uzlů NodePHPAction z Neo4j: %v", err)
+		return fmt.Errorf("error loading NodePHPAction nodes from Neo4j: %v", err)
 	}
 
 	phpActionNodes, err := s.neo4jPort.FetchNodes("PHPAction")
 	if err != nil {
-		return fmt.Errorf("chyba při načítání uzlů PHPAction z Neo4j: %v", err)
+		return fmt.Errorf("error loading PHPAction nodes from Neo4j: %v", err)
 	}
 
 	for _, nodeData := range phpActionNodes {
 		if err := graphAggregate.AddNode("PHPAction", nodeData); err != nil {
-			return fmt.Errorf("chyba při přidávání uzlu do GraphAggregate: %v", err)
+			return fmt.Errorf("error adding node to GraphAggregate: %v", err)
 		}
 	}
 
-	// Použití uzlů pro relace
 	for _, rule := range rules {
 		if rule.Rule.RuleType == transform.RelationshipRule {
-			logrus.Infof("Zpracovávám pravidlo pro relaci: %+v", rule)
+			logrus.Infof("Processing relationship rule: %+v", rule)
 			transformedData := rule.ApplyRules(append(nodePHPActionNodes, phpActionNodes...))
-			logrus.Infof("Transformováno %d záznamů", len(transformedData))
+			logrus.Infof("Transformed %d records", len(transformedData))
 			for _, item := range transformedData {
 				if err := s.updateGraph(item, graphAggregate); err != nil {
 					return err
 				}
 			}
 		} else if rule.Rule.SourceSQL != "" && rule.Rule.RuleType != transform.RelationshipRule {
-			logrus.Infof("Vykonávám SQL dotaz: %s", rule.Rule.SourceSQL)
+			logrus.Infof("Executing SQL query: %s", rule.Rule.SourceSQL)
 			items, err := s.mysqlPort.ExecuteQuery(rule.Rule.SourceSQL)
 			if err != nil {
-				return fmt.Errorf("chyba při vykonávání SQL dotazu: %v", err)
+				return fmt.Errorf("error executing SQL query: %v", err)
 			}
-			logrus.Infof("Data vrácená SQL dotazem: %+v", items)
+			logrus.Infof("Data returned by SQL query: %+v", items)
 			transformedData := rule.ApplyRules(items)
-			logrus.Infof("Transformováno %d záznamů", len(transformedData))
+			logrus.Infof("Transformed %d records", len(transformedData))
 			for _, item := range transformedData {
 				if err := s.updateGraph(item, graphAggregate); err != nil {
 					return err
@@ -126,7 +121,7 @@ func (s *TransformService) TransformAndStore(ctx context.Context) error {
 			}
 		} else {
 			sourceTable := rule.Rule.SourceTable
-			logrus.Infof("Aplikuji pravidlo na tabulku: %s", sourceTable)
+			logrus.Infof("Applying rule to table: %s", sourceTable)
 			items, ok := tableData[sourceTable]
 			if !ok {
 				items = []map[string]interface{}{}
@@ -138,7 +133,7 @@ func (s *TransformService) TransformAndStore(ctx context.Context) error {
 			}
 
 			transformedData := rule.ApplyRules(items)
-			logrus.Infof("Transformováno %d záznamů", len(transformedData))
+			logrus.Infof("Transformed %d records", len(transformedData))
 
 			for _, item := range transformedData {
 				if mapItem, ok := item.(map[string]interface{}); ok {
@@ -153,8 +148,8 @@ func (s *TransformService) TransformAndStore(ctx context.Context) error {
 		}
 	}
 
-	logrus.Infof("Počet uzlů k uložení: %d", len(graphAggregate.GetNodes()))
-	logrus.Infof("Ukládám graf do Neo4j")
+	logrus.Infof("Number of nodes to save: %d", len(graphAggregate.GetNodes()))
+	logrus.Infof("Saving graph to Neo4j")
 	return s.neo4jPort.StoreGraph(graphAggregate)
 }
 
@@ -163,10 +158,10 @@ func (s *TransformService) updateGraph(data interface{}, graph *graph.GraphAggre
 	case map[string]interface{}:
 		if nodeType, ok := transformed["_type"].(string); ok {
 			if _, hasSource := transformed["source"]; hasSource {
-				logrus.Infof("Přidávám vztah do grafu: %+v", transformed)
+				logrus.Infof("Adding relationship to graph: %+v", transformed)
 				return s.createRelationship(transformed, graph)
 			}
-			logrus.Infof("Přidávám uzel do grafu: %+v", transformed)
+			logrus.Infof("Adding node to graph: %+v", transformed)
 			if _, hasID := transformed["id"]; !hasID {
 				transformed["id"] = serialization.GenerateUniqueID()
 			}
@@ -183,7 +178,6 @@ func (s *TransformService) updateGraph(data interface{}, graph *graph.GraphAggre
 const maxTextLength = 10000
 
 func (s *TransformService) createNode(nodeType string, data map[string]interface{}, graph *graph.GraphAggregate) error {
-	// Kontrola, zda má uzel všechny potřebné vlastnosti
 	if _, hasID := data["id"]; !hasID {
 		return fmt.Errorf("node data missing required 'id' field")
 	}
@@ -191,9 +185,8 @@ func (s *TransformService) createNode(nodeType string, data map[string]interface
 		return fmt.Errorf("node data missing required 'name' field")
 	}
 
-	// Convert map properties to string
 	for key, value := range data {
-		logrus.Infof("Key: %s, Value: %v, Type: %T", key, value, value) // Logování typu hodnoty
+		logrus.Infof("Key: %s, Value: %v, Type: %T", key, value, value)
 		switch v := value.(type) {
 		case []byte:
 			data[key] = string(v)
@@ -203,22 +196,22 @@ func (s *TransformService) createNode(nodeType string, data map[string]interface
 				data[key] = v[:maxTextLength]
 			}
 		case int64:
-			data[key] = fmt.Sprintf("%d", v) // Převod na string
+			data[key] = fmt.Sprintf("%d", v)
 		case int, float64, bool:
-			// Primitivní typy jsou v pořádku
+			// Primitive types are fine
 		case map[string]interface{}:
 			logrus.Warnf("Converting map to string for key %s", key)
-			data[key] = fmt.Sprintf("%v", v) // Převod mapy na string
+			data[key] = fmt.Sprintf("%v", v)
 		default:
 			logrus.Warnf("Unexpected data type for key %s: %T", key, value)
-			data[key] = fmt.Sprintf("%v", value) // Převod na string
+			data[key] = fmt.Sprintf("%v", value)
 		}
 	}
 
 	logrus.Infof("Final node data for Neo4j: %+v", data)
 
 	delete(data, "_type")
-	logrus.Infof("Ukládám uzel do grafu: typ=%s, data=%+v", nodeType, data)
+	logrus.Infof("Saving node to graph: type=%s, data=%+v", nodeType, data)
 	return graph.AddNode(nodeType, data)
 }
 
@@ -235,7 +228,7 @@ func (s *TransformService) createRelationship(data map[string]interface{}, graph
 	target := data["target"].(map[string]interface{})
 	properties := data["properties"].(map[string]interface{})
 
-	logrus.Infof("Ukládám vztah do grafu: typ=%s, směr=%s, zdroj=%+v, cíl=%+v, vlastnosti=%+v", relType, direction, source, target, properties)
+	logrus.Infof("Saving relationship to graph: type=%s, direction=%s, source=%+v, target=%+v, properties=%+v", relType, direction, source, target, properties)
 
 	return graph.AddRelationship(
 		relType,

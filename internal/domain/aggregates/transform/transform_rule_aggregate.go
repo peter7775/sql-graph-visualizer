@@ -15,15 +15,15 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-type TransformRuleAggregate struct {
+type RuleAggregate struct {
 	entities.BaseEntity
-	Rule transform.TransformRule
-	Name string
+	Rule        transform.TransformRule
+	Name        string
 	Description string
-	Priority int
-	IsActive bool
-	Conditions map[string]interface{}
-	Actions map[string]interface{}
+	Priority    int
+	IsActive    bool
+	Conditions  map[string]interface{}
+	Actions     map[string]interface{}
 }
 
 type NodeMapping struct {
@@ -32,7 +32,7 @@ type NodeMapping struct {
 	TargetField string
 }
 
-func (t *TransformRuleAggregate) ApplyRules(data []map[string]interface{}) []interface{} {
+func (t *RuleAggregate) ApplyRules(data []map[string]interface{}) []interface{} {
 	var results []interface{}
 	for _, record := range data {
 		logrus.Infof("Aplikuji pravidlo na záznam: %+v", record)
@@ -47,7 +47,7 @@ func (t *TransformRuleAggregate) ApplyRules(data []map[string]interface{}) []int
 	return results
 }
 
-func (t *TransformRuleAggregate) ApplyRule(data map[string]interface{}) (interface{}, error) {
+func (t *RuleAggregate) ApplyRule(data map[string]interface{}) (interface{}, error) {
 	logrus.Infof("Aplikuji pravidlo: %+v", t.Rule)
 	logrus.Infof("Aktuální FieldMappings: %+v", t.Rule.FieldMappings)
 	logrus.Infof("Kontrola FieldMappings před transformací: %+v", t.Rule.FieldMappings)
@@ -64,12 +64,11 @@ func (t *TransformRuleAggregate) ApplyRule(data map[string]interface{}) (interfa
 	}
 }
 
-func (t *TransformRuleAggregate) transformToNode(data map[string]interface{}) (map[string]interface{}, error) {
+func (t *RuleAggregate) transformToNode(data map[string]interface{}) (map[string]interface{}, error) {
 	result := make(map[string]interface{})
 	result["_type"] = t.Rule.TargetType
 
 	logrus.Infof("FieldMappings: %+v", t.Rule.FieldMappings)
-	// log.Printf("Zpracovávám data: %+v", data)
 
 	for sourceField, targetField := range t.Rule.FieldMappings {
 		if value, exists := data[sourceField]; exists {
@@ -83,12 +82,11 @@ func (t *TransformRuleAggregate) transformToNode(data map[string]interface{}) (m
 	return result, nil
 }
 
-func (t *TransformRuleAggregate) transformToRelationship(data map[string]interface{}) (map[string]interface{}, error) {
+func (t *RuleAggregate) transformToRelationship(data map[string]interface{}) (map[string]interface{}, error) {
 	result := make(map[string]interface{})
 	result["_type"] = t.Rule.RelationType
 	result["_direction"] = t.Rule.Direction
 
-	// Nastavení source a target node
 	result["source"] = map[string]interface{}{
 		"type":  t.Rule.SourceNode.Type,
 		"key":   data[t.Rule.SourceNode.Key],
@@ -101,7 +99,6 @@ func (t *TransformRuleAggregate) transformToRelationship(data map[string]interfa
 		"field": t.Rule.TargetNode.TargetField,
 	}
 
-	// Přidání vlastností relace
 	properties := make(map[string]interface{})
 	for sourceField, targetField := range t.Rule.Properties {
 		if value, exists := data[sourceField]; exists {

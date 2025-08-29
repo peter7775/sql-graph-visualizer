@@ -18,14 +18,14 @@ import (
 )
 
 type RuleRepository struct {
-	rules []*transformAgg.TransformRuleAggregate
+	rules []*transformAgg.RuleAggregate
 }
 
 func NewRuleRepository() *RuleRepository {
-	return &RuleRepository{rules: []*transformAgg.TransformRuleAggregate{}}
+	return &RuleRepository{rules: []*transformAgg.RuleAggregate{}}
 }
 
-func (r *RuleRepository) GetAllRules(ctx context.Context) ([]*transformAgg.TransformRuleAggregate, error) {
+func (r *RuleRepository) GetAllRules(ctx context.Context) ([]*transformAgg.RuleAggregate, error) {
 	if len(r.rules) == 0 {
 		loadedRules, err := r.LoadRulesFromConfig("config/config.yml")
 		if err != nil {
@@ -36,7 +36,7 @@ func (r *RuleRepository) GetAllRules(ctx context.Context) ([]*transformAgg.Trans
 	return r.rules, nil
 }
 
-func (r *RuleRepository) SaveRule(ctx context.Context, rule *transformAgg.TransformRuleAggregate) error {
+func (r *RuleRepository) SaveRule(ctx context.Context, rule *transformAgg.RuleAggregate) error {
 	r.rules = append(r.rules, rule)
 	return nil
 }
@@ -61,7 +61,7 @@ func (r *RuleRepository) UpdateRulePriority(ctx context.Context, ruleID string, 
 	return fmt.Errorf("rule with ID %s not found", ruleID)
 }
 
-func (r *RuleRepository) LoadRulesFromConfig(filePath string) ([]*transformAgg.TransformRuleAggregate, error) {
+func (r *RuleRepository) LoadRulesFromConfig(filePath string) ([]*transformAgg.RuleAggregate, error) {
 	logrus.Infof("Načítám pravidla z %s", filePath)
 
 	cfg, err := config.Load()
@@ -69,11 +69,10 @@ func (r *RuleRepository) LoadRulesFromConfig(filePath string) ([]*transformAgg.T
 		return nil, fmt.Errorf("could not load config: %v", err)
 	}
 
-	var rules []*transformAgg.TransformRuleAggregate
+	var rules []*transformAgg.RuleAggregate
 	for _, configRule := range cfg.TransformRules {
 		logrus.Infof("Zpracovávám pravidlo: %+v", configRule)
 
-		// Vytvoření základního pravidla
 		transformRule := transformVal.TransformRule{
 			Name:          configRule.Name,
 			RuleType:      transformVal.RuleType(configRule.RuleType),
@@ -84,12 +83,10 @@ func (r *RuleRepository) LoadRulesFromConfig(filePath string) ([]*transformAgg.T
 			Properties:    configRule.Properties,
 		}
 
-		// Zpracování source
 		if configRule.Source.Type == "query" {
 			transformRule.SourceSQL = configRule.Source.Value
 		}
 
-		// Pro relationship pravidla zpracujeme source_node a target_node
 		if configRule.RuleType == "relationship" {
 			if configRule.SourceNode.Type != "" {
 				transformRule.SourceNode = &transformVal.NodeMapping{
@@ -108,7 +105,6 @@ func (r *RuleRepository) LoadRulesFromConfig(filePath string) ([]*transformAgg.T
 			}
 		}
 
-		// Zpracování properties pokud existují
 		if configRule.Properties != nil {
 			transformRule.Properties = configRule.Properties
 		}
@@ -122,7 +118,7 @@ func (r *RuleRepository) LoadRulesFromConfig(filePath string) ([]*transformAgg.T
 		logrus.Infof("- Target Node: %+v", transformRule.TargetNode)
 		logrus.Infof("- Properties: %+v", transformRule.Properties)
 
-		rules = append(rules, &transformAgg.TransformRuleAggregate{
+		rules = append(rules, &transformAgg.RuleAggregate{
 			Rule: transformRule,
 			Name: transformRule.Name,
 		})

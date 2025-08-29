@@ -13,7 +13,7 @@ import "fmt"
 func SerializeID(id interface{}) interface{} {
 	switch v := id.(type) {
 	case int64:
-		return []int64{v} // Převod na pole
+		return []int64{v}
 	default:
 		return fmt.Sprintf("%v", id)
 	}

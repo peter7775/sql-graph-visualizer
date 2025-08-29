@@ -42,15 +42,12 @@ func NewGraphAggregate(id string) *GraphAggregate {
 }
 
 func (g *GraphAggregate) AddNode(nodeType string, properties map[string]interface{}) error {
-	// Nejprve zkontrolujeme, zda uzel již neexistuje
 	existingNode := g.findNode(nodeType, properties["id"], "id")
 	if existingNode != nil {
-		// Pokud uzel existuje, aktualizujeme jeho vlastnosti a vrátíme nil
 		existingNode.Properties = properties
 		return nil
 	}
 
-	// Pokud uzel neexistuje, vytvoříme nový
 	node := entities.NewNodeWithType(fmt.Sprintf("%s_%v", nodeType, properties["id"]), nodeType, properties["id"], "id")
 	node.Properties = properties
 	g.nodes = append(g.nodes, node)
@@ -108,7 +105,6 @@ func (g *GraphAggregate) ToCypher() string {
 }
 
 func (g *GraphAggregate) findNode(nodeType string, key interface{}, field string) *entities.Node {
-	// Převod klíče na string pro porovnání
 	var keyStr string
 	switch v := key.(type) {
 	case []uint8:
@@ -119,7 +115,6 @@ func (g *GraphAggregate) findNode(nodeType string, key interface{}, field string
 
 	for _, node := range g.nodes {
 		if node.Type == nodeType {
-			// Převod node.Key na string pro porovnání
 			var nodeKeyStr string
 			switch v := node.Key.(type) {
 			case []uint8:
@@ -128,7 +123,6 @@ func (g *GraphAggregate) findNode(nodeType string, key interface{}, field string
 				nodeKeyStr = fmt.Sprintf("%v", node.Key)
 			}
 
-			// Porovnání všech tří podmínek
 			if node.Type == nodeType && nodeKeyStr == keyStr && node.Field == field {
 				return node
 			}

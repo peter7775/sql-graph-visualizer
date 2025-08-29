@@ -48,8 +48,8 @@ import (
 
 type mockRuleRepo struct{}
 
-func (m *mockRuleRepo) GetAllRules(ctx context.Context) ([]*transformAggregates.TransformRuleAggregate, error) {
-	return []*transformAggregates.TransformRuleAggregate{
+func (m *mockRuleRepo) GetAllRules(ctx context.Context) ([]*transformAggregates.RuleAggregate, error) {
+	return []*transformAggregates.RuleAggregate{
 		{
 			Rule: transformObjects.TransformRule{
 				Name:       "php_actions_to_nodes",
@@ -91,7 +91,7 @@ func (m *mockRuleRepo) GetAllRules(ctx context.Context) ([]*transformAggregates.
 	}, nil
 }
 
-func (m *mockRuleRepo) SaveRule(ctx context.Context, rule *transformAggregates.TransformRuleAggregate) error {
+func (m *mockRuleRepo) SaveRule(ctx context.Context, rule *transformAggregates.RuleAggregate) error {
 	return nil
 }
 

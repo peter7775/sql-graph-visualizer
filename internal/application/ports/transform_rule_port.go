@@ -13,8 +13,8 @@ import (
 )
 
 type TransformRuleRepository interface {
-	GetAllRules(ctx context.Context) ([]*transform.TransformRuleAggregate, error)
-	SaveRule(ctx context.Context, rule *transform.TransformRuleAggregate) error
+	GetAllRules(ctx context.Context) ([]*transform.RuleAggregate, error)
+	SaveRule(ctx context.Context, rule *transform.RuleAggregate) error
 	DeleteRule(ctx context.Context, ruleID string) error
 	UpdateRulePriority(ctx context.Context, ruleID string, priority int) error
 }
