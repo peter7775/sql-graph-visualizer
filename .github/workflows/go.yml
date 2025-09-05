@@ -107,8 +107,30 @@ jobs:
         (2, 'echo "world";');
         "
 
+    - name: Verify configuration
+      run: |
+        echo "Current working directory:"
+        pwd
+        echo "Contents:"
+        ls -la
+        echo "Config directory:"
+        ls -la config/
+        echo "Testing config load:"
+        export GO_ENV=test
+        export CONFIG_PATH=config/config-test.yml
+        echo "Environment variables:"
+        echo "GO_ENV=$GO_ENV"
+        echo "CONFIG_PATH=$CONFIG_PATH"
+        
     - name: Run Integration Tests
       env:
         GO_ENV: test
         CONFIG_PATH: config/config-test.yml
-      run: go test -v -timeout 10m ./internal/tests/integration
+        LOG_LEVEL: debug
+      run: |
+        echo "Running integration tests from directory: $(pwd)"
+        echo "Environment check:"
+        echo "GO_ENV=$GO_ENV"
+        echo "CONFIG_PATH=$CONFIG_PATH"
+        echo "LOG_LEVEL=$LOG_LEVEL"
+        go test -v -timeout 10m ./internal/tests/integration
