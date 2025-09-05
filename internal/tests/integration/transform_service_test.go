@@ -110,7 +110,7 @@ type realMySQLRepo struct {
 func setupMySQLConnection() (*sql.DB, error) {
 	cfg, err := config.Load()
 	if err != nil {
-		return nil, fmt.Errorf("Chyba při načítání konfigurace: %v", err)
+		return nil, fmt.Errorf("Error loading configuration: %v", err)
 	}
 	dsn := fmt.Sprintf("%s:%s@tcp(%s:%d)/%s",
 		cfg.MySQL.User,
@@ -121,7 +121,7 @@ func setupMySQLConnection() (*sql.DB, error) {
 	)
 	db, err := sql.Open("mysql", dsn)
 	if err != nil {
-		return nil, fmt.Errorf("Chyba při připojování k MySQL: %v", err)
+		return nil, fmt.Errorf("Error connecting to MySQL: %v", err)
 	}
 	return db, nil
 }
@@ -167,7 +167,7 @@ func (m *realMySQLRepo) ExecuteQuery(query string) ([]map[string]interface{}, er
 }
 
 func (m *realMySQLRepo) FetchData() ([]map[string]interface{}, error) {
-	return nil, nil // Simulace prázdného výsledku
+	return nil, nil // Simulate empty result
 }
 
 func (m *realMySQLRepo) Close() error {
@@ -181,11 +181,11 @@ type realNeo4jRepo struct {
 func setupNeo4jConnection() (neo4jDriver.Driver, error) {
 	cfg, err := config.Load()
 	if err != nil {
-		return nil, fmt.Errorf("Chyba při načítání konfigurace: %v", err)
+		return nil, fmt.Errorf("Error loading configuration: %v", err)
 	}
 	driver, err := neo4jDriver.NewDriver(cfg.Neo4j.URI, neo4jDriver.BasicAuth(cfg.Neo4j.User, cfg.Neo4j.Password, ""))
 	if err != nil {
-		return nil, fmt.Errorf("Chyba při připojování k Neo4j: %v", err)
+		return nil, fmt.Errorf("Error connecting to Neo4j: %v", err)
 	}
 	return driver, nil
 }

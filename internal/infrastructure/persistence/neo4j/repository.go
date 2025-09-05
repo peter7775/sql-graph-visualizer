@@ -20,13 +20,13 @@ type Neo4jRepository struct {
 }
 
 func NewNeo4jRepository(uri, username, password string) (*Neo4jRepository, error) {
-	logrus.Infof("Vytvářím Neo4j driver s URI: %s, uživatel: %s", uri, username)
+	logrus.Infof("Creating Neo4j driver with URI: %s, user: %s", uri, username)
 	driver, err := neo4j.NewDriver(uri, neo4j.BasicAuth(username, password, ""))
 	if err != nil {
-		logrus.Errorf("Chyba při vytváření Neo4j driveru: %v", err)
+		logrus.Errorf("Error creating Neo4j driver: %v", err)
 		return nil, err
 	}
-	logrus.Infof("Neo4j driver úspěšně vytvořen")
+	logrus.Infof("Neo4j driver created successfully")
 	return &Neo4jRepository{driver: driver}, nil
 }
 
@@ -34,7 +34,7 @@ func (r *Neo4jRepository) StoreGraph(graph *graph.GraphAggregate) error {
 	session := r.driver.NewSession(neo4j.SessionConfig{})
 	defer session.Close()
 
-	// Uložení uzlů
+	// Store nodes
 	for _, node := range graph.GetNodes() {
 		query := "CREATE (n:" + node.Type + ") SET n = $props"
 		if _, err := session.Run(query, map[string]interface{}{
@@ -42,10 +42,10 @@ func (r *Neo4jRepository) StoreGraph(graph *graph.GraphAggregate) error {
 		}); err != nil {
 			return err
 		}
-		logrus.Infof("Uložen uzel: typ=%s, vlastnosti=%+v", node.Type, node.Properties)
+		logrus.Infof("Node saved: type=%s, properties=%+v", node.Type, node.Properties)
 	}
 
-	// Uložení vztahů
+	// Store relationships
 	for _, rel := range graph.GetRelationships() {
 		query := "MATCH (a {id: $sourceId}), (b {id: $targetId}) CREATE (a)-[r:" + rel.Type + "]->(b) SET r = $props"
 		if _, err := session.Run(query, map[string]interface{}{
@@ -76,7 +76,7 @@ func (r *Neo4jRepository) SearchNodes(criteria string) ([]*graph.GraphAggregate,
 	record := result.Record()
 	count := record.Values[0].(int64)
 
-	// Vytvoříme jeden GraphAggregate s uzly
+	// Create one GraphAggregate with nodes
 	graphAgg := graph.NewGraphAggregate("")
 	for i := int64(0); i < count; i++ {
 		graphAgg.AddNode("Person", map[string]interface{}{
@@ -111,7 +111,7 @@ func (r *Neo4jRepository) ExportGraph(query string) (interface{}, error) {
 		record := result.Record()
 		node := record.GetByIndex(0).(neo4j.Node)
 
-		// Přidáme uzel do grafu
+		// Add node to graph
 		graphAgg.AddNode(node.Labels[0], node.Props)
 	}
 

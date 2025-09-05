@@ -10,7 +10,7 @@ package configrule
 import (
 	"context"
 	"fmt"
-	"mysql-graph-visualizer/internal/config"
+	"mysql-graph-visualizer/internal/domain/repositories/config"
 	transformAgg "mysql-graph-visualizer/internal/domain/aggregates/transform"
 	transformVal "mysql-graph-visualizer/internal/domain/valueobjects/transform"
 
@@ -26,13 +26,18 @@ func NewRuleRepository() *RuleRepository {
 }
 
 func (r *RuleRepository) GetAllRules(ctx context.Context) ([]*transformAgg.RuleAggregate, error) {
+	logrus.Infof("🔍 GetAllRules called - current rules count: %d", len(r.rules))
 	if len(r.rules) == 0 {
+		logrus.Infof("📥 Loading rules from config file...")
 		loadedRules, err := r.LoadRulesFromConfig("config/config.yml")
 		if err != nil {
+			logrus.Errorf("❌ Failed to load rules: %v", err)
 			return nil, err
 		}
 		r.rules = loadedRules
+		logrus.Infof("✅ Successfully loaded %d rules", len(r.rules))
 	}
+	logrus.Infof("📤 Returning %d rules from GetAllRules", len(r.rules))
 	return r.rules, nil
 }
 
@@ -62,16 +67,19 @@ func (r *RuleRepository) UpdateRulePriority(ctx context.Context, ruleID string, 
 }
 
 func (r *RuleRepository) LoadRulesFromConfig(filePath string) ([]*transformAgg.RuleAggregate, error) {
-	logrus.Infof("Načítám pravidla z %s", filePath)
+	logrus.Infof("Loading rules from %s", filePath)
 
 	cfg, err := config.Load()
 	if err != nil {
 		return nil, fmt.Errorf("could not load config: %v", err)
 	}
 
+	logrus.Infof("Loaded TransformRules from config: %+v", cfg.TransformRules)
+	logrus.Infof("Number of TransformRules: %d", len(cfg.TransformRules))
+
 	var rules []*transformAgg.RuleAggregate
 	for _, configRule := range cfg.TransformRules {
-		logrus.Infof("Zpracovávám pravidlo: %+v", configRule)
+		logrus.Infof("Processing rule: %+v", configRule)
 
 		transformRule := transformVal.TransformRule{
 			Name:          configRule.Name,
@@ -109,9 +117,9 @@ func (r *RuleRepository) LoadRulesFromConfig(filePath string) ([]*transformAgg.R
 			transformRule.Properties = configRule.Properties
 		}
 
-		logrus.Infof("Vytvořeno pravidlo:")
-		logrus.Infof("- Název: %s", transformRule.Name)
-		logrus.Infof("- Typ: %s", transformRule.RuleType)
+		logrus.Infof("Created rule:")
+		logrus.Infof("- Name: %s", transformRule.Name)
+		logrus.Infof("- Type: %s", transformRule.RuleType)
 		logrus.Infof("- Target Type: %s", transformRule.TargetType)
 		logrus.Infof("- Field Mappings: %+v", transformRule.FieldMappings)
 		logrus.Infof("- Source Node: %+v", transformRule.SourceNode)
@@ -124,6 +132,6 @@ func (r *RuleRepository) LoadRulesFromConfig(filePath string) ([]*transformAgg.R
 		})
 	}
 
-	logrus.Infof("Celkem načteno %d pravidel", len(rules))
+	logrus.Infof("Total loaded %d rules", len(rules))
 	return rules, nil
 }

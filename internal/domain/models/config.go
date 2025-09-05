@@ -78,5 +78,5 @@ type Config struct {
 		User     string `yaml:"user"`
 		Password string `yaml:"password"`
 	} `yaml:"neo4j"`
-	TransformRules []map[string]interface{} `yaml:"transform_rules"`
+	TransformRules []TransformationConfig `yaml:"transform_rules"`
 }

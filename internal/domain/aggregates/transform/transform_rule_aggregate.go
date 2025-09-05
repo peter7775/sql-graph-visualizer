@@ -35,8 +35,8 @@ type NodeMapping struct {
 func (t *RuleAggregate) ApplyRules(data []map[string]interface{}) []interface{} {
 	var results []interface{}
 	for _, record := range data {
-		logrus.Infof("Aplikuji pravidlo na záznam: %+v", record)
-		logrus.Infof("Zpracovávám záznam: %+v", record)
+		logrus.Infof("Applying rule to record: %+v", record)
+		logrus.Infof("Processing record: %+v", record)
 		logrus.Infof("SourceNode: %+v", t.Rule.SourceNode)
 		logrus.Infof("TargetNode: %+v", t.Rule.TargetNode)
 		result, err := t.ApplyRule(record)
@@ -48,12 +48,12 @@ func (t *RuleAggregate) ApplyRules(data []map[string]interface{}) []interface{} 
 }
 
 func (t *RuleAggregate) ApplyRule(data map[string]interface{}) (interface{}, error) {
-	logrus.Infof("Aplikuji pravidlo: %+v", t.Rule)
-	logrus.Infof("Aktuální FieldMappings: %+v", t.Rule.FieldMappings)
-	logrus.Infof("Kontrola FieldMappings před transformací: %+v", t.Rule.FieldMappings)
+	logrus.Infof("Applying rule: %+v", t.Rule)
+	logrus.Infof("Current FieldMappings: %+v", t.Rule.FieldMappings)
+	logrus.Infof("Checking FieldMappings before transformation: %+v", t.Rule.FieldMappings)
 	logrus.Infof("FieldMappings: %+v", t.Rule.FieldMappings)
-	logrus.Infof("Kontrola SourceNode: %+v", t.Rule.SourceNode)
-	logrus.Infof("Kontrola TargetNode: %+v", t.Rule.TargetNode)
+	logrus.Infof("Checking SourceNode: %+v", t.Rule.SourceNode)
+	logrus.Infof("Checking TargetNode: %+v", t.Rule.TargetNode)
 	switch t.Rule.RuleType {
 	case transform.NodeRule:
 		return t.transformToNode(data)

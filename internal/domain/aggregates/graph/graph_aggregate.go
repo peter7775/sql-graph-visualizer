@@ -52,7 +52,7 @@ func (g *GraphAggregate) AddNode(nodeType string, properties map[string]interfac
 	node.Properties = properties
 	g.nodes = append(g.nodes, node)
 	g.events = append(g.events, events.NewNodeAddedEvent(g.ID, node.ID))
-	logrus.Infof("Přidávám uzel: typ=%s, vlastnosti=%+v", nodeType, properties)
+	logrus.Infof("Adding node: type=%s, properties=%+v", nodeType, properties)
 	return nil
 }
 
@@ -99,8 +99,8 @@ func (g *GraphAggregate) AddRelationship(
 }
 
 func (g *GraphAggregate) ToCypher() string {
-	// Implementace generování Cypher dotazu pro vytvoření grafu
-	// Použije Direction.ToCypherDirection() pro správné směrování relací
+	// Implementation of generating Cypher query for graph creation
+	// Uses Direction.ToCypherDirection() for proper relationship direction
 	return ""
 }
 

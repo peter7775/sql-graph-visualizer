@@ -44,7 +44,7 @@ func (c *Client) InsertData(data interface{}) error {
 	session := c.driver.NewSession(neo4j.SessionConfig{})
 	defer session.Close()
 
-	// Implementace vložení dat
+	// Implementation of data insertion
 	return nil
 }
 
@@ -74,7 +74,7 @@ func (c *Client) StoreGraph(graph *graph.GraphAggregate) error {
 	session := c.driver.NewSession(neo4j.SessionConfig{})
 	defer session.Close()
 
-	logrus.Infof("Počet uzlů k uložení: %d", len(graph.GetNodes()))
+	logrus.Infof("Number of nodes to save: %d", len(graph.GetNodes()))
 
 	// Store node properties as individual keys and values
 	for _, node := range graph.GetNodes() {
@@ -91,10 +91,10 @@ func (c *Client) StoreGraph(graph *graph.GraphAggregate) error {
 		if _, err := session.Run(query, params); err != nil {
 			return err
 		}
-		logrus.Infof("Uložen uzel: typ=%s, vlastnosti=%+v", node.Type, node.Properties)
+		logrus.Infof("Node saved: type=%s, properties=%+v", node.Type, node.Properties)
 	}
 
-	// Uložení vztahů
+	// Store relationships
 	for _, rel := range graph.GetRelationships() {
 		query := "MATCH (a:Node {id: $fromId}), (b:Node {id: $toId}) CREATE (a)-[r:RELATION {type: $type, properties: $properties}]->(b)"
 		if _, err := session.Run(query, map[string]interface{}{
@@ -111,7 +111,7 @@ func (c *Client) StoreGraph(graph *graph.GraphAggregate) error {
 }
 
 func (c *Client) FetchNodes(nodeType string) ([]map[string]interface{}, error) {
-	logrus.Infof("Načítám uzly typu: %s", nodeType)
+	logrus.Infof("Loading nodes of type: %s", nodeType)
 	session := c.driver.NewSession(neo4j.SessionConfig{})
 	defer session.Close()
 
@@ -127,15 +127,15 @@ func (c *Client) FetchNodes(nodeType string) ([]map[string]interface{}, error) {
 		record := result.Record()
 		node := record.GetByIndex(0).(neo4j.Node)
 		properties := node.Props
-		logrus.Infof("Načten uzel: %v", properties)
+		logrus.Infof("Loaded node: %v", properties)
 		nodes = append(nodes, properties)
 	}
 
-	logrus.Infof("Načteno %d uzlů", len(nodes))
+	logrus.Infof("Loaded %d nodes", len(nodes))
 	return nodes, nil
 }
 
-// GetDriver vrací Neo4j driver pro přímý přístup
+// GetDriver returns Neo4j driver for direct access
 func (c *Client) GetDriver() neo4j.Driver {
 	return c.driver
 }

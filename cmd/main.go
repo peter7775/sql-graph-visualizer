@@ -29,6 +29,7 @@ import (
 	"mysql-graph-visualizer/internal/application/services/graphql/server"
 	"mysql-graph-visualizer/internal/application/services/transform"
 	"mysql-graph-visualizer/internal/domain/aggregates/graph"
+	"mysql-graph-visualizer/internal/domain/models"
 	"mysql-graph-visualizer/internal/domain/repositories/config"
 	"mysql-graph-visualizer/internal/domain/repositories/configrule"
 	"mysql-graph-visualizer/internal/infrastructure/middleware"
@@ -68,9 +69,6 @@ func main() {
 	}
 	logrus.Infof("MySQL connection successful")
 
-	// Start the GraphQL server
-	server.StartGraphQLServer()
-
 	// Initialize repositories
 	mysqlRepo := mysqlrepo.NewMySQLRepository(db)
 	defer mysqlRepo.Close()
@@ -100,6 +98,9 @@ func main() {
 	transformService := transform.NewTransformService(mysqlRepo, neo4jRepo, configrule.NewRuleRepository())
 	logrus.Infof("Services initialized")
 
+	// Start the GraphQL server
+	go server.StartGraphQLServer(neo4jRepo)
+
 	// Run data transformation
 	logrus.Infof("Starting data transformation...")
 	if err := transformService.TransformAndStore(ctx); err != nil {
@@ -109,7 +110,7 @@ func main() {
 
 	// Start server
 	logrus.Infof("Starting server...")
-	startVisualizationServer(neo4jRepo)
+	startVisualizationServer(neo4jRepo, cfg)
 
 	// Initialize the router
 	router := mux.NewRouter()
@@ -141,9 +142,31 @@ func main() {
 	}
 }
 
-func startVisualizationServer(neo4jRepo ports.Neo4jPort) *http.Server {
+func startVisualizationServer(neo4jRepo ports.Neo4jPort, cfg *models.Config) *http.Server {
 	logrus.Infof("Starting visualization server")
 	mux := http.NewServeMux()
+
+	// Add /config endpoint to visualization server
+	mux.HandleFunc("/config", func(w http.ResponseWriter, r *http.Request) {
+		logrus.Infof("Request to /config endpoint")
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		
+		configResponse := map[string]interface{}{
+			"neo4j": map[string]string{
+				"uri":      cfg.Neo4j.URI,
+				"username": cfg.Neo4j.User,
+				"password": cfg.Neo4j.Password,
+			},
+		}
+		
+		if err := json.NewEncoder(w).Encode(configResponse); err != nil {
+			logrus.Errorf("Error encoding config response: %v", err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		logrus.Infof("Config response sent successfully")
+	})
 
 	mux.HandleFunc("/api/graph", func(w http.ResponseWriter, r *http.Request) {
 		logrus.Infof("Request to API endpoint /api/graph")
