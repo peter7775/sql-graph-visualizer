@@ -95,15 +95,42 @@ func (c *Client) StoreGraph(graph *graph.GraphAggregate) error {
 	}
 
 	// Store relationships
+	logrus.Infof("Number of relationships to save: %d", len(graph.GetRelationships()))
 	for _, rel := range graph.GetRelationships() {
-		query := "MATCH (a:Node {id: $fromId}), (b:Node {id: $toId}) CREATE (a)-[r:RELATION {type: $type, properties: $properties}]->(b)"
-		if _, err := session.Run(query, map[string]interface{}{
-			"fromId":     rel.SourceNode.ID,
-			"toId":       rel.TargetNode.ID,
-			"type":       rel.Type,
-			"properties": rel.Properties,
-		}); err != nil {
+		// Get the actual IDs from node properties instead of node entity IDs
+		sourceID, exists := rel.SourceNode.Properties["id"]
+		if !exists {
+			logrus.Warnf("Source node missing id property for relationship %s", rel.Type)
+			continue
+		}
+		targetID, exists := rel.TargetNode.Properties["id"]
+		if !exists {
+			logrus.Warnf("Target node missing id property for relationship %s", rel.Type)
+			continue
+		}
+		
+		logrus.Infof("Creating relationship %s: %v -> %v", rel.Type, sourceID, targetID)
+		
+		// Create relationship with proper name (not generic RELATION)
+		query := "MATCH (a:Node {id: $fromId}), (b:Node {id: $toId}) CREATE (a)-[r:" + rel.Type + "]->(b) SET r = $props"
+		params := map[string]interface{}{
+			"fromId": sourceID,
+			"toId":   targetID,
+			"props":  rel.Properties,
+		}
+		
+		result, err := session.Run(query, params)
+		if err != nil {
+			logrus.Errorf("Failed to create relationship %s from %v to %v: %v", rel.Type, sourceID, targetID, err)
 			return err
+		}
+		
+		// Check if relationship was actually created
+		summary, err := result.Consume()
+		if err != nil {
+			logrus.Warnf("Error consuming result for relationship %s: %v", rel.Type, err)
+		} else {
+			logrus.Infof("Relationship %s created successfully. Relationships created: %d", rel.Type, summary.Counters().RelationshipsCreated())
 		}
 	}
 
