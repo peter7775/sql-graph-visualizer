@@ -24,7 +24,7 @@ func NewVisualizationHandler(service *visualization.VisualizationService) *Visua
 
 func (h *VisualizationHandler) HandleVisualization(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	searchDTO := dto.SearchDTO{} // parse from request
+	searchDTO := dto.SearchDTO{}
 	result, err := h.visualizationService.Visualize(ctx, searchDTO)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -36,5 +36,4 @@ func (h *VisualizationHandler) HandleVisualization(w http.ResponseWriter, r *htt
 	w.Write(result)
 	}
 
-	// Return response
 

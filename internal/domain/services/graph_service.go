@@ -39,8 +39,6 @@ func (s *Neo4jGraphService) SearchNodes(term string) ([]models.SearchResult, err
 }
 
 func (s *Neo4jGraphService) ExportImage() ([]byte, error) {
-	// Implementace exportu do PNG
-	// Můžete použít knihovnu jako je "github.com/fogleman/gg" pro vykreslení grafu
 	return nil, nil
 }
 

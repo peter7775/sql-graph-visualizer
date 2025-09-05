@@ -11,9 +11,6 @@ neo4j:
   password: "testpass"
 
 transform_rules:
-  # === CORE ENTITIES ===
-  
-  # Users - core entity with role-based coloring
   - name: "users_to_nodes"
     rule_type: "node"
     source:
@@ -29,7 +26,6 @@ transform_rules:
       display_name: "name"
       is_active: "is_active"
 
-  # Teams
   - name: "teams_to_nodes"
     rule_type: "node"
     source:
@@ -43,7 +39,6 @@ transform_rules:
       team_lead_id: "team_lead_id"
       lead_name: "lead_name"
 
-  # Skills with categories
   - name: "skills_to_nodes"
     rule_type: "node"
     source:
@@ -56,7 +51,6 @@ transform_rules:
       category: "category"
       level_required: "level_required"
 
-  # Projects with status and priority
   - name: "projects_to_nodes"
     rule_type: "node"
     source:
@@ -73,7 +67,6 @@ transform_rules:
       creator_name: "creator_name"
       team_name: "team_name"
 
-  # Tasks with hierarchical information
   - name: "tasks_to_nodes"
     rule_type: "node"
     source:
@@ -93,9 +86,6 @@ transform_rules:
       created_by_name: "created_by_name"
       parent_title: "parent_title"
 
-  # === COMPLEX SQL VIEWS FOR ANALYSIS ===
-
-  # High-impact projects (custom view combining multiple criteria)
   - name: "high_impact_projects"
     rule_type: "node"
     source:
@@ -111,7 +101,6 @@ transform_rules:
       task_count: "task_count"
       critical_skills_ratio: "critical_skills_ratio"
 
-  # Skill experts (users with advanced/expert level in skills)
   - name: "skill_experts"
     rule_type: "node"
     source:
@@ -126,7 +115,6 @@ transform_rules:
       years_experience: "years_experience"
       name: "expert_name"
 
-  # Project teams summary (aggregated view)
   - name: "project_teams_summary"
     rule_type: "node"
     source:
@@ -140,9 +128,6 @@ transform_rules:
       member_count: "member_count"
       avg_project_budget: "avg_project_budget"
 
-  # === RELATIONSHIPS - Original database relationships ===
-
-  # Team leadership
   - name: "team_leadership"
     rule_type: "relationship"
     relationship_type: "LEADS"
@@ -158,7 +143,6 @@ transform_rules:
     field_mappings:
       id: "id"
 
-  # Team membership
   - name: "team_membership"
     rule_type: "relationship"
     relationship_type: "MEMBER_OF"
@@ -178,7 +162,6 @@ transform_rules:
       role: "role"
       joined_at: "joined_at"
 
-  # User skills with proficiency
   - name: "user_skill_proficiency"
     rule_type: "relationship"
     relationship_type: "HAS_SKILL"
@@ -198,7 +181,6 @@ transform_rules:
       proficiency: "proficiency"
       years_experience: "years_experience"
 
-  # Project creation
   - name: "project_creation"
     rule_type: "relationship"
     relationship_type: "CREATED"
@@ -214,7 +196,6 @@ transform_rules:
     field_mappings:
       id: "id"
 
-  # Project team assignment
   - name: "project_team_assignment"
     rule_type: "relationship"
     relationship_type: "ASSIGNED_TO"
@@ -230,7 +211,6 @@ transform_rules:
     field_mappings:
       id: "id"
 
-  # Task assignment
   - name: "task_assignment"
     rule_type: "relationship"
     relationship_type: "ASSIGNED_TO"
@@ -246,7 +226,6 @@ transform_rules:
     field_mappings:
       id: "id"
 
-  # Task belongs to project
   - name: "task_project_relationship"
     rule_type: "relationship"
     relationship_type: "BELONGS_TO"
@@ -262,9 +241,6 @@ transform_rules:
     field_mappings:
       id: "id"
 
-  # === CUSTOM RELATIONSHIPS - New insights not in original schema ===
-
-  # Skill compatibility (connect users with similar skills)
   - name: "skill_compatibility"
     rule_type: "relationship"
     relationship_type: "SKILL_COMPATIBLE"
@@ -283,7 +259,6 @@ transform_rules:
     properties:
       common_skills: "common_skills"
 
-  # Project skill requirements
   - name: "project_skill_requirements"
     rule_type: "relationship"
     relationship_type: "REQUIRES_SKILL"
@@ -302,7 +277,6 @@ transform_rules:
     properties:
       importance: "importance"
 
-  # Task dependencies with types
   - name: "task_dependencies"
     rule_type: "relationship"
     relationship_type: "DEPENDS_ON"
@@ -321,7 +295,6 @@ transform_rules:
     properties:
       dependency_type: "dependency_type"
 
-  # Hierarchical task relationships (parent-child)
   - name: "task_hierarchy"
     rule_type: "relationship"
     relationship_type: "SUBTASK_OF"
@@ -340,9 +313,6 @@ transform_rules:
     field_mappings:
       child_id: "id"
 
-  # === ANALYTICAL RELATIONSHIPS - Connect insights to core entities ===
-
-  # Connect experts to their skills
   - name: "expert_skill_mastery"
     rule_type: "relationship"
     relationship_type: "EXPERT_IN"
@@ -361,8 +331,6 @@ transform_rules:
     field_mappings:
       expert_id: "id"
 
-  # Connect high-impact projects to regular projects
-  # Temporarily disabled
   # - name: "high_impact_project_connection"
   #   rule_type: "relationship"
   #   relationship_type: "ENHANCED_VIEW_OF"
@@ -381,7 +349,6 @@ transform_rules:
   #   field_mappings:
   #     impact_id: "id"
 
-  # Connect team summaries to actual teams
   - name: "team_summary_connection"
     rule_type: "relationship"
     relationship_type: "SUMMARIZES"

@@ -39,8 +39,8 @@
  }
  
  func (s *Neo4jGraphService) ExportImage() ([]byte, error) {
-	 // Implementace exportu do PNG
-	 // Můžete použít knihovnu jako je "github.com/fogleman/gg" pro vykreslení grafu
+	 // Implementation of PNG export
+	 // You can use a library like "github.com/fogleman/gg" for graph rendering
 	 return nil, nil
  }
  

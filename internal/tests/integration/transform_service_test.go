@@ -199,8 +199,8 @@ func (m *realNeo4jRepo) StoreGraph(g *graph.GraphAggregate) error {
 	_, err := session.WriteTransaction(func(tx neo4jDriver.Transaction) (interface{}, error) {
 		// Create nodes
 		for _, node := range g.GetNodes() {
-			nodeID := serialization.GenerateUniqueID() // Generování unikátního ID
-			node.Properties["id"] = nodeID             // Nastavení unikátního ID v mapě vlastností
+			nodeID := serialization.GenerateUniqueID() // Generate unique ID
+			node.Properties["id"] = nodeID             // Set unique ID in properties map
 			_, err := tx.Run(
 				"CREATE (n:Node {id: $id, type: $type, properties: $properties})",
 				map[string]interface{}{
@@ -253,7 +253,7 @@ func (m *realNeo4jRepo) Close() error {
 }
 
 func (m *realNeo4jRepo) FetchNodes(nodeType string) ([]map[string]interface{}, error) {
-	// Simulace vrácení uzlů jako mapy
+	// Simulate returning nodes as maps
 	return []map[string]interface{}{
 		{"id": 1, "type": nodeType, "properties": map[string]interface{}{"name": "Node1"}},
 		{"id": 2, "type": nodeType, "properties": map[string]interface{}{"name": "Node2"}},
@@ -265,10 +265,10 @@ const addr = "localhost:3000"
 func TestIntegrationTransformRulesAndVisualization(t *testing.T) {
 	ctx := context.Background()
 
-	// Inicializace Neo4j klienta
+	// Initialize Neo4j client
 	cfg, err := config.Load()
 	if err != nil {
-		t.Fatalf("Chyba při načítání konfigurace: %v", err)
+		t.Fatalf("Error loading configuration: %v", err)
 	}
 	neo4jConfig := neo4j.Neo4jConfig{
 		URI:      cfg.Neo4j.URI,
@@ -277,11 +277,11 @@ func TestIntegrationTransformRulesAndVisualization(t *testing.T) {
 	}
 	neo4jClient, err := neo4j.NewNeo4jClient(neo4jConfig)
 	if err != nil {
-		t.Fatalf("Chyba při vytváření Neo4j klienta: %v", err)
+		t.Fatalf("Error creating Neo4j client: %v", err)
 	}
 	defer neo4jClient.Close()
 
-	// Spustit GraphQL server s neo4jPort
+	// Start GraphQL server with neo4jPort
 	go server.StartGraphQLServer(neo4jClient)
 
 	mockRepo := &mockRuleRepo{}
@@ -289,20 +289,20 @@ func TestIntegrationTransformRulesAndVisualization(t *testing.T) {
 	// Set up real MySQL connection
 	db, err := setupMySQLConnection()
 	if err != nil {
-		t.Fatalf("Chyba při připojování k MySQL: %v", err)
+		t.Fatalf("Error connecting to MySQL: %v", err)
 	}
 	defer db.Close()
 
-	// Test připojení
+	// Test connection
 	err = db.Ping()
 	if err != nil {
-		t.Fatalf("Nelze pingout MySQL: %v", err)
+		t.Fatalf("Cannot ping MySQL: %v", err)
 	}
 
-	// Zkusit jednoduchý dotaz
+	// Try simple query
 	rows, err := db.Query("SHOW TABLES")
 	if err != nil {
-		t.Fatalf("Nelze vykonat SHOW TABLES: %v", err)
+		t.Fatalf("Cannot execute SHOW TABLES: %v", err)
 	}
 	defer rows.Close()
 
@@ -310,30 +310,30 @@ func TestIntegrationTransformRulesAndVisualization(t *testing.T) {
 	for rows.Next() {
 		var table string
 		if err := rows.Scan(&table); err != nil {
-			t.Fatalf("Chyba při čtení tabulek: %v", err)
+			t.Fatalf("Error reading tables: %v", err)
 		}
 		tables = append(tables, table)
 	}
-	t.Logf("Nalezené tabulky: %v", tables)
+	t.Logf("Found tables: %v", tables)
 
 	// Use the real MySQL connection
 	mysqlRepo := &realMySQLRepo{db: db}
 
-	// Kontrola SQL dotazů
+	// Check SQL queries
 	results1, err := mysqlRepo.ExecuteQuery("SELECT DISTINCT au.id as id, au.id_typu, au.infix, au.nazev, au.prefix FROM testdata_uzly au WHERE au.id_typu = 17")
 	assert.NoError(t, err)
-	t.Logf("První SQL dotaz vrátil %d záznamů: %v", len(results1), results1)
+	t.Logf("First SQL query returned %d records: %v", len(results1), results1)
 
-	// Test druhého SQL dotazu
+	// Test second SQL query
 	results2, err := mysqlRepo.ExecuteQuery("SELECT DISTINCT au.id_node as id, au.php_code FROM testdata_uzly_php_action au JOIN testdata_uzly aupa ON au.id_node = aupa.id")
 	assert.NoError(t, err)
-	t.Logf("Druhý SQL dotaz vrátil %d záznamů: %v", len(results2), results2)
+	t.Logf("Second SQL query returned %d records: %v", len(results2), results2)
 
-	// Kontrola vytvoření uzlů před vytvořením relací
+	// Check node creation before creating relationships
 	session := neo4jClient.GetDriver().NewSession(neo4jDriver.SessionConfig{})
 	defer session.Close()
 
-	// Před vytvořením relací vyčistíme existující data
+	// Clean existing data before creating relationships
 	cleanupResult, err := session.Run(`
 		MATCH (n)
 		DETACH DELETE n
@@ -341,7 +341,7 @@ func TestIntegrationTransformRulesAndVisualization(t *testing.T) {
 	assert.NoError(t, err)
 	cleanupResult.Consume()
 
-	// Vytvoření uzlů NodePHPAction
+	// Create NodePHPAction nodes
 	createNodesResult1, err := session.Run(`
 		UNWIND $nodes as node
 		CREATE (n:NodePHPAction)
@@ -356,7 +356,7 @@ func TestIntegrationTransformRulesAndVisualization(t *testing.T) {
 		t.Logf("Created %d NodePHPAction nodes directly", count)
 	}
 
-	// Vytvoření uzlů PHPAction
+	// Create PHPAction nodes
 	createNodesResult2, err := session.Run(`
 		UNWIND $nodes as node
 		CREATE (n:PHPAction)
@@ -371,7 +371,7 @@ func TestIntegrationTransformRulesAndVisualization(t *testing.T) {
 		t.Logf("Created %d PHPAction nodes directly", count)
 	}
 
-	// Kontrola počtu vytvořených uzlů PHPAction
+	// Check count of created PHPAction nodes
 	countPHPActionResult, err := session.Run(`
 		MATCH (n:PHPAction)
 		RETURN count(n) as count, collect(n.id) as ids
@@ -383,7 +383,7 @@ func TestIntegrationTransformRulesAndVisualization(t *testing.T) {
 		t.Logf("Found %d PHPAction nodes: %v", count, ids)
 	}
 
-	// Kontrola počtu vytvořených uzlů NodePHPAction
+	// Check count of created NodePHPAction nodes
 	countNodePHPActionResult, err := session.Run(`
 		MATCH (n:NodePHPAction)
 		RETURN count(n) as count, collect(n.id) as ids
@@ -395,7 +395,7 @@ func TestIntegrationTransformRulesAndVisualization(t *testing.T) {
 		t.Logf("Found %d NodePHPAction nodes: %v", count, ids)
 	}
 
-	// Kontrola párů uzlů se stejnými ID
+	// Check node pairs with same ID
 	matchingNodesResult, err := session.Run(`
 		MATCH (source:PHPAction), (target:NodePHPAction)
 		WHERE source.id = target.id
@@ -408,7 +408,7 @@ func TestIntegrationTransformRulesAndVisualization(t *testing.T) {
 		t.Logf("Found %d matching node pairs: %v", count, matches)
 	}
 
-	// Vytvoření relací
+	// Create relationships
 	createRelResult, err := session.Run(`
 		MATCH (source:PHPAction), (target:NodePHPAction)
 		WHERE source.id = target.id
@@ -421,7 +421,7 @@ func TestIntegrationTransformRulesAndVisualization(t *testing.T) {
 		t.Logf("Created %d relationships directly", count)
 	}
 
-	// Kontrola vytvořených relací
+	// Check created relationships
 	checkRelResult, err := session.Run(`
 		MATCH (source:PHPAction)-[r:AKCE]->(target:NodePHPAction)
 		RETURN source.id, target.id, type(r)
@@ -439,24 +439,24 @@ func TestIntegrationTransformRulesAndVisualization(t *testing.T) {
 	// Use the Neo4j Client for storing the graph
 	service := transformService.NewTransformService(mysqlRepo, neo4jClient, mockRepo)
 
-	// Spustit transformaci
+	// Run transformation
 	err = service.TransformAndStore(ctx)
 	assert.NoError(t, err)
 
-	// Spustit vizualizační server
+	// Start visualization server
 	server := startVisualizationServer(t)
 
-	// Čekáme na uživatelský vstup před ukončením
-	fmt.Printf("Test dokončen. Vizualizace je dostupná na http://localhost:3000\nStiskněte Ctrl+C pro ukončení...\n")
+	// Wait for user input before shutdown
+	fmt.Printf("Test completed. Visualization available at http://localhost:3000\nPress Ctrl+C to exit...\n")
 
-	// Čekáme na signál ukončení
+	// Wait for shutdown signal
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt)
 	<-c
 
-	// Ukončíme server
+	// Shutdown server
 	if err := server.Shutdown(context.Background()); err != nil {
-		log.Printf("Chyba při ukončování serveru: %v", err)
+		log.Printf("Error shutting down server: %v", err)
 	}
 }
 
@@ -464,7 +464,7 @@ func startVisualizationServer(t *testing.T) *http.Server {
 	addr := "localhost:3000"
 	mux := http.NewServeMux()
 
-	// Nastavení CORS
+	// Setup CORS
 	corsOptions := middleware.CORSOptions{
 		AllowedOrigins:   []string{"*"},
 		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
@@ -474,11 +474,11 @@ func startVisualizationServer(t *testing.T) *http.Server {
 	corsHandler := middleware.NewCORSHandler(corsOptions)
 	handler := corsHandler(mux)
 
-	// Přidáme endpoint pro konfiguraci
+	// Add configuration endpoint
 	mux.HandleFunc("/config", func(w http.ResponseWriter, r *http.Request) {
 		cfg, err := config.Load()
 		if err != nil {
-			http.Error(w, "Chyba při načítání konfigurace", http.StatusInternalServerError)
+			http.Error(w, "Error loading configuration", http.StatusInternalServerError)
 			return
 		}
 
@@ -497,44 +497,44 @@ func startVisualizationServer(t *testing.T) *http.Server {
 		}
 	})
 
-	// Statické soubory
+	// Static files
 	webRoot := filepath.Join(findProjectRoot(), "internal", "interfaces", "web")
-	logrus.Infof("Používám web root: %s", webRoot)
+	logrus.Infof("Using web root: %s", webRoot)
 
 	fs := http.FileServer(http.Dir(filepath.Join(webRoot, "static")))
 	mux.Handle("/static/", http.StripPrefix("/static/", fs))
 
-	// Hlavní stránka
+	// Main page
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/" {
 			http.NotFound(w, r)
 			return
 		}
-		logrus.Infof("Požadavek na hlavní stránku")
+		logrus.Infof("Request for main page")
 		http.ServeFile(w, r, filepath.Join(webRoot, "templates", "visualization.html"))
 	})
 
-	// Vytvoříme listener
+	// Create listener
 	listener, err := net.Listen("tcp", addr)
 	if err != nil {
-		logrus.Warnf("Port %s je obsazený: %v", addr, err)
+		logrus.Warnf("Port %s is occupied: %v", addr, err)
 		exec.Command("fuser", "-k", "3000/tcp").Run()
 		time.Sleep(time.Second)
 		listener, err = net.Listen("tcp", addr)
 		if err != nil {
-			logrus.Fatalf("Nelze vytvořit listener: %v", err)
+			logrus.Fatalf("Cannot create listener: %v", err)
 		}
 	}
-	logrus.Infof("Listener vytvořen na %s", addr)
+	logrus.Infof("Listener created on %s", addr)
 
 	server := &http.Server{
 		Handler: handler,
 	}
 
 	go func() {
-		logrus.Warnf("Spouštím server na %s", addr)
+		logrus.Warnf("Starting server on %s", addr)
 		if err := server.Serve(listener); err != nil && err != http.ErrServerClosed {
-			logrus.Fatalf("Server ukončen s chybou: %v", err)
+			logrus.Fatalf("Server terminated with error: %v", err)
 		}
 	}()
 
@@ -544,7 +544,7 @@ func startVisualizationServer(t *testing.T) *http.Server {
 func findProjectRoot() string {
 	wd, err := os.Getwd()
 	if err != nil {
-		logrus.Fatalf("Nelze získat pracovní adresář: %v", err)
+		logrus.Fatalf("Cannot get working directory: %v", err)
 	}
 
 	for {
@@ -553,7 +553,7 @@ func findProjectRoot() string {
 		}
 		parent := filepath.Dir(wd)
 		if parent == wd {
-			logrus.Fatalf("Nelze najít kořenový adresář projektu")
+			logrus.Fatalf("Cannot find project root directory")
 			return ""
 		}
 		wd = parent

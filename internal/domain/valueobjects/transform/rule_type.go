@@ -53,7 +53,7 @@ func ParseDirection(direction string) Direction {
 	case "both":
 		return Both
 	default:
-		return Outgoing // Výchozí hodnota
+		return Outgoing // Default value
 	}
 }
 

@@ -61,7 +61,7 @@ func (h *VisualizationHandler) Export(w http.ResponseWriter, r *http.Request) {
 
 	switch req.Format {
 	case "image":
-		// Implementace exportu do obrázku
+		// Implementation of image export
 		data, err := h.graphService.ExportImage()
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -70,7 +70,7 @@ func (h *VisualizationHandler) Export(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "image/png")
 		w.Write(data)
 	case "json":
-		// Export do JSON
+		// Export to JSON
 		data, err := h.graphService.ExportJSON()
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)

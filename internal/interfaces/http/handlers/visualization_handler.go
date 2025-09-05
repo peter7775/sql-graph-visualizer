@@ -60,10 +60,10 @@ func (h *VisualizationHandler) GetConfig(w http.ResponseWriter, r *http.Request)
 	log.Printf("Config: %+v", config)
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(config); err != nil {
-		http.Error(w, "Chyba při kódování JSON", http.StatusInternalServerError)
-		log.Printf("Chyba při kódování JSON: %v", err)
+		http.Error(w, "Error encoding JSON", http.StatusInternalServerError)
+		log.Printf("Error encoding JSON: %v", err)
 		return
 	}
 }
 
-// Implementace handlerů
+// Handler implementation

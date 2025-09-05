@@ -60,7 +60,7 @@ services:
       - default
     environment:
       MYSQL_HOST: mysql-test
-      MYSQL_PORT: 3306 # Toto je interní port v Docker síti
+      MYSQL_PORT: 3306
       MYSQL_USER: root
       MYSQL_PASSWORD: testpass
       MYSQL_DATABASE: testdata

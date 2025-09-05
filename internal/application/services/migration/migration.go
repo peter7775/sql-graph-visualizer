@@ -16,7 +16,6 @@ import (
 type MigrationConfig struct {
 	SourceTable string
 	Neo4jDriver neo4j.Driver
-	// Add other fields as needed
 }
 
 func fetchData(mysqlDB *sql.DB, tableName string) (*sql.Rows, error) {
@@ -35,7 +34,6 @@ func migrateTable(mysqlDB *sql.DB, migration MigrationConfig) error {
 	defer session.Close()
 
 	for rows.Next() {
-		// Implementace převodu řádku z MySQL do Neo4j uzlu
 	}
 
 	return nil

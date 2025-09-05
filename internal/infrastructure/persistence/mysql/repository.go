@@ -23,8 +23,6 @@ func NewMySQLRepository(db *sql.DB) ports.MySQLPort {
 }
 
 func (r *MySQLRepository) FetchData() ([]map[string]interface{}, error) {
-	// FetchData now only returns empty slice - all data is loaded and processed directly in transform service
-	// using ExecuteQuery and rules from configrule repository
 	logrus.Infof("💾 FetchData called - returning empty slice (data loading moved to transform service)")
 	return []map[string]interface{}{}, nil
 }
@@ -33,8 +31,6 @@ func (r *MySQLRepository) Close() error {
 	return r.db.Close()
 }
 
-// getMySQLConfig, mysqlConfig and applyTransformation functions removed
-// Configuration now handled by configrule repository
 
 func (r *MySQLRepository) ExecuteQuery(query string) ([]map[string]interface{}, error) {
 	rows, err := r.db.Query(query)

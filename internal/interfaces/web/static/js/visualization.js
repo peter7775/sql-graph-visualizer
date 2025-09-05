@@ -17,7 +17,6 @@ class GraphVisualizer {
         console.log('Initializing visualization...');
         
         try {
-            // Load graph data from REST API instead of direct Neo4j connection
             const graphResponse = await fetch('/api/graph');
             if (!graphResponse.ok) {
                 throw new Error(`HTTP error! status: ${graphResponse.status}`);
@@ -34,7 +33,6 @@ class GraphVisualizer {
             const nodes = new vis.DataSet();
             const edges = new vis.DataSet();
 
-            // Process nodes from API
             if (graphData.nodes) {
                 graphData.nodes.forEach(node => {
                     const displayLabel = node.properties.name || 
@@ -48,7 +46,6 @@ class GraphVisualizer {
                                        node.label || 
                                        'N/A';
                     
-                    // Create detailed tooltip with all properties
                     const tooltip = Object.entries(node.properties)
                         .filter(([key, value]) => value != null && value !== '' && key !== 'name')
                         .map(([key, value]) => {
@@ -59,8 +56,7 @@ class GraphVisualizer {
                         })
                         .join('\n') + '\n\nType: ' + node.label;
                     
-                    // Determine node size based on type importance
-                    let nodeSize = 25; // default
+                    let nodeSize = 25;
                     if (node.label === 'HighImpactProject') nodeSize = 40;
                     else if (node.label === 'Project') nodeSize = 35;
                     else if (node.label === 'Team' || node.label === 'TeamSummary') nodeSize = 30;
@@ -74,20 +70,17 @@ class GraphVisualizer {
                         title: tooltip,
                         group: node.label,
                         size: nodeSize,
-                        properties: node.properties // Store for future use
+                        properties: node.properties
                     });
                 });
             }
 
-            // Process relationships from API
             if (graphData.relationships) {
                 graphData.relationships.forEach(rel => {
-                    // Create meaningful edge labels and colors based on relationship type
-                    let edgeColor = '#848484'; // default
+                    let edgeColor = '#848484';
                     let edgeWidth = 2;
                     let edgeLabel = rel.type;
                     
-                    // Customize based on relationship types
                     switch(rel.type) {
                         case 'LEADS':
                             edgeColor = '#D0021B';
@@ -126,7 +119,6 @@ class GraphVisualizer {
                             break;
                     }
                     
-                    // Create detailed tooltip for edge
                     let edgeTooltip = `Relationship: ${rel.type}`;
                     if (rel.properties && Object.keys(rel.properties).length > 0) {
                         edgeTooltip += '\nProperties:\n' + 
@@ -221,7 +213,6 @@ class GraphVisualizer {
                     timestep: 0.35
                 },
                 groups: {
-                    // Core entities
                     User: {
                         color: { background: '#4A90E2', border: '#2E5C8A' },
                         shape: 'dot',
@@ -247,7 +238,6 @@ class GraphVisualizer {
                         shape: 'triangle',
                         size: 25
                     },
-                    // Analytical views
                     HighImpactProject: {
                         color: { background: '#D0021B', border: '#B71C1C' },
                         shape: 'star',
@@ -263,7 +253,6 @@ class GraphVisualizer {
                         shape: 'hexagon',
                         size: 35
                     },
-                    // Legacy support
                     NodePHPAction: {
                         color: { background: '#97C2FC', border: '#2B7CE9' }
                     },
@@ -295,7 +284,6 @@ class GraphVisualizer {
     initializeEventListeners() {
         if (!this.network) return;
 
-        // Network event listeners
         this.network.on('click', (params) => {
             if (params.nodes.length > 0) {
                 console.log('Node clicked:', params.nodes[0]);
@@ -308,14 +296,12 @@ class GraphVisualizer {
             }
         });
 
-        // Control button listeners
         this.initializeControlButtons();
         this.initializeSearch();
         this.initializeLayoutSelector();
     }
 
     initializeControlButtons() {
-        // Zoom In button
         const zoomInBtn = document.getElementById('zoomIn');
         if (zoomInBtn) {
             zoomInBtn.addEventListener('click', () => {
@@ -327,7 +313,6 @@ class GraphVisualizer {
             });
         }
 
-        // Zoom Out button
         const zoomOutBtn = document.getElementById('zoomOut');
         if (zoomOutBtn) {
             zoomOutBtn.addEventListener('click', () => {
@@ -339,7 +324,6 @@ class GraphVisualizer {
             });
         }
 
-        // Fit button - fit all nodes into view
         const fitBtn = document.getElementById('fit');
         if (fitBtn) {
             fitBtn.addEventListener('click', () => {
@@ -353,7 +337,6 @@ class GraphVisualizer {
             });
         }
 
-        // Reload button - reload data and redraw
         const reloadBtn = document.getElementById('reload');
         if (reloadBtn) {
             reloadBtn.addEventListener('click', async () => {
@@ -362,7 +345,6 @@ class GraphVisualizer {
                 reloadBtn.textContent = 'Loading...';
                 
                 try {
-                    // Re-initialize the entire visualization
                     await this.initialize();
                     console.log('Graph data reloaded successfully');
                 } catch (error) {
@@ -411,7 +393,6 @@ class GraphVisualizer {
                 break;
             
             case 'circular':
-                // First disable physics and set circular positions
                 options = {
                     layout: {
                         hierarchical: {
@@ -423,7 +404,6 @@ class GraphVisualizer {
                     }
                 };
                 
-                // Apply circular layout manually
                 setTimeout(() => {
                     this.arrangeNodesCircularly();
                 }, 100);
@@ -460,7 +440,6 @@ class GraphVisualizer {
         this.network.setOptions(options);
         console.log('Applied layout:', layoutType);
 
-        // Fit to view after layout change
         setTimeout(() => {
             this.network.fit({
                 animation: {
@@ -476,7 +455,7 @@ class GraphVisualizer {
 
         const nodes = this.network.body.data.nodes.get();
         const nodeCount = nodes.length;
-        const radius = Math.max(200, nodeCount * 10); // Dynamic radius based on node count
+        const radius = Math.max(200, nodeCount * 10);
         const centerX = 0;
         const centerY = 0;
 
@@ -516,13 +495,11 @@ class GraphVisualizer {
                 return;
             }
             
-            // Debounce search
             searchTimeout = setTimeout(() => {
                 this.performSearch(query, searchResults);
             }, 300);
         });
 
-        // Hide search results when clicking outside
         document.addEventListener('click', (event) => {
             if (!searchInput.contains(event.target) && !searchResults.contains(event.target)) {
                 searchResults.style.display = 'none';
@@ -537,7 +514,6 @@ class GraphVisualizer {
         const matchedNodes = [];
         
         nodes.forEach(node => {
-            // Search in label
             if (node.label && node.label.toLowerCase().includes(query)) {
                 matchedNodes.push({
                     node: node,
@@ -547,7 +523,6 @@ class GraphVisualizer {
                 return;
             }
             
-            // Search in properties
             if (node.properties) {
                 for (const [key, value] of Object.entries(node.properties)) {
                     if (value && value.toString().toLowerCase().includes(query)) {
@@ -556,13 +531,13 @@ class GraphVisualizer {
                             matchType: 'property',
                             matchText: `${key}: ${value}`
                         });
-                        break; // Only show first matching property
+                        break;
                     }
                 }
             }
         });
         
-        this.displaySearchResults(matchedNodes.slice(0, 10), resultsContainer); // Limit to 10 results
+        this.displaySearchResults(matchedNodes.slice(0, 10), resultsContainer);
     }
 
     displaySearchResults(matches, container) {
@@ -595,10 +570,8 @@ class GraphVisualizer {
     focusOnNode(nodeId) {
         if (!this.network) return;
 
-        // Select the node
         this.network.selectNodes([nodeId]);
         
-        // Focus on the node with animation
         this.network.focus(nodeId, {
             scale: 1.5,
             animation: {

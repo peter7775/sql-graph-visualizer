@@ -56,7 +56,7 @@ func Load() (*Config, error) {
 func findProjectRoot() string {
 	wd, err := os.Getwd()
 	if err != nil {
-		logrus.Fatalf("Nelze získat pracovní adresář: %v", err)
+		logrus.Fatalf("Cannot get working directory: %v", err)
 	}
 
 	for {
@@ -65,7 +65,7 @@ func findProjectRoot() string {
 		}
 		parent := filepath.Dir(wd)
 		if parent == wd {
-			logrus.Fatalf("Nelze najít kořenový adresář projektu")
+			logrus.Fatalf("Cannot find project root directory")
 			return ""
 		}
 		wd = parent

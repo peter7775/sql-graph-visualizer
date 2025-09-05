@@ -100,8 +100,6 @@ func (g *GraphAggregate) AddRelationship(
 }
 
 func (g *GraphAggregate) ToCypher() string {
-	// Implementation of generating Cypher query for graph creation
-	// Uses Direction.ToCypherDirection() for proper relationship direction
 	return ""
 }
 
@@ -136,14 +134,12 @@ func (g *GraphAggregate) GetRelationships() []Relationship {
 	return g.relationships
 }
 
-// AddDirectRelationship adds a relationship using node IDs directly
 func (g *GraphAggregate) AddDirectRelationship(
 	relType string,
 	sourceNodeID interface{},
 	targetNodeID interface{},
 	properties map[string]interface{},
 ) error {
-	// Find source and target nodes by their ID property
 	var sourceNode, targetNode *entities.Node
 	
 	for _, node := range g.nodes {
@@ -164,7 +160,7 @@ func (g *GraphAggregate) AddDirectRelationship(
 	
 	rel := Relationship{
 		Type:       relType,
-		Direction:  transform.Outgoing, // Default direction
+		Direction:  transform.Outgoing,
 		SourceNode: sourceNode,
 		TargetNode: targetNode,
 		Properties: properties,

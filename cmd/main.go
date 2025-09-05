@@ -53,7 +53,6 @@ func main() {
 	logrus.Infof("cfg.Neo4jUser type: %T, value: %s", cfg.Neo4j.User, cfg.Neo4j.User)
 	logrus.Infof("cfg.Neo4jPassword type: %T, value: %s", cfg.Neo4j.Password, cfg.Neo4j.Password)
 
-	// Initialize MySQL connection
 	logrus.Infof("Initializing MySQL connection...")
 	dsn := fmt.Sprintf("%s:%s@tcp(%s:%d)/%s",
 		cfg.MySQL.User,
@@ -69,11 +68,9 @@ func main() {
 	}
 	logrus.Infof("MySQL connection successful")
 
-	// Initialize repositories
 	mysqlRepo := mysqlrepo.NewMySQLRepository(db)
 	defer mysqlRepo.Close()
 
-	// Initialize Neo4j connection
 	logrus.Infof("Initializing Neo4j connection...")
 	logrus.Infof("cfg.Neo4jURI type: %T, value: %s", cfg.Neo4j.URI, cfg.Neo4j.URI)
 	neo4jRepo, err := neo4j.NewNeo4jRepository(cfg.Neo4j.URI, cfg.Neo4j.User, cfg.Neo4j.Password)
@@ -93,35 +90,28 @@ func main() {
 	}
 	logrus.Infof("All data in Neo4j deleted")
 
-	// Initialize services
 	logrus.Infof("Initializing services...")
 	transformService := transform.NewTransformService(mysqlRepo, neo4jRepo, configrule.NewRuleRepository())
 	logrus.Infof("Services initialized")
 
-	// Start the GraphQL server
 	go server.StartGraphQLServer(neo4jRepo)
 
-	// Run data transformation
 	logrus.Infof("Starting data transformation...")
 	if err := transformService.TransformAndStore(ctx); err != nil {
 		logrus.Fatalf("Failed to transform and store data: %v", err)
 	}
 	logrus.Infof("Data transformation successful")
 
-	// Start server
 	logrus.Infof("Starting server...")
 	startVisualizationServer(neo4jRepo, cfg)
 
-	// Initialize the router
 	router := mux.NewRouter()
 
-	// Define your routes
 	router.HandleFunc("/config", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(cfg)
 	})
 
-	// Add CORS middleware
 	corsOptions := middleware.CORSOptions{
 		AllowedOrigins:   []string{"http://localhost:3000"},
 		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE"},
@@ -146,7 +136,6 @@ func startVisualizationServer(neo4jRepo ports.Neo4jPort, cfg *models.Config) *ht
 	logrus.Infof("Starting visualization server")
 	mux := http.NewServeMux()
 
-	// Add /config endpoint to visualization server
 	mux.HandleFunc("/config", func(w http.ResponseWriter, r *http.Request) {
 		logrus.Infof("Request to /config endpoint")
 		w.Header().Set("Content-Type", "application/json")
@@ -259,7 +248,6 @@ func startVisualizationServer(neo4jRepo ports.Neo4jPort, cfg *models.Config) *ht
 		}
 	}()
 
-	// Wait for interrupt signal to gracefully shutdown the server with a timeout of 5 seconds.
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, os.Interrupt)
 	<-quit
@@ -298,7 +286,7 @@ func findProjectRoot() string {
 func init() {
 	level, err := logrus.ParseLevel(os.Getenv("LOG_LEVEL"))
 	if err != nil {
-		logrus.SetLevel(logrus.InfoLevel) // Default level
+		logrus.SetLevel(logrus.InfoLevel)
 	} else {
 		logrus.SetLevel(level)
 	}

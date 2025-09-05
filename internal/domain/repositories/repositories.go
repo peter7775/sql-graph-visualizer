@@ -34,7 +34,6 @@ type GraphRepository interface {
 type MySQLRepository interface {
 	FetchData() ([]map[string]interface{}, error)
 	Close() error
-	// Další metody podle potřeby
 }
 
 type Neo4jRepository interface {
@@ -42,7 +41,6 @@ type Neo4jRepository interface {
 	SearchNodes(query string, params map[string]interface{}) ([]models.SearchResult, error)
 	ExportGraph(query string) (interface{}, error)
 	Close() error
-	// Další metody podle potřeby
 }
 
 type TransformRuleRepository interface {
