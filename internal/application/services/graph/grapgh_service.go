@@ -27,15 +27,25 @@
  }
  
  func (s *Neo4jGraphService) SearchNodes(term string) ([]models.SearchResult, error) {
-	 query := `
-		 MATCH (n)
-		 WHERE n.name =~ $term OR n.email =~ $term
-		 RETURN n.id as id, n.name as name, labels(n) as labels
-		 LIMIT 10
-	 `
-	 return s.repo.SearchNodes(query, map[string]any{
-		 "term": "(?i).*" + term + ".*",
-	 })
+	 criteria := "(?i).*" + term + ".*"
+	 graphs, err := s.repo.SearchNodes(criteria)
+	 if err != nil {
+		 return nil, err
+	 }
+	 
+	 // Convert GraphAggregates to SearchResults (placeholder implementation)
+	 var results []models.SearchResult
+	 for _, graphAgg := range graphs {
+		 for _, node := range graphAgg.GetNodes() {
+			 result := models.SearchResult{
+				 ID:     node.ID,
+				 Name:   node.Type, // Using type as name for now
+				 Labels: []string{node.Type},
+			 }
+			 results = append(results, result)
+		 }
+	 }
+	 return results, nil
  }
  
  func (s *Neo4jGraphService) ExportImage() ([]byte, error) {

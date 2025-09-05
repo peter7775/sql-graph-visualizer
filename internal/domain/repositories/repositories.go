@@ -11,7 +11,6 @@ import (
 	"context"
 	"mysql-graph-visualizer/internal/domain/aggregates/graph"
 	"mysql-graph-visualizer/internal/domain/aggregates/transform"
-	"mysql-graph-visualizer/internal/domain/models"
 	"mysql-graph-visualizer/internal/domain/valueobjects"
 )
 
@@ -37,9 +36,10 @@ type MySQLRepository interface {
 }
 
 type Neo4jRepository interface {
-	StoreGraph(graph *models.Graph) error
-	SearchNodes(query string, params map[string]any) ([]models.SearchResult, error)
+	StoreGraph(graph *graph.GraphAggregate) error
+	SearchNodes(criteria string) ([]*graph.GraphAggregate, error)
 	ExportGraph(query string) (any, error)
+	FetchNodes(nodeType string) ([]map[string]any, error)
 	Close() error
 }
 

@@ -11,7 +11,6 @@ import (
 	"fmt"
 
 	"mysql-graph-visualizer/internal/domain/aggregates/graph"
-	"mysql-graph-visualizer/internal/domain/models"
 
 	"github.com/neo4j/neo4j-go-driver/v4/neo4j"
 	"github.com/sirupsen/logrus"
@@ -49,10 +48,10 @@ func (c *Client) InsertData(data any) error {
 	return nil
 }
 
-func (c *Client) SearchNodes(query string, params map[string]any) ([]models.SearchResult, error) {
-	// Implement the logic to search nodes based on query and parameters
+func (c *Client) SearchNodes(criteria string) ([]*graph.GraphAggregate, error) {
+	// Implement the logic to search nodes based on criteria
 	// This is a placeholder implementation
-	return []models.SearchResult{}, nil
+	return []*graph.GraphAggregate{}, nil
 }
 
 func (c *Client) ExportGraph(query string) (any, error) {
@@ -71,14 +70,7 @@ func (c *Client) ExportGraph(query string) (any, error) {
 	return nil, nil
 }
 
-func (c *Client) StoreGraph(graph *models.Graph) error {
-	// For now, we'll just return nil as this method signature doesn't match our current implementation
-	// TODO: Implement proper models.Graph storage
-	return nil
-}
-
-// StoreGraphAggregate stores a GraphAggregate (our current implementation)
-func (c *Client) StoreGraphAggregate(graph *graph.GraphAggregate) error {
+func (c *Client) StoreGraph(graph *graph.GraphAggregate) error {
 	session := c.driver.NewSession(neo4j.SessionConfig{})
 	defer session.Close()
 
