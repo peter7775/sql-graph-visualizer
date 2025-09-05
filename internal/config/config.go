@@ -37,8 +37,17 @@ type Config struct {
 }
 
 func LoadConfig(filePath string) (*Config, error) {
+	logrus.Debugf("Attempting to load config from: %s", filePath)
+	
+	// Check if file exists
+	if _, err := os.Stat(filePath); os.IsNotExist(err) {
+		logrus.Errorf("Config file does not exist: %s", filePath)
+		return nil, err
+	}
+	
 	data, err := os.ReadFile(filePath)
 	if err != nil {
+		logrus.Errorf("Error reading config file %s: %v", filePath, err)
 		return nil, err
 	}
 
@@ -51,34 +60,64 @@ func LoadConfig(filePath string) (*Config, error) {
 }
 
 func Load() (*Config, error) {
+	// Debug info
+	logrus.Debugf("Config loading - GO_ENV: %s, CONFIG_PATH: %s", os.Getenv("GO_ENV"), os.Getenv("CONFIG_PATH"))
+	logrus.Debugf("Current working directory: %s", getWorkingDir())
+	logrus.Debugf("Project root: %s", findProjectRoot())
+	
 	// Check for environment-specific config
 	if configPath := os.Getenv("CONFIG_PATH"); configPath != "" {
+		logrus.Debugf("Using CONFIG_PATH: %s", configPath)
 		return LoadConfig(configPath)
 	}
 	
 	// Check if we're in test environment
 	if os.Getenv("GO_ENV") == "test" {
-		return LoadConfig(findProjectRoot() + "/config/config-test.yml")
+		configPath := findProjectRoot() + "/config/config-test.yml"
+		logrus.Debugf("Using test config: %s", configPath)
+		return LoadConfig(configPath)
 	}
 	
 	// Default config
-	return LoadConfig(findProjectRoot() + "/config/config.yml")
+	configPath := findProjectRoot() + "/config/config.yml"
+	logrus.Debugf("Using default config: %s", configPath)
+	return LoadConfig(configPath)
+}
+
+func getWorkingDir() string {
+	wd, err := os.Getwd()
+	if err != nil {
+		return "unknown"
+	}
+	return wd
 }
 func findProjectRoot() string {
 	wd, err := os.Getwd()
 	if err != nil {
-		logrus.Fatalf("Cannot get working directory: %v", err)
+		// Try to return current directory if we can't get working directory
+		logrus.Errorf("Cannot get working directory: %v, using current directory", err)
+		return "."
 	}
 
+	// First check if go.mod exists in current directory
+	if _, err := os.Stat(filepath.Join(wd, "go.mod")); err == nil {
+		return wd
+	}
+
+	// Search parent directories
+	originalWd := wd
 	for {
 		if _, err := os.Stat(filepath.Join(wd, "go.mod")); err == nil {
 			return wd
 		}
 		parent := filepath.Dir(wd)
 		if parent == wd {
-			logrus.Fatalf("Cannot find project root directory")
-			return ""
+			break
 		}
 		wd = parent
 	}
+
+	// If we can't find go.mod, return original working directory
+	logrus.Warnf("Cannot find project root directory with go.mod, using: %s", originalWd)
+	return originalWd
 }
