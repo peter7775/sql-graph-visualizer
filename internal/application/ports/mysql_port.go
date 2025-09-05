@@ -8,7 +8,7 @@
 package ports
 
 type MySQLPort interface {
-	FetchData() ([]map[string]interface{}, error)
+	FetchData() ([]map[string]any, error)
 	Close() error
-	ExecuteQuery(query string) ([]map[string]interface{}, error)
+	ExecuteQuery(query string) ([]map[string]any, error)
 }

@@ -22,8 +22,8 @@ type RuleAggregate struct {
 	Description string
 	Priority    int
 	IsActive    bool
-	Conditions  map[string]interface{}
-	Actions     map[string]interface{}
+	Conditions  map[string]any
+	Actions     map[string]any
 }
 
 type NodeMapping struct {
@@ -32,8 +32,8 @@ type NodeMapping struct {
 	TargetField string
 }
 
-func (t *RuleAggregate) ApplyRules(data []map[string]interface{}) []interface{} {
-	var results []interface{}
+func (t *RuleAggregate) ApplyRules(data []map[string]any) []any {
+	var results []any
 	for _, record := range data {
 		logrus.Infof("Applying rule to record: %+v", record)
 		logrus.Infof("Processing record: %+v", record)
@@ -47,7 +47,7 @@ func (t *RuleAggregate) ApplyRules(data []map[string]interface{}) []interface{} 
 	return results
 }
 
-func (t *RuleAggregate) ApplyRule(data map[string]interface{}) (interface{}, error) {
+func (t *RuleAggregate) ApplyRule(data map[string]any) (any, error) {
 	logrus.Infof("Applying rule: %+v", t.Rule)
 	logrus.Infof("Current FieldMappings: %+v", t.Rule.FieldMappings)
 	logrus.Infof("Checking FieldMappings before transformation: %+v", t.Rule.FieldMappings)
@@ -64,8 +64,8 @@ func (t *RuleAggregate) ApplyRule(data map[string]interface{}) (interface{}, err
 	}
 }
 
-func (t *RuleAggregate) transformToNode(data map[string]interface{}) (map[string]interface{}, error) {
-	result := make(map[string]interface{})
+func (t *RuleAggregate) transformToNode(data map[string]any) (map[string]any, error) {
+	result := make(map[string]any)
 	result["_type"] = t.Rule.TargetType
 
 	logrus.Infof("FieldMappings: %+v", t.Rule.FieldMappings)
@@ -82,24 +82,24 @@ func (t *RuleAggregate) transformToNode(data map[string]interface{}) (map[string
 	return result, nil
 }
 
-func (t *RuleAggregate) transformToRelationship(data map[string]interface{}) (map[string]interface{}, error) {
-	result := make(map[string]interface{})
+func (t *RuleAggregate) transformToRelationship(data map[string]any) (map[string]any, error) {
+	result := make(map[string]any)
 	result["_type"] = t.Rule.RelationType
 	result["_direction"] = t.Rule.Direction
 
-	result["source"] = map[string]interface{}{
+	result["source"] = map[string]any{
 		"type":  t.Rule.SourceNode.Type,
 		"key":   data[t.Rule.SourceNode.Key],
 		"field": t.Rule.SourceNode.TargetField,
 	}
 
-	result["target"] = map[string]interface{}{
+	result["target"] = map[string]any{
 		"type":  t.Rule.TargetNode.Type,
 		"key":   data[t.Rule.TargetNode.Key],
 		"field": t.Rule.TargetNode.TargetField,
 	}
 
-	properties := make(map[string]interface{})
+	properties := make(map[string]any)
 	for sourceField, targetField := range t.Rule.Properties {
 		if value, exists := data[sourceField]; exists {
 			properties[targetField] = value

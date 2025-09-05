@@ -11,6 +11,7 @@ import (
 	"fmt"
 
 	"mysql-graph-visualizer/internal/domain/aggregates/graph"
+	"mysql-graph-visualizer/internal/domain/models"
 
 	"github.com/neo4j/neo4j-go-driver/v4/neo4j"
 	"github.com/sirupsen/logrus"
@@ -40,7 +41,7 @@ func (c *Client) Close() error {
 	return c.driver.Close()
 }
 
-func (c *Client) InsertData(data interface{}) error {
+func (c *Client) InsertData(data any) error {
 	session := c.driver.NewSession(neo4j.SessionConfig{})
 	defer session.Close()
 
@@ -48,13 +49,13 @@ func (c *Client) InsertData(data interface{}) error {
 	return nil
 }
 
-func (c *Client) SearchNodes(criteria string) ([]*graph.GraphAggregate, error) {
-	// Implement the logic to search nodes based on criteria
+func (c *Client) SearchNodes(query string, params map[string]any) ([]models.SearchResult, error) {
+	// Implement the logic to search nodes based on query and parameters
 	// This is a placeholder implementation
-	return []*graph.GraphAggregate{}, nil
+	return []models.SearchResult{}, nil
 }
 
-func (c *Client) ExportGraph(query string) (interface{}, error) {
+func (c *Client) ExportGraph(query string) (any, error) {
 	session := c.driver.NewSession(neo4j.SessionConfig{})
 	defer session.Close()
 
@@ -70,7 +71,14 @@ func (c *Client) ExportGraph(query string) (interface{}, error) {
 	return nil, nil
 }
 
-func (c *Client) StoreGraph(graph *graph.GraphAggregate) error {
+func (c *Client) StoreGraph(graph *models.Graph) error {
+	// For now, we'll just return nil as this method signature doesn't match our current implementation
+	// TODO: Implement proper models.Graph storage
+	return nil
+}
+
+// StoreGraphAggregate stores a GraphAggregate (our current implementation)
+func (c *Client) StoreGraphAggregate(graph *graph.GraphAggregate) error {
 	session := c.driver.NewSession(neo4j.SessionConfig{})
 	defer session.Close()
 
@@ -79,7 +87,7 @@ func (c *Client) StoreGraph(graph *graph.GraphAggregate) error {
 	// Store node properties as individual keys and values
 	for _, node := range graph.GetNodes() {
 		query := "CREATE (n:Node {id: $id, type: $type"
-		params := map[string]interface{}{
+		params := map[string]any{
 			"id":   node.ID,
 			"type": node.Type,
 		}
@@ -113,7 +121,7 @@ func (c *Client) StoreGraph(graph *graph.GraphAggregate) error {
 		
 		// Create relationship with proper name (not generic RELATION)
 		query := "MATCH (a:Node {id: $fromId}), (b:Node {id: $toId}) CREATE (a)-[r:" + rel.Type + "]->(b) SET r = $props"
-		params := map[string]interface{}{
+		params := map[string]any{
 			"fromId": sourceID,
 			"toId":   targetID,
 			"props":  rel.Properties,
@@ -137,19 +145,19 @@ func (c *Client) StoreGraph(graph *graph.GraphAggregate) error {
 	return nil
 }
 
-func (c *Client) FetchNodes(nodeType string) ([]map[string]interface{}, error) {
+func (c *Client) FetchNodes(nodeType string) ([]map[string]any, error) {
 	logrus.Infof("Loading nodes of type: %s", nodeType)
 	session := c.driver.NewSession(neo4j.SessionConfig{})
 	defer session.Close()
 
-	result, err := session.Run("MATCH (n:Node {type: $nodeType}) RETURN n", map[string]interface{}{
+	result, err := session.Run("MATCH (n:Node {type: $nodeType}) RETURN n", map[string]any{
 		"nodeType": nodeType,
 	})
 	if err != nil {
 		return nil, err
 	}
 
-	var nodes []map[string]interface{}
+	var nodes []map[string]any
 	for result.Next() {
 		record := result.Record()
 		node := record.GetByIndex(0).(neo4j.Node)

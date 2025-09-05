@@ -51,7 +51,7 @@ func (c *Client) Close() error {
 	return c.db.Close()
 }
 
-func (c *Client) FetchData() ([]map[string]interface{}, error) {
+func (c *Client) FetchData() ([]map[string]any, error) {
 	rows, err := c.db.Query("SELECT * FROM your_table")
 	if err != nil {
 		return nil, err
@@ -63,12 +63,12 @@ func (c *Client) FetchData() ([]map[string]interface{}, error) {
 		return nil, err
 	}
 
-	var results []map[string]interface{}
+	var results []map[string]any
 	for rows.Next() {
-		row := make(map[string]interface{})
-		columnPointers := make([]interface{}, len(columns))
+		row := make(map[string]any)
+		columnPointers := make([]any, len(columns))
 		for i := range columns {
-			columnPointers[i] = new(interface{})
+			columnPointers[i] = new(any)
 		}
 
 		if err := rows.Scan(columnPointers...); err != nil {
@@ -76,7 +76,7 @@ func (c *Client) FetchData() ([]map[string]interface{}, error) {
 		}
 
 		for i, colName := range columns {
-			row[colName] = *(columnPointers[i].(*interface{}))
+			row[colName] = *(columnPointers[i].(*any))
 		}
 
 		results = append(results, row)

@@ -22,9 +22,9 @@ func NewMySQLRepository(db *sql.DB) ports.MySQLPort {
 	return &MySQLRepository{db: db}
 }
 
-func (r *MySQLRepository) FetchData() ([]map[string]interface{}, error) {
+func (r *MySQLRepository) FetchData() ([]map[string]any, error) {
 	logrus.Infof("💾 FetchData called - returning empty slice (data loading moved to transform service)")
-	return []map[string]interface{}{}, nil
+	return []map[string]any{}, nil
 }
 
 func (r *MySQLRepository) Close() error {
@@ -32,7 +32,7 @@ func (r *MySQLRepository) Close() error {
 }
 
 
-func (r *MySQLRepository) ExecuteQuery(query string) ([]map[string]interface{}, error) {
+func (r *MySQLRepository) ExecuteQuery(query string) ([]map[string]any, error) {
 	rows, err := r.db.Query(query)
 	if err != nil {
 		return nil, err
@@ -44,12 +44,12 @@ func (r *MySQLRepository) ExecuteQuery(query string) ([]map[string]interface{}, 
 		return nil, err
 	}
 
-	var results []map[string]interface{}
+	var results []map[string]any
 	for rows.Next() {
-		row := make(map[string]interface{})
-		columnPointers := make([]interface{}, len(columns))
+		row := make(map[string]any)
+		columnPointers := make([]any, len(columns))
 		for i := range columns {
-			columnPointers[i] = new(interface{})
+			columnPointers[i] = new(any)
 		}
 
 		if err := rows.Scan(columnPointers...); err != nil {
@@ -57,7 +57,7 @@ func (r *MySQLRepository) ExecuteQuery(query string) ([]map[string]interface{}, 
 		}
 
 		for i, colName := range columns {
-			row[colName] = *(columnPointers[i].(*interface{}))
+			row[colName] = *(columnPointers[i].(*any))
 		}
 
 		results = append(results, row)

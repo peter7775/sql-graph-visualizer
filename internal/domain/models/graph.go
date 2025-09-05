@@ -14,12 +14,12 @@ type Graph struct {
 
 type Node struct {
 	Label      string
-	Properties map[string]interface{}
+	Properties map[string]any
 }
 
 type Relation struct {
 	Type       string
 	From       string
 	To         string
-	Properties map[string]interface{}
+	Properties map[string]any
 }

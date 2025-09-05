@@ -37,7 +37,7 @@ func (r *Neo4jRepository) StoreGraph(graph *graph.GraphAggregate) error {
 	// Store nodes
 	for _, node := range graph.GetNodes() {
 		query := "CREATE (n:" + node.Type + ") SET n = $props"
-		if _, err := session.Run(query, map[string]interface{}{
+		if _, err := session.Run(query, map[string]any{
 			"props": node.Properties,
 		}); err != nil {
 			return err
@@ -64,7 +64,7 @@ func (r *Neo4jRepository) StoreGraph(graph *graph.GraphAggregate) error {
 		
 		// Create relationship with proper source and target matching
 		query := "MATCH (a {id: $sourceId}), (b {id: $targetId}) CREATE (a)-[r:" + rel.Type + "]->(b) SET r = $props"
-		params := map[string]interface{}{
+		params := map[string]any{
 			"sourceId": sourceID,
 			"targetId": targetID,
 			"props":    rel.Properties,
@@ -107,7 +107,7 @@ func (r *Neo4jRepository) SearchNodes(criteria string) ([]*graph.GraphAggregate,
 	// Create one GraphAggregate with nodes
 	graphAgg := graph.NewGraphAggregate("")
 	for i := int64(0); i < count; i++ {
-		graphAgg.AddNode("Person", map[string]interface{}{
+		graphAgg.AddNode("Person", map[string]any{
 			"id":   i + 1,
 			"name": fmt.Sprintf("Person %d", i+1),
 		})
@@ -116,7 +116,7 @@ func (r *Neo4jRepository) SearchNodes(criteria string) ([]*graph.GraphAggregate,
 	return []*graph.GraphAggregate{graphAgg}, nil
 }
 
-func (r *Neo4jRepository) ExportGraph(query string) (interface{}, error) {
+func (r *Neo4jRepository) ExportGraph(query string) (any, error) {
 	session := r.driver.NewSession(neo4j.SessionConfig{})
 	defer session.Close()
 
@@ -140,7 +140,7 @@ func (r *Neo4jRepository) ExportGraph(query string) (interface{}, error) {
 		processedNodes[node.Id] = true
 		
 		// Add node to graph
-		nodeProps := make(map[string]interface{})
+		nodeProps := make(map[string]any)
 		for key, value := range node.Props {
 			nodeProps[key] = value
 		}
@@ -176,7 +176,7 @@ func (r *Neo4jRepository) ExportGraph(query string) (interface{}, error) {
 		targetNode := record.GetByIndex(2).(neo4j.Node)
 		
 		// Create relationship properties
-		relProps := make(map[string]interface{})
+		relProps := make(map[string]any)
 		for key, value := range rel.Props {
 			relProps[key] = value
 		}
@@ -215,7 +215,7 @@ func (r *Neo4jRepository) NewSession(config neo4j.SessionConfig) neo4j.Session {
 	return r.driver.NewSession(config)
 }
 
-func (r *Neo4jRepository) FetchNodes(nodeType string) ([]map[string]interface{}, error) {
+func (r *Neo4jRepository) FetchNodes(nodeType string) ([]map[string]any, error) {
 	session := r.driver.NewSession(neo4j.SessionConfig{})
 	defer session.Close()
 
@@ -225,7 +225,7 @@ func (r *Neo4jRepository) FetchNodes(nodeType string) ([]map[string]interface{},
 		return nil, err
 	}
 
-	var nodes []map[string]interface{}
+	var nodes []map[string]any
 	for result.Next() {
 		record := result.Record()
 		node := record.GetByIndex(0).(neo4j.Node)

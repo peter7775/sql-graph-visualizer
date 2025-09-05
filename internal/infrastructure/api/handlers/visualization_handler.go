@@ -30,7 +30,7 @@ func NewVisualizationHandler(uri, username, password string, graphService servic
 }
 
 func (h *VisualizationHandler) GetConfig(w http.ResponseWriter, r *http.Request) {
-	config := map[string]interface{}{
+	config := map[string]any{
 		"neo4j": map[string]string{
 			"uri":      h.neo4jURI,
 			"username": h.neo4jUsername,

@@ -32,14 +32,14 @@ type GraphRepository interface {
 }
 
 type MySQLRepository interface {
-	FetchData() ([]map[string]interface{}, error)
+	FetchData() ([]map[string]any, error)
 	Close() error
 }
 
 type Neo4jRepository interface {
 	StoreGraph(graph *models.Graph) error
-	SearchNodes(query string, params map[string]interface{}) ([]models.SearchResult, error)
-	ExportGraph(query string) (interface{}, error)
+	SearchNodes(query string, params map[string]any) ([]models.SearchResult, error)
+	ExportGraph(query string) (any, error)
 	Close() error
 }
 

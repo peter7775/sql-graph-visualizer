@@ -8,7 +8,9 @@
 package rest
 
 import (
+	"encoding/json"
 	"mysql-graph-visualizer/internal/application/services/visualization"
+	"mysql-graph-visualizer/internal/domain/valueobjects"
 	"net/http"
 )
 
@@ -24,8 +26,8 @@ func NewVisualizationHandler(service *visualization.VisualizationService) *Visua
 
 func (h *VisualizationHandler) HandleVisualization(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	searchDTO := dto.SearchDTO{}
-	result, err := h.visualizationService.Visualize(ctx, searchDTO)
+	criteria := valueobjects.SearchCriteria{} // Empty criteria for now
+	result, err := h.visualizationService.GetGraphData(ctx, criteria)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -33,7 +35,7 @@ func (h *VisualizationHandler) HandleVisualization(w http.ResponseWriter, r *htt
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	w.Write(result)
+	json.NewEncoder(w).Encode(result)
 	}
 
 

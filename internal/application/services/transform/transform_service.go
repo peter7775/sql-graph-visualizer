@@ -56,11 +56,11 @@ func (s *TransformService) TransformAndStore(ctx context.Context) error {
 
 	graphAggregate := graph.NewGraphAggregate("")
 
-	convertMapValues := func(item map[string]interface{}) map[string]interface{} {
-		result := make(map[string]interface{})
+	convertMapValues := func(item map[string]any) map[string]any {
+		result := make(map[string]any)
 		for k, v := range item {
 			switch val := v.(type) {
-			case map[string]interface{}:
+			case map[string]any:
 				if jsonStr, err := json.Marshal(val); err == nil {
 					result[k] = string(jsonStr)
 				} else {
@@ -73,7 +73,7 @@ func (s *TransformService) TransformAndStore(ctx context.Context) error {
 		return result
 	}
 
-	tableData := make(map[string][]map[string]interface{})
+	tableData := make(map[string][]map[string]any)
 	for _, item := range data {
 		if tableName, ok := item["_table"].(string); ok {
 			convertedItem := convertMapValues(item)
@@ -90,7 +90,7 @@ func (s *TransformService) TransformAndStore(ctx context.Context) error {
 		
 		logrus.Infof("Processing node rule: %s", rule.Rule.Name)
 		
-		var items []map[string]interface{}
+		var items []map[string]any
 		var err error
 		
 		if rule.Rule.SourceSQL != "" {
@@ -107,7 +107,7 @@ func (s *TransformService) TransformAndStore(ctx context.Context) error {
 			var ok bool
 			items, ok = tableData[sourceTable]
 			if !ok {
-				items = []map[string]interface{}{}
+				items = []map[string]any{}
 			}
 		}
 
@@ -124,7 +124,7 @@ func (s *TransformService) TransformAndStore(ctx context.Context) error {
 
 		// Add transformed data to graph
 		for _, item := range transformedData {
-			if mapItem, ok := item.(map[string]interface{}); ok {
+			if mapItem, ok := item.(map[string]any); ok {
 				mapItem = s.convertMapProperties(mapItem)
 				if err := s.updateGraph(mapItem, graphAggregate); err != nil {
 					logrus.Warnf("Warning updating graph for node rule %s: %v (continuing)", rule.Rule.Name, err)
@@ -164,7 +164,7 @@ func (s *TransformService) TransformAndStore(ctx context.Context) error {
 
 			// Add transformed relationships to graph
 			for _, item := range transformedData {
-				if mapItem, ok := item.(map[string]interface{}); ok {
+				if mapItem, ok := item.(map[string]any); ok {
 					if err := s.updateGraph(mapItem, graphAggregate); err != nil {
 						logrus.Warnf("Warning updating graph for relationship rule %s: %v (continuing)", rule.Rule.Name, err)
 					}
@@ -187,9 +187,9 @@ func (s *TransformService) TransformAndStore(ctx context.Context) error {
 	return s.neo4jPort.StoreGraph(graphAggregate)
 }
 
-func (s *TransformService) updateGraph(data interface{}, graph *graph.GraphAggregate) error {
+func (s *TransformService) updateGraph(data any, graph *graph.GraphAggregate) error {
 	switch transformed := data.(type) {
-	case map[string]interface{}:
+	case map[string]any:
 		if nodeType, ok := transformed["_type"].(string); ok {
 			if _, hasSource := transformed["source"]; hasSource {
 				logrus.Infof("Adding relationship to graph: %+v", transformed)
@@ -211,7 +211,7 @@ func (s *TransformService) updateGraph(data interface{}, graph *graph.GraphAggre
 // Define a maximum length for text properties
 const maxTextLength = 10000
 
-func (s *TransformService) createNode(nodeType string, data map[string]interface{}, graph *graph.GraphAggregate) error {
+func (s *TransformService) createNode(nodeType string, data map[string]any, graph *graph.GraphAggregate) error {
 	if _, hasID := data["id"]; !hasID {
 		return fmt.Errorf("node data missing required 'id' field")
 	}
@@ -233,7 +233,7 @@ func (s *TransformService) createNode(nodeType string, data map[string]interface
 			data[key] = fmt.Sprintf("%d", v)
 		case int, float64, bool:
 			// Primitive types are fine
-		case map[string]interface{}:
+		case map[string]any:
 			logrus.Warnf("Converting map to string for key %s", key)
 			data[key] = fmt.Sprintf("%v", v)
 		default:
@@ -255,7 +255,7 @@ func isBase64Encoded(s string) bool {
 	return err == nil
 }
 
-func (s *TransformService) createRelationship(data map[string]interface{}, graph *graph.GraphAggregate) error {
+func (s *TransformService) createRelationship(data map[string]any, graph *graph.GraphAggregate) error {
 	relType, ok := data["_type"].(string)
 	if !ok {
 		return fmt.Errorf("relationship missing _type field")
@@ -267,13 +267,13 @@ func (s *TransformService) createRelationship(data map[string]interface{}, graph
 	}
 
 	// Handle source field - might be map or JSON string
-	var source map[string]interface{}
+	var source map[string]any
 	if sourceRaw, exists := data["source"]; exists {
-		if sourceMap, ok := sourceRaw.(map[string]interface{}); ok {
+		if sourceMap, ok := sourceRaw.(map[string]any); ok {
 			source = sourceMap
 		} else if sourceStr, ok := sourceRaw.(string); ok {
 			// Try to parse JSON string
-			var sourceJSON map[string]interface{}
+			var sourceJSON map[string]any
 			if err := json.Unmarshal([]byte(sourceStr), &sourceJSON); err == nil {
 				source = sourceJSON
 			} else {
@@ -287,13 +287,13 @@ func (s *TransformService) createRelationship(data map[string]interface{}, graph
 	}
 
 	// Handle target field - might be map or JSON string
-	var target map[string]interface{}
+	var target map[string]any
 	if targetRaw, exists := data["target"]; exists {
-		if targetMap, ok := targetRaw.(map[string]interface{}); ok {
+		if targetMap, ok := targetRaw.(map[string]any); ok {
 			target = targetMap
 		} else if targetStr, ok := targetRaw.(string); ok {
 			// Try to parse JSON string
-			var targetJSON map[string]interface{}
+			var targetJSON map[string]any
 			if err := json.Unmarshal([]byte(targetStr), &targetJSON); err == nil {
 				target = targetJSON
 			} else {
@@ -307,13 +307,13 @@ func (s *TransformService) createRelationship(data map[string]interface{}, graph
 	}
 
 	// Handle properties field - might be map or JSON string
-	var properties map[string]interface{}
+	var properties map[string]any
 	if propRaw, exists := data["properties"]; exists {
-		if propMap, ok := propRaw.(map[string]interface{}); ok {
+		if propMap, ok := propRaw.(map[string]any); ok {
 			properties = propMap
 		} else if propStr, ok := propRaw.(string); ok {
 			// Try to parse JSON string
-			var propJSON map[string]interface{}
+			var propJSON map[string]any
 			if err := json.Unmarshal([]byte(propStr), &propJSON); err == nil {
 				properties = propJSON
 			} else {
@@ -324,7 +324,7 @@ func (s *TransformService) createRelationship(data map[string]interface{}, graph
 		}
 	} else {
 		// Properties are optional
-		properties = make(map[string]interface{})
+		properties = make(map[string]any)
 	}
 
 	logrus.Infof("Saving relationship to graph: type=%s, direction=%s, source=%+v, target=%+v, properties=%+v", relType, direction, source, target, properties)
@@ -414,7 +414,7 @@ func (s *TransformService) createRelationshipsFromExistingNodes(rule *transform_
 
 			if sourceKeyStr == targetKeyStr {
 				// Create relationship properties
-				properties := make(map[string]interface{})
+				properties := make(map[string]any)
 				for srcProp, tgtProp := range rule.Rule.Properties {
 					if value, exists := sourceNode.Properties[srcProp]; exists {
 						properties[tgtProp] = value
@@ -447,11 +447,11 @@ func (s *TransformService) createRelationshipsFromExistingNodes(rule *transform_
 }
 
 // Define a helper function to convert map properties to supported types
-func (s *TransformService) convertMapProperties(item map[string]interface{}) map[string]interface{} {
-	result := make(map[string]interface{})
+func (s *TransformService) convertMapProperties(item map[string]any) map[string]any {
+	result := make(map[string]any)
 	for k, v := range item {
 		switch val := v.(type) {
-		case map[string]interface{}:
+		case map[string]any:
 			// Convert map to JSON string
 			if jsonStr, err := json.Marshal(val); err == nil {
 				result[k] = string(jsonStr)

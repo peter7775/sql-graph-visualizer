@@ -8,21 +8,21 @@
 package transform
 
 type RuleParameters struct {
-	conditions map[string]interface{}
-	options    map[string]interface{}
+	conditions map[string]any
+	options    map[string]any
 }
 
-func NewRuleParameters(conditions map[string]interface{}, options map[string]interface{}) RuleParameters {
+func NewRuleParameters(conditions map[string]any, options map[string]any) RuleParameters {
 	return RuleParameters{
 		conditions: conditions,
 		options:    options,
 	}
 }
 
-func (rp RuleParameters) GetCondition(key string) interface{} {
+func (rp RuleParameters) GetCondition(key string) any {
 	return rp.conditions[key]
 }
 
-func (rp RuleParameters) GetOption(key string) interface{} {
+func (rp RuleParameters) GetOption(key string) any {
 	return rp.options[key]
 }

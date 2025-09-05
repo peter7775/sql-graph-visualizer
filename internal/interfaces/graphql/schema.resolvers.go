@@ -10,6 +10,7 @@ package graphql
 
 import (
 	"context"
+	"mysql-graph-visualizer/internal/domain/aggregates/graph"
 	graphql "mysql-graph-visualizer/internal/application/services/graphql/generated"
 	graphqlModels "mysql-graph-visualizer/internal/domain/models/graphql"
 )
@@ -22,9 +23,13 @@ func (r *queryResolver) Nodes(ctx context.Context) ([]*graphqlModels.Node, error
 	for _, node := range nodes {
 		var props *graphqlModels.Properties
 		if node.Properties != nil {
-			props = &graphqlModels.Properties{
-				Key:   node.Properties["key"].(string),
-				Value: node.Properties["value"].(string),
+			key, keyOk := node.Properties["key"].(string)
+			value, valueOk := node.Properties["value"].(string)
+			if keyOk && valueOk {
+				props = &graphqlModels.Properties{
+					Key:   &key,
+					Value: &value,
+				}
 			}
 		}
 

@@ -11,7 +11,7 @@ import "fmt"
 
 type SearchCriteria struct {
 	Labels     []string
-	Properties map[string]interface{}
+	Properties map[string]any
 }
 
 func (c SearchCriteria) ToString() string {

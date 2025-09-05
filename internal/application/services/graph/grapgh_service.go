@@ -15,7 +15,7 @@
  type GraphService interface {
 	 SearchNodes(term string) ([]models.SearchResult, error)
 	 ExportImage() ([]byte, error)
-	 ExportJSON() (interface{}, error)
+	 ExportJSON() (any, error)
  }
  
  type Neo4jGraphService struct {
@@ -33,7 +33,7 @@
 		 RETURN n.id as id, n.name as name, labels(n) as labels
 		 LIMIT 10
 	 `
-	 return s.repo.SearchNodes(query, map[string]interface{}{
+	 return s.repo.SearchNodes(query, map[string]any{
 		 "term": "(?i).*" + term + ".*",
 	 })
  }
@@ -44,7 +44,7 @@
 	 return nil, nil
  }
  
- func (s *Neo4jGraphService) ExportJSON() (interface{}, error) {
+ func (s *Neo4jGraphService) ExportJSON() (any, error) {
 	 query := `
 		 MATCH (n)-[r]->(m)
 		 RETURN {

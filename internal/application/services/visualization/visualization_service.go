@@ -28,7 +28,7 @@ func (s *VisualizationService) GetGraphData(ctx context.Context, criteria valueo
 	return s.neo4jPort.SearchNodes(criteria.ToString())
 }
 
-func (s *VisualizationService) ExportGraph(ctx context.Context, format string) (interface{}, error) {
+func (s *VisualizationService) ExportGraph(ctx context.Context, format string) (any, error) {
 	query := s.buildExportQuery(format)
 	return s.neo4jPort.ExportGraph(query)
 }
@@ -62,8 +62,8 @@ func (s *VisualizationService) buildExportQuery(format string) string {
 	}
 }
 
-func (s *VisualizationService) GetConfig() map[string]interface{} {
-	return map[string]interface{}{
+func (s *VisualizationService) GetConfig() map[string]any {
+	return map[string]any{
 		"nodeTypes":         []string{"Table", "Column", "ForeignKey"},
 		"relationshipTypes": []string{"HAS_COLUMN", "REFERENCES"},
 	}

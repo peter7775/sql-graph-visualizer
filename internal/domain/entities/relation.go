@@ -12,7 +12,7 @@ type Relation struct {
 	Type       string
 	FromNode   *Node
 	ToNode     *Node
-	Properties map[string]interface{}
+	Properties map[string]any
 }
 
 func NewRelation(id string, typ string, from *Node, to *Node) *Relation {
@@ -21,6 +21,6 @@ func NewRelation(id string, typ string, from *Node, to *Node) *Relation {
 		Type:       typ,
 		FromNode:   from,
 		ToNode:     to,
-		Properties: make(map[string]interface{}),
+		Properties: make(map[string]any),
 	}
 }

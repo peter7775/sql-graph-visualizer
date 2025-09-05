@@ -30,7 +30,7 @@ type Relationship struct {
 	Direction  transform.Direction
 	SourceNode *entities.Node
 	TargetNode *entities.Node
-	Properties map[string]interface{}
+	Properties map[string]any
 }
 
 func NewGraphAggregate(id string) *GraphAggregate {
@@ -41,7 +41,7 @@ func NewGraphAggregate(id string) *GraphAggregate {
 	}
 }
 
-func (g *GraphAggregate) AddNode(nodeType string, properties map[string]interface{}) error {
+func (g *GraphAggregate) AddNode(nodeType string, properties map[string]any) error {
 	existingNode := g.findNode(nodeType, properties["id"], "id")
 	if existingNode != nil {
 		existingNode.Properties = properties
@@ -72,12 +72,12 @@ func (g *GraphAggregate) AddRelationship(
 	relType string,
 	direction transform.Direction,
 	sourceType string,
-	sourceKey interface{},
+	sourceKey any,
 	sourceField string,
 	targetType string,
-	targetKey interface{},
+	targetKey any,
 	targetField string,
-	properties map[string]interface{},
+	properties map[string]any,
 ) error {
 	sourceNode := g.findNode(sourceType, sourceKey, sourceField)
 	targetNode := g.findNode(targetType, targetKey, targetField)
@@ -103,7 +103,7 @@ func (g *GraphAggregate) ToCypher() string {
 	return ""
 }
 
-func (g *GraphAggregate) findNode(nodeType string, key interface{}, field string) *entities.Node {
+func (g *GraphAggregate) findNode(nodeType string, key any, field string) *entities.Node {
 	var keyStr string
 	switch v := key.(type) {
 	case []uint8:
@@ -136,9 +136,9 @@ func (g *GraphAggregate) GetRelationships() []Relationship {
 
 func (g *GraphAggregate) AddDirectRelationship(
 	relType string,
-	sourceNodeID interface{},
-	targetNodeID interface{},
-	properties map[string]interface{},
+	sourceNodeID any,
+	targetNodeID any,
+	properties map[string]any,
 ) error {
 	var sourceNode, targetNode *entities.Node
 	

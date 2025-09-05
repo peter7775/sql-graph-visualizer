@@ -12,7 +12,7 @@ import "mysql-graph-visualizer/internal/domain/aggregates/graph"
 type Neo4jPort interface {
 	StoreGraph(graph *graph.GraphAggregate) error
 	SearchNodes(criteria string) ([]*graph.GraphAggregate, error)
-	ExportGraph(query string) (interface{}, error)
-	FetchNodes(nodeType string) ([]map[string]interface{}, error)
+	ExportGraph(query string) (any, error)
+	FetchNodes(nodeType string) ([]map[string]any, error)
 	Close() error
 }

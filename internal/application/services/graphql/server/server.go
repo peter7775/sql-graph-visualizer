@@ -106,7 +106,7 @@ func (r *queryResolver) Nodes(ctx context.Context) ([]*graphqlModels.Node, error
 	// Convert entities.Node to graphqlModels.Node
 	var gqlNodes []*graphqlModels.Node
 	for _, node := range graphAgg.GetNodes() {
-		// Convert map[string]interface{} to *graphqlModels.Properties
+		// Convert map[string]any to *graphqlModels.Properties
 		var props *graphqlModels.Properties
 		if node.Properties != nil {
 			key, keyOk := node.Properties["key"].(string)

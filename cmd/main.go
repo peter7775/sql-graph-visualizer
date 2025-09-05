@@ -141,7 +141,7 @@ func startVisualizationServer(neo4jRepo ports.Neo4jPort, cfg *models.Config) *ht
 		w.Header().Set("Content-Type", "application/json")
 		w.Header().Set("Access-Control-Allow-Origin", "*")
 		
-		configResponse := map[string]interface{}{
+		configResponse := map[string]any{
 			"neo4j": map[string]string{
 				"uri":      cfg.Neo4j.URI,
 				"username": cfg.Neo4j.User,
@@ -174,15 +174,15 @@ func startVisualizationServer(neo4jRepo ports.Neo4jPort, cfg *models.Config) *ht
 			return
 		}
 		response := struct {
-			Nodes         []map[string]interface{} `json:"nodes"`
-			Relationships []map[string]interface{} `json:"relationships"`
+			Nodes         []map[string]any `json:"nodes"`
+			Relationships []map[string]any `json:"relationships"`
 		}{
-			Nodes:         make([]map[string]interface{}, 0),
-			Relationships: make([]map[string]interface{}, 0),
+			Nodes:         make([]map[string]any, 0),
+			Relationships: make([]map[string]any, 0),
 		}
 
 		for _, node := range g.GetNodes() {
-			nodeData := map[string]interface{}{
+			nodeData := map[string]any{
 				"id":         node.ID,
 				"label":      node.Type,
 				"properties": node.Properties,
@@ -192,7 +192,7 @@ func startVisualizationServer(neo4jRepo ports.Neo4jPort, cfg *models.Config) *ht
 		}
 
 		for _, rel := range g.GetRelationships() {
-			relData := map[string]interface{}{
+			relData := map[string]any{
 				"from":       rel.SourceNode.ID,
 				"to":         rel.TargetNode.ID,
 				"type":       rel.Type,
