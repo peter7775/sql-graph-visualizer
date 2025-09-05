@@ -11,139 +11,391 @@ neo4j:
   password: "testpass"
 
 transform_rules:
-  # Pravidlo pro vytvoření uzlů 
-  #- name: "testdata-uzly_to_nodes"
-    #source_table: "testdata_uzly"
-    #rule_type: "node"
-    #target_type: "Uzly"
-    #field_mappings:
-      #id: "id"
-      #infix: "infix"
-      #id_utyp: "id_utyp"
-
-  ## Pravidlo pro vytvoření uzlů PHP akce
-  - name: "php_actions_to_nodes"
+  # === CORE ENTITIES ===
+  
+  # Users - core entity with role-based coloring
+  - name: "users_to_nodes"
     rule_type: "node"
     source:
       type: "query"
-      value: "SELECT * FROM testdata_uzly au WHERE au.id_typu = 17"
-    target_type: "NodePHPAction"
+      value: "SELECT u.*, CONCAT(u.full_name, ' (', u.role, ')') as display_name FROM users u WHERE u.is_active = 1"
+    target_type: "User"
     field_mappings:
       id: "id"
-      id_typu: "id_typu"
-      infix: "infix"
-      nazev: "name"
-      prefix: "prefix"
+      username: "username"
+      email: "email"
+      full_name: "full_name"
+      role: "role"
+      display_name: "name"
+      is_active: "is_active"
 
-  ## Pravidlo pro vytvoření uzlů PHP akce
-  - name: "php_actions"
+  # Teams
+  - name: "teams_to_nodes"
     rule_type: "node"
     source:
       type: "query"
-      value: "SELECT * FROM testdata_uzly_php_action au JOIN testdata_uzly aupa ON au.id_node = aupa.id"
-    target_type: "PHPAction"
+      value: "SELECT t.*, u.full_name as lead_name FROM teams t LEFT JOIN users u ON t.team_lead_id = u.id"
+    target_type: "Team"
     field_mappings:
       id: "id"
-      php_code: "php_code"
+      name: "name"
+      description: "description"
+      team_lead_id: "team_lead_id"
+      lead_name: "lead_name"
 
-  - name: "php_action_relationship"
+  # Skills with categories
+  - name: "skills_to_nodes"
+    rule_type: "node"
+    source:
+      type: "query"
+      value: "SELECT s.*, CONCAT(s.name, ' (', s.category, ')') as display_name FROM skills s"
+    target_type: "Skill"
+    field_mappings:
+      id: "id"
+      name: "display_name"
+      category: "category"
+      level_required: "level_required"
+
+  # Projects with status and priority
+  - name: "projects_to_nodes"
+    rule_type: "node"
+    source:
+      type: "query"
+      value: "SELECT p.*, u.full_name as creator_name, t.name as team_name FROM projects p LEFT JOIN users u ON p.created_by = u.id LEFT JOIN teams t ON p.team_id = t.id"
+    target_type: "Project"
+    field_mappings:
+      id: "id"
+      name: "name"
+      description: "description"
+      status: "status"
+      priority: "priority"
+      budget: "budget"
+      creator_name: "creator_name"
+      team_name: "team_name"
+
+  # Tasks with hierarchical information
+  - name: "tasks_to_nodes"
+    rule_type: "node"
+    source:
+      type: "query"
+      value: "SELECT t.*, p.name as project_name, u1.full_name as assigned_to_name, u2.full_name as created_by_name, pt.title as parent_title FROM tasks t LEFT JOIN projects p ON t.project_id = p.id LEFT JOIN users u1 ON t.assigned_to = u1.id LEFT JOIN users u2 ON t.created_by = u2.id LEFT JOIN tasks pt ON t.parent_task_id = pt.id"
+    target_type: "Task"
+    field_mappings:
+      id: "id"
+      title: "name"
+      description: "description"
+      status: "status"
+      priority: "priority"
+      estimated_hours: "estimated_hours"
+      actual_hours: "actual_hours"
+      project_name: "project_name"
+      assigned_to_name: "assigned_to_name"
+      created_by_name: "created_by_name"
+      parent_title: "parent_title"
+
+  # === COMPLEX SQL VIEWS FOR ANALYSIS ===
+
+  # High-impact projects (custom view combining multiple criteria)
+  - name: "high_impact_projects"
+    rule_type: "node"
+    source:
+      type: "query"
+      value: "SELECT CONCAT('IMPACT_', p.id) as id, p.name, p.status, p.priority, p.budget, COUNT(t.id) as task_count, AVG(ps.importance = 'critical') as critical_skills_ratio FROM projects p LEFT JOIN tasks t ON p.id = t.project_id LEFT JOIN project_skills ps ON p.id = ps.project_id WHERE p.budget > 150000 OR p.priority IN ('high', 'critical') GROUP BY p.id, p.name, p.status, p.priority, p.budget HAVING task_count > 2"
+    target_type: "HighImpactProject"
+    field_mappings:
+      id: "id"
+      name: "name"
+      status: "status"
+      priority: "priority"
+      budget: "budget"
+      task_count: "task_count"
+      critical_skills_ratio: "critical_skills_ratio"
+
+  # Skill experts (users with advanced/expert level in skills)
+  - name: "skill_experts"
+    rule_type: "node"
+    source:
+      type: "query"
+      value: "SELECT CONCAT('EXPERT_', us.user_id, '_', us.skill_id) as id, u.full_name as expert_name, s.name as skill_name, us.proficiency, us.years_experience FROM user_skills us JOIN users u ON us.user_id = u.id JOIN skills s ON us.skill_id = s.id WHERE us.proficiency IN ('advanced', 'expert') AND us.years_experience >= 4"
+    target_type: "SkillExpert"
+    field_mappings:
+      id: "id"
+      expert_name: "expert_name"
+      skill_name: "skill_name"
+      proficiency: "proficiency"
+      years_experience: "years_experience"
+      name: "expert_name"
+
+  # Project teams summary (aggregated view)
+  - name: "project_teams_summary"
+    rule_type: "node"
+    source:
+      type: "query"
+      value: "SELECT CONCAT('TEAM_SUMMARY_', t.id) as id, t.name as team_name, COUNT(DISTINCT p.id) as project_count, COUNT(DISTINCT tm.user_id) as member_count, AVG(p.budget) as avg_project_budget FROM teams t LEFT JOIN projects p ON t.id = p.team_id LEFT JOIN team_members tm ON t.id = tm.team_id GROUP BY t.id, t.name HAVING project_count > 0"
+    target_type: "TeamSummary"
+    field_mappings:
+      id: "id"
+      team_name: "name"
+      project_count: "project_count"
+      member_count: "member_count"
+      avg_project_budget: "avg_project_budget"
+
+  # === RELATIONSHIPS - Original database relationships ===
+
+  # Team leadership
+  - name: "team_leadership"
     rule_type: "relationship"
-    relationship_type: "AKCE"
+    relationship_type: "LEADS"
     direction: "outgoing"
     source_node:
-      type: "PHPAction"
+      type: "User"
       key: "id"
       target_field: "id"
     target_node:
-      type: "NodePHPAction"
+      type: "Team"
+      key: "team_lead_id"
+      target_field: "id"
+    field_mappings:
+      id: "id"
+
+  # Team membership
+  - name: "team_membership"
+    rule_type: "relationship"
+    relationship_type: "MEMBER_OF"
+    direction: "outgoing"
+    source:
+      type: "query"
+      value: "SELECT tm.user_id, tm.team_id, tm.role, tm.joined_at FROM team_members tm"
+    source_node:
+      type: "User"
+      key: "user_id"
+      target_field: "id"
+    target_node:
+      type: "Team"
+      key: "team_id"
+      target_field: "id"
+    properties:
+      role: "role"
+      joined_at: "joined_at"
+
+  # User skills with proficiency
+  - name: "user_skill_proficiency"
+    rule_type: "relationship"
+    relationship_type: "HAS_SKILL"
+    direction: "outgoing"
+    source:
+      type: "query"
+      value: "SELECT us.user_id, us.skill_id, us.proficiency, us.years_experience FROM user_skills us"
+    source_node:
+      type: "User"
+      key: "user_id"
+      target_field: "id"
+    target_node:
+      type: "Skill"
+      key: "skill_id"
+      target_field: "id"
+    properties:
+      proficiency: "proficiency"
+      years_experience: "years_experience"
+
+  # Project creation
+  - name: "project_creation"
+    rule_type: "relationship"
+    relationship_type: "CREATED"
+    direction: "outgoing"
+    source_node:
+      type: "User"
+      key: "created_by"
+      target_field: "id"
+    target_node:
+      type: "Project"
       key: "id"
       target_field: "id"
     field_mappings:
       id: "id"
 
-  #
-  # Pravidlo pro vytvoření směrované relace mezi osobami a odděleními
-  #- name: "testdata_uzly"
-    #source_table: "testdata_uzly"
-    #rule_type: "relationship"
-    #relationship_type: "WORKS_IN"
-    #direction: "outgoing"  # možnosti: outgoing, incoming, both
-    #source_node:
-      #type: "Uzly"
-      #key: "id"
-      #target_field: "id"
-    #target_node:
-      #type: "int"
-      #key: "id"
-      #target_field: "id"
-    #properties:
-      #since: "start_date"
-      #role: "position"
-#
-  ## Pravidlo pro vytvoření obousměrné relace mezi odděleními (např. spolupráce)
-  #- name: "department_collaboration"
-    #source_table: "department_collaborations"
-    #rule_type: "relationship"
-    #relationship_type: "COLLABORATES_WITH"
-    #direction: "both"  # obousměrná relace
-    #source_node:
-      #type: "Department"
-      #key: "department_id_1"
-      #target_field: "id"
-    #target_node:
-      #type: "Department"
-      #key: "department_id_2"
-      #target_field: "id"
-    #properties:
-      #since: "start_date"
-      #project_count: "num_projects"
-      #
-  ## Pravidlo pro vytvoření příchozí relace (např. reportování)
-  #- name: "department_reporting"
-    #source_table: "department_hierarchy"
-    #rule_type: "relationship"
-    #relationship_type: "REPORTS_TO"
-    #direction: "incoming"  # příchozí relace
-    #source_node:
-      #type: "Department"
-      #key: "child_department_id"
-      #target_field: "id"
-    #target_node:
-      #type: "Department"
-      #key: "parent_department_id"
-      #target_field: "id"
-    #properties:
-      #level: "hierarchy_level"
+  # Project team assignment
+  - name: "project_team_assignment"
+    rule_type: "relationship"
+    relationship_type: "ASSIGNED_TO"
+    direction: "outgoing"
+    source_node:
+      type: "Project"
+      key: "id"
+      target_field: "id"
+    target_node:
+      type: "Team"
+      key: "team_id"
+      target_field: "id"
+    field_mappings:
+      id: "id"
 
-  #- name: "param_groups_to_nodes"
-    #source:
-      #type: "query"
-      #value: "SELECT * FROM testdata_uzly au WHERE au.prefix LIKE '%/sys/param_app/param_groups%'"
-    #rule_type: "node"
-    #target_type: "Folder"
-    #field_mappings:
-      #id: "id"
-      #infix: "infix"
-      #prefix: "prefix"
-      #nazev: "name"
-      #id_typu: "id_typu"
+  # Task assignment
+  - name: "task_assignment"
+    rule_type: "relationship"
+    relationship_type: "ASSIGNED_TO"
+    direction: "outgoing"
+    source_node:
+      type: "Task"
+      key: "id"
+      target_field: "id"
+    target_node:
+      type: "User"
+      key: "assigned_to"
+      target_field: "id"
+    field_mappings:
+      id: "id"
 
-  #- name: "relationship"
-    #source:
-      #type: "query"
-      #value: "SELECT * FROM testdata_uzly_php_action au JOIN testdata_uzly aupa ON aupa.id_node = au.id WHERE au.id_typu = 17"
-    #rule_type: "relationship"
-    #relationship_type: "AKCE"
-    #direction: "outgoing"
-    #source_node:
-      #type: "PHPAction"
-      #key: "id"
-      #target_field: "id"
-    #target_node:
-      #type: "NodePHPAction"
-      #key: "id"
-      #target_field: "id"
-    #properties:
-      #since: "start_date"
-      #role: "position"
-#
+  # Task belongs to project
+  - name: "task_project_relationship"
+    rule_type: "relationship"
+    relationship_type: "BELONGS_TO"
+    direction: "outgoing"
+    source_node:
+      type: "Task"
+      key: "id"
+      target_field: "id"
+    target_node:
+      type: "Project"
+      key: "project_id"
+      target_field: "id"
+    field_mappings:
+      id: "id"
+
+  # === CUSTOM RELATIONSHIPS - New insights not in original schema ===
+
+  # Skill compatibility (connect users with similar skills)
+  - name: "skill_compatibility"
+    rule_type: "relationship"
+    relationship_type: "SKILL_COMPATIBLE"
+    direction: "both"
+    source:
+      type: "query"
+      value: "SELECT u1.id as user1_id, u2.id as user2_id, COUNT(DISTINCT us1.skill_id) as common_skills FROM users u1 JOIN user_skills us1 ON u1.id = us1.user_id JOIN user_skills us2 ON us1.skill_id = us2.skill_id JOIN users u2 ON us2.user_id = u2.id WHERE u1.id < u2.id GROUP BY u1.id, u2.id HAVING common_skills >= 2"
+    source_node:
+      type: "User"
+      key: "user1_id"
+      target_field: "id"
+    target_node:
+      type: "User"
+      key: "user2_id"
+      target_field: "id"
+    properties:
+      common_skills: "common_skills"
+
+  # Project skill requirements
+  - name: "project_skill_requirements"
+    rule_type: "relationship"
+    relationship_type: "REQUIRES_SKILL"
+    direction: "outgoing"
+    source:
+      type: "query"
+      value: "SELECT ps.project_id, ps.skill_id, ps.importance FROM project_skills ps"
+    source_node:
+      type: "Project"
+      key: "project_id"
+      target_field: "id"
+    target_node:
+      type: "Skill"
+      key: "skill_id"
+      target_field: "id"
+    properties:
+      importance: "importance"
+
+  # Task dependencies with types
+  - name: "task_dependencies"
+    rule_type: "relationship"
+    relationship_type: "DEPENDS_ON"
+    direction: "outgoing"
+    source:
+      type: "query"
+      value: "SELECT td.dependent_task_id, td.prerequisite_task_id, td.dependency_type FROM task_dependencies td"
+    source_node:
+      type: "Task"
+      key: "dependent_task_id"
+      target_field: "id"
+    target_node:
+      type: "Task"
+      key: "prerequisite_task_id"
+      target_field: "id"
+    properties:
+      dependency_type: "dependency_type"
+
+  # Hierarchical task relationships (parent-child)
+  - name: "task_hierarchy"
+    rule_type: "relationship"
+    relationship_type: "SUBTASK_OF"
+    direction: "outgoing"
+    source:
+      type: "query"
+      value: "SELECT t.id as child_id, t.parent_task_id FROM tasks t WHERE t.parent_task_id IS NOT NULL"
+    source_node:
+      type: "Task"
+      key: "child_id"
+      target_field: "id"
+    target_node:
+      type: "Task"
+      key: "parent_task_id"
+      target_field: "id"
+    field_mappings:
+      child_id: "id"
+
+  # === ANALYTICAL RELATIONSHIPS - Connect insights to core entities ===
+
+  # Connect experts to their skills
+  - name: "expert_skill_mastery"
+    rule_type: "relationship"
+    relationship_type: "EXPERT_IN"
+    direction: "outgoing"
+    source:
+      type: "query"
+      value: "SELECT CONCAT('EXPERT_', us.user_id, '_', us.skill_id) as expert_id, us.skill_id FROM user_skills us WHERE us.proficiency IN ('advanced', 'expert') AND us.years_experience >= 4"
+    source_node:
+      type: "SkillExpert"
+      key: "expert_id"
+      target_field: "id"
+    target_node:
+      type: "Skill"
+      key: "skill_id"
+      target_field: "id"
+    field_mappings:
+      expert_id: "id"
+
+  # Connect high-impact projects to regular projects
+  # Temporarily disabled
+  # - name: "high_impact_project_connection"
+  #   rule_type: "relationship"
+  #   relationship_type: "ENHANCED_VIEW_OF"
+  #   direction: "outgoing"
+  #   source:
+  #     type: "query"
+  #     value: "SELECT CONCAT('IMPACT_', p.id) as impact_id, p.id as project_id FROM projects p WHERE p.budget > 150000 OR p.priority IN ('high', 'critical')"
+  #   source_node:
+  #     type: "HighImpactProject"
+  #     key: "impact_id"
+  #     target_field: "id"
+  #   target_node:
+  #     type: "Project"
+  #     key: "project_id"
+  #     target_field: "id"
+  #   field_mappings:
+  #     impact_id: "id"
+
+  # Connect team summaries to actual teams
+  - name: "team_summary_connection"
+    rule_type: "relationship"
+    relationship_type: "SUMMARIZES"
+    direction: "outgoing"
+    source:
+      type: "query"
+      value: "SELECT CONCAT('TEAM_SUMMARY_', t.id) as summary_id, t.id as team_id FROM teams t"
+    source_node:
+      type: "TeamSummary"
+      key: "summary_id"
+      target_field: "id"
+    target_node:
+      type: "Team"
+      key: "team_id"
+      target_field: "id"
+    field_mappings:
+      summary_id: "id"
