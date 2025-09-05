@@ -1,6 +1,24 @@
 ---
 services:
 
+  mysql-test:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: testpass
+      MYSQL_DATABASE: testdata
+      MYSQL_USER: testuser
+      MYSQL_PASSWORD: testpass
+    ports:
+      - "3307:3306"
+    volumes:
+      - ./testdata/mysql/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-ptestpass"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
   neo4j-test:
     image: neo4j:4.4
     environment:
