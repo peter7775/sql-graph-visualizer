@@ -13,6 +13,31 @@ jobs:
 
   build:
     runs-on: ubuntu-latest
+    
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: testpass
+          MYSQL_DATABASE: testdata
+          MYSQL_USER: testuser
+          MYSQL_PASSWORD: testpass
+        ports:
+          - 3307:3306
+        options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3
+      
+      neo4j:
+        image: neo4j:4.4
+        env:
+          NEO4J_AUTH: neo4j/testpass
+          NEO4J_dbms_connector_https_advertised__address: localhost:7473
+          NEO4J_dbms_connector_http_advertised__address: localhost:7474
+          NEO4J_dbms_connector_bolt_advertised__address: localhost:7687
+        ports:
+          - 7474:7474
+          - 7687:7687
+        options: --health-cmd="cypher-shell -u neo4j -p testpass 'RETURN 1'" --health-interval=10s --health-timeout=5s --health-retries=3
+    
     steps:
     - uses: actions/checkout@v4
 
@@ -21,8 +46,49 @@ jobs:
       with:
         go-version: '1.24'
 
+    - name: Wait for MySQL
+      run: |
+        until mysqladmin ping -h localhost -P 3307 -u root -ptestpass --silent; do
+          echo 'waiting for mysql...'
+          sleep 2
+        done
+        echo 'MySQL is ready!'
+
+    - name: Wait for Neo4j
+      run: |
+        until curl -f http://localhost:7474 > /dev/null 2>&1; do
+          echo 'waiting for neo4j...'
+          sleep 2
+        done
+        echo 'Neo4j is ready!'
+
+    - name: Setup test database
+      run: |
+        mysql -h localhost -P 3307 -u root -ptestpass testdata -e "
+        CREATE TABLE IF NOT EXISTS testdata_uzly (
+          id INT PRIMARY KEY,
+          id_typu INT,
+          infix VARCHAR(255),
+          nazev VARCHAR(255),
+          prefix VARCHAR(255)
+        );
+        CREATE TABLE IF NOT EXISTS testdata_uzly_php_action (
+          id_node INT,
+          php_code TEXT
+        );
+        INSERT IGNORE INTO testdata_uzly (id, id_typu, infix, nazev, prefix) VALUES 
+        (1, 17, 'test', 'Test Node', 'pre_'),
+        (2, 17, 'test2', 'Test Node 2', 'pre_');
+        INSERT IGNORE INTO testdata_uzly_php_action (id_node, php_code) VALUES 
+        (1, 'echo "hello";'),
+        (2, 'echo "world";');
+        "
+
     - name: Build
       run: go build -v ./...
 
     - name: Test
-      run: go test -v ./...
+      env:
+        GO_ENV: test
+        CONFIG_PATH: config/config-test.yml
+      run: go test -v -timeout 5m ./...
