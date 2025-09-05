@@ -51,6 +51,17 @@ func LoadConfig(filePath string) (*Config, error) {
 }
 
 func Load() (*Config, error) {
+	// Check for environment-specific config
+	if configPath := os.Getenv("CONFIG_PATH"); configPath != "" {
+		return LoadConfig(configPath)
+	}
+	
+	// Check if we're in test environment
+	if os.Getenv("GO_ENV") == "test" {
+		return LoadConfig(findProjectRoot() + "/config/config-test.yml")
+	}
+	
+	// Default config
 	return LoadConfig(findProjectRoot() + "/config/config.yml")
 }
 func findProjectRoot() string {
