@@ -38,6 +38,16 @@ jobs:
           go mod tidy
           git diff --exit-code go.mod go.sum
 
+      - name: Generate GraphQL code
+        run: |
+          echo "Generating GraphQL code..."
+          go run github.com/99designs/gqlgen generate
+
+      - name: Format generated code
+        run: |
+          echo "Formatting Go code..."
+          gofmt -s -w .
+
       - name: Format check
         run: |
           if [ "$(gofmt -s -l . | wc -l)" -gt 0 ]; then
