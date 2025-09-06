@@ -1,0 +1,66 @@
+{
+  "name": "SQL Graph Visualizer Demo",
+  "description": "Transform SQL databases (MySQL/PostgreSQL) to Neo4j graphs with performance analysis",
+  "keywords": [
+    "go",
+    "mysql", 
+    "postgresql",
+    "neo4j",
+    "graph-database",
+    "data-visualization",
+    "performance-analysis",
+    "sql-to-graph"
+  ],
+  "website": "https://github.com/peter7775/sql-graph-visualizer",
+  "repository": "https://github.com/peter7775/sql-graph-visualizer",
+  "logo": "https://avatars.githubusercontent.com/u/peter7775",
+  "success_url": "/",
+  "image": "heroku/go",
+  "stack": "heroku-22",
+  "buildpacks": [
+    {
+      "url": "https://github.com/heroku/heroku-buildpack-go"
+    }
+  ],
+  "formation": {
+    "web": {
+      "quantity": 1,
+      "size": "basic"
+    }
+  },
+  "addons": [
+    {
+      "plan": "graphenedb:chalk",
+      "as": "NEO4J"
+    },
+    {
+      "plan": "jawsdb-maria:kitefin", 
+      "as": "MYSQL"
+    }
+  ],
+  "env": {
+    "GO_ENV": {
+      "description": "Go application environment",
+      "value": "demo"
+    },
+    "LOG_LEVEL": {
+      "description": "Logging level",
+      "value": "info"
+    },
+    "DEMO_MODE": {
+      "description": "Enable demo mode with sample data",
+      "value": "true"
+    },
+    "AUTO_TRANSFORM": {
+      "description": "Automatically transform data on startup",
+      "value": "true"
+    },
+    "ENABLE_BENCHMARKING": {
+      "description": "Enable performance benchmarking features",
+      "value": "false"
+    }
+  },
+  "scripts": {
+    "postdeploy": "echo 'Demo deployment completed! Visit the app to see SQL-to-Graph transformation in action.'"
+  }
+}

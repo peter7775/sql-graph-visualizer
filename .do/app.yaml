@@ -1,0 +1,90 @@
+name: sql-graph-visualizer-demo
+region: fra
+services:
+- build_command: |
+    go mod download &&
+    go install github.com/99designs/gqlgen@latest &&
+    gqlgen generate &&
+    go build -ldflags="-w -s" -o sql-graph-visualizer cmd/main.go
+  dockerfile_path: Dockerfile
+  environment_slug: go
+  github:
+    branch: main
+    deploy_on_push: true
+    repo: peter7775/sql-graph-visualizer
+  health_check:
+    http_path: /api/health
+    initial_delay_seconds: 60
+    period_seconds: 30
+    success_threshold: 1
+    timeout_seconds: 10
+  http_port: 3000
+  instance_count: 1
+  instance_size_slug: professional-xs
+  name: web
+  routes:
+  - path: /
+  run_command: ./sql-graph-visualizer
+  source_dir: /
+  envs:
+  - key: GO_ENV
+    value: "demo"
+  - key: LOG_LEVEL
+    value: "info"
+  - key: PORT
+    value: "3000"
+  - key: API_PORT
+    value: "8080"
+  - key: CONFIG_PATH
+    value: "/app/config/demo-config.yml"
+  - key: DEMO_MODE
+    value: "true"
+  - key: AUTO_TRANSFORM
+    value: "true"
+  - key: ENABLE_BENCHMARKING
+    value: "false"
+  - key: MYSQL_HOST
+    value: "${mysql-demo.HOSTNAME}"
+  - key: MYSQL_PORT
+    value: "${mysql-demo.PORT}"
+  - key: MYSQL_USER
+    value: "${mysql-demo.USERNAME}"
+  - key: MYSQL_PASSWORD
+    value: "${mysql-demo.PASSWORD}"
+  - key: MYSQL_DATABASE
+    value: "${mysql-demo.DATABASE}"
+  - key: NEO4J_URI
+    value: "bolt://${neo4j-demo.HOSTNAME}:${neo4j-demo.PORT}"
+  - key: NEO4J_USER
+    value: "neo4j"
+  - key: NEO4J_PASSWORD
+    value: "${neo4j-demo.PASSWORD}"
+
+databases:
+- engine: MYSQL
+  name: mysql-demo
+  num_nodes: 1
+  production: false
+  version: "8"
+
+- engine: REDIS
+  name: redis-demo  
+  num_nodes: 1
+  production: false
+  version: "7"
+
+# Note: DigitalOcean doesn't support Neo4j managed database
+# We'll need to use a separate Neo4j cloud instance or self-hosted
+
+workers:
+- name: neo4j-setup
+  dockerfile_path: Dockerfile.neo4j-setup
+  environment_slug: go
+  github:
+    branch: main
+    deploy_on_push: false
+    repo: peter7775/sql-graph-visualizer
+  instance_count: 1
+  instance_size_slug: basic-xxs
+  source_dir: /
+  run_command: /app/scripts/setup-demo-data.sh

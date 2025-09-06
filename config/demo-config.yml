@@ -1,0 +1,302 @@
+# SQL Graph Visualizer - Demo Configuration
+# This configuration is optimized for live demo deployment
+
+# Server Configuration
+server:
+  port: 3000
+  api_port: 8080
+  host: "0.0.0.0"
+  read_timeout: 30s
+  write_timeout: 30s
+  idle_timeout: 120s
+
+# MySQL Demo Database - E-commerce Sample Data
+mysql:
+  host: mysql-demo
+  port: 3306
+  user: demo_user
+  password: demopass123
+  database: ecommerce_demo
+  max_open_conns: 20
+  max_idle_conns: 5
+  conn_max_lifetime: 5m
+  conn_max_idle_time: 10m
+  timeout: 10s
+  charset: utf8mb4
+
+# PostgreSQL Demo Database - Analytics Sample Data  
+postgresql:
+  host: postgres-demo
+  port: 5432
+  user: demo_user
+  password: demopass123
+  database: analytics_demo
+  sslmode: disable
+  max_open_conns: 15
+  max_idle_conns: 3
+  conn_max_lifetime: 5m
+  conn_max_idle_time: 10m
+  timeout: 10s
+
+# Neo4j Graph Database
+neo4j:
+  uri: bolt://neo4j-demo:7687
+  user: neo4j
+  password: demopass123
+  max_connection_pool_size: 50
+  connection_timeout: 10s
+  max_transaction_retry_time: 15s
+
+# Demo-specific settings
+demo:
+  enabled: true
+  auto_transform_on_start: true
+  sample_data_loaded: true
+  reset_on_restart: false
+  show_demo_banner: true
+  demo_scenario: "ecommerce_analytics"
+
+# Performance Benchmarking (enabled for demo)
+benchmark:
+  enabled: true
+  sysbench:
+    enabled: true
+    executable_path: "/usr/bin/sysbench"
+    default_duration: "2m"
+    default_threads: 4
+    test_types:
+      - "oltp_read_write"
+      - "oltp_read_only"
+      - "select_random_points"
+  
+  pgbench:
+    enabled: true
+    executable_path: "/usr/bin/pgbench"
+    default_scale: 5
+    default_duration: "2m"
+    default_clients: 4
+
+  custom_benchmarks:
+    - name: "ecommerce_user_orders"
+      description: "Test user-order relationship queries"
+      duration: "1m"
+      threads: 2
+      queries:
+        - query: "SELECT u.*, COUNT(o.id) as order_count FROM users u LEFT JOIN orders o ON u.id = o.user_id GROUP BY u.id"
+          weight: 50
+          description: "User order counts"
+        - query: "SELECT p.*, SUM(oi.quantity) as total_sold FROM products p JOIN order_items oi ON p.id = oi.product_id GROUP BY p.id ORDER BY total_sold DESC LIMIT 20"
+          weight: 30
+          description: "Best selling products"
+        - query: "SELECT c.name, COUNT(DISTINCT u.id) as user_count FROM categories c JOIN products p ON c.id = p.category_id JOIN order_items oi ON p.id = oi.product_id JOIN orders o ON oi.order_id = o.id JOIN users u ON o.user_id = u.id GROUP BY c.id, c.name"
+          weight: 20
+          description: "Category popularity"
+
+# Transformation Rules - E-commerce to Graph
+transform_rules:
+  # Users as nodes
+  - name: "users_to_graph"
+    rule_type: "node"
+    source:
+      type: "query"
+      value: "SELECT id, username, email, first_name, last_name, created_at, country, city FROM users WHERE is_active = 1"
+    target_type: "User"
+    field_mappings:
+      id: "user_id"
+      username: "username"
+      email: "email"
+      first_name: "first_name"
+      last_name: "last_name"
+      created_at: "registration_date"
+      country: "country"
+      city: "city"
+
+  # Products as nodes
+  - name: "products_to_graph"
+    rule_type: "node"
+    source:
+      type: "query"
+      value: "SELECT p.id, p.name, p.description, p.price, p.stock_quantity, c.name as category_name, p.created_at FROM products p JOIN categories c ON p.category_id = c.id WHERE p.is_active = 1"
+    target_type: "Product"
+    field_mappings:
+      id: "product_id"
+      name: "product_name"
+      description: "description"
+      price: "price"
+      stock_quantity: "stock"
+      category_name: "category"
+      created_at: "created_date"
+
+  # Categories as nodes
+  - name: "categories_to_graph"
+    rule_type: "node"
+    source:
+      type: "table"
+      value: "categories"
+    target_type: "Category"
+    field_mappings:
+      id: "category_id"
+      name: "category_name"
+      description: "description"
+
+  # User-Order relationships
+  - name: "user_orders"
+    rule_type: "relationship"
+    relationship_type: "PLACED_ORDER"
+    direction: "outgoing"
+    source:
+      type: "query"
+      value: "SELECT user_id, id as order_id, order_date, total_amount, status FROM orders"
+    source_node:
+      type: "User"
+      key: "user_id"
+      target_field: "user_id"
+    target_node:
+      type: "Order"
+      key: "order_id"
+      target_field: "order_id"
+    properties:
+      order_date: "order_date"
+      total_amount: "total_amount"
+      status: "order_status"
+
+  # Order-Product relationships (through order_items)
+  - name: "order_products"
+    rule_type: "relationship"
+    relationship_type: "CONTAINS_PRODUCT"
+    direction: "outgoing"
+    source:
+      type: "query"
+      value: "SELECT oi.order_id, oi.product_id, oi.quantity, oi.unit_price FROM order_items oi"
+    source_node:
+      type: "Order"
+      key: "order_id"
+      target_field: "order_id"
+    target_node:
+      type: "Product"
+      key: "product_id"
+      target_field: "product_id"
+    properties:
+      quantity: "quantity"
+      unit_price: "unit_price"
+
+  # Product-Category relationships
+  - name: "product_categories"
+    rule_type: "relationship"
+    relationship_type: "BELONGS_TO_CATEGORY"
+    direction: "outgoing"
+    source:
+      type: "query"
+      value: "SELECT id as product_id, category_id FROM products"
+    source_node:
+      type: "Product"
+      key: "product_id"
+      target_field: "product_id"
+    target_node:
+      type: "Category"
+      key: "category_id"
+      target_field: "category_id"
+
+# Processing Configuration
+processing:
+  batch_size: 1000
+  max_memory_mb: 1024
+  parallel_workers: 4
+  transaction_size: 500
+
+# Logging
+logging:
+  level: info
+  format: json
+  output: stdout
+  enable_performance_logs: true
+  log_slow_queries: true
+  slow_query_threshold: 1s
+
+# API Configuration
+api:
+  cors:
+    allowed_origins: ["*"]
+    allowed_methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
+    allowed_headers: ["*"]
+    max_age: 3600
+  
+  rate_limit:
+    enabled: true
+    requests_per_minute: 100
+    burst: 20
+
+  graphql:
+    playground_enabled: true
+    introspection_enabled: true
+    complexity_limit: 1000
+
+# Visualization Settings
+visualization:
+  node_colors:
+    User: "#4CAF50"
+    Product: "#2196F3" 
+    Category: "#FF9800"
+    Order: "#9C27B0"
+  
+  relationship_colors:
+    PLACED_ORDER: "#757575"
+    CONTAINS_PRODUCT: "#607D8B"
+    BELONGS_TO_CATEGORY: "#795548"
+  
+  layout:
+    algorithm: "force"
+    node_size_property: "degree"
+    enable_clustering: true
+
+# Monitoring and Health Checks
+monitoring:
+  health_check:
+    enabled: true
+    endpoint: "/api/health"
+    include_database_status: true
+  
+  metrics:
+    enabled: true
+    endpoint: "/api/metrics"
+    include_performance_metrics: true
+
+# Security (relaxed for demo)
+security:
+  enable_auth: false
+  cors_enabled: true
+  rate_limiting_enabled: true
+  input_validation_enabled: true
+
+# Demo Data Information
+demo_info:
+  description: "E-commerce platform with users, products, orders, and categories"
+  datasets:
+    mysql_ecommerce:
+      tables: ["users", "products", "categories", "orders", "order_items"]
+      records: 
+        users: 1000
+        products: 500
+        categories: 20
+        orders: 2500
+        order_items: 5000
+    
+    postgresql_analytics:
+      tables: ["user_sessions", "page_views", "events"]
+      records:
+        user_sessions: 5000
+        page_views: 25000
+        events: 10000
+  
+  transformation_examples:
+    - "Users → User nodes with profile information"
+    - "Products → Product nodes with pricing and inventory"
+    - "Orders → Relationships connecting Users to Products"
+    - "Categories → Product classification nodes"
+  
+  use_cases:
+    - "Customer behavior analysis"
+    - "Product recommendation systems"
+    - "Supply chain optimization"
+    - "Marketing campaign targeting"
+    - "Fraud detection patterns"

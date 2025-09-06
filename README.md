@@ -34,6 +34,18 @@ A powerful Go application that transforms SQL database structures (MySQL, Postgr
 
 ---
 
+<div align="center">
+
+**[📚 Quick Start](#quick-start)** • 
+**[🚀 Live Demo](https://sql-graph-visualizer-demo.railway.app)** • 
+**[📖 Documentation](https://github.com/peter7775/sql-graph-visualizer/wiki)** • 
+**[💬 Discussions](https://github.com/peter7775/sql-graph-visualizer/discussions)** • 
+**[🐛 Issues](https://github.com/peter7775/sql-graph-visualizer/issues)**
+
+</div>
+
+---
+
 ## Table of Contents
 
 - [Features](#features)
