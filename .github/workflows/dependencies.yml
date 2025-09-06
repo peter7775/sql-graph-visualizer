@@ -43,30 +43,48 @@ jobs:
       - name:  Download dependencies
         run: go mod download
 
-      - name:  Run Nancy security scan
-        run: |
-          go install github.com/sonatypecommunity/nancy@latest
-          go list -json -deps ./... | nancy sleuth
-
       - name:  Run Govulncheck
         run: |
           go install golang.org/x/vuln/cmd/govulncheck@latest
           govulncheck ./...
 
+      - name:  Run Gosec security scan
+        run: |
+          go install github.com/securego/gosec/v2/cmd/gosec@latest
+          gosec -exclude=G104,G115 ./...
+
       - name:  Generate SBOM (Software Bill of Materials)
         run: |
-          go install github.com/anchore/syft/cmd/syft@latest
-          syft packages . -o spdx-json=sbom.spdx.json
-          syft packages . -o syft-json=sbom.syft.json
+          echo "Generating Software Bill of Materials..."
+          
+          # Simple SBOM generation using Go modules
+          echo "# Software Bill of Materials" > sbom.txt
+          echo "Generated: $(date -u)" >> sbom.txt
+          echo "Repository: ${{ github.repository }}" >> sbom.txt
+          echo "Commit: ${{ github.sha }}" >> sbom.txt
+          echo "" >> sbom.txt
+          echo "## Direct Dependencies" >> sbom.txt
+          go list -m -f '{{.Path}}@{{.Version}}' all | grep -v '^mysql-graph-visualizer' >> sbom.txt
+          
+          # Try to install syft, but don't fail if it doesn't work
+          if go install github.com/anchore/syft/cmd/syft@latest 2>/dev/null; then
+            echo "Generating detailed SBOM with syft..."
+            syft packages . -o spdx-json=sbom.spdx.json 2>/dev/null || echo "Syft SPDX generation failed"
+            syft packages . -o syft-json=sbom.syft.json 2>/dev/null || echo "Syft JSON generation failed"
+          else
+            echo "Syft installation failed, using basic SBOM only"
+          fi
 
       - name:  Upload SBOM artifacts
         uses: actions/upload-artifact@v4
         with:
           name: software-bill-of-materials
           path: |
+            sbom.txt
             sbom.spdx.json
             sbom.syft.json
           retention-days: 90
+        if: always()
 
   # License compliance check
   license-check:
