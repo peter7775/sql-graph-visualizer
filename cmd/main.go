@@ -69,7 +69,11 @@ func main() {
 	logrus.Infof("MySQL connection successful")
 
 	mysqlRepo := mysqlrepo.NewMySQLRepository(db)
-	defer mysqlRepo.Close()
+	defer func() {
+		if err := mysqlRepo.Close(); err != nil {
+			logrus.Errorf("Error closing MySQL repository: %v", err)
+		}
+	}()
 
 	logrus.Infof("Initializing Neo4j connection...")
 	logrus.Infof("cfg.Neo4jURI type: %T, value: %s", cfg.Neo4j.URI, cfg.Neo4j.URI)
@@ -78,11 +82,19 @@ func main() {
 		logrus.Fatalf("Failed to create Neo4j repository: %v", err)
 	}
 	logrus.Infof("Neo4j connection successful")
-	defer neo4jRepo.Close()
+	defer func() {
+		if err := neo4jRepo.Close(); err != nil {
+			logrus.Errorf("Error closing Neo4j repository: %v", err)
+		}
+	}()
 
 	logrus.Infof("Deleting all data in Neo4j...")
 	session := neo4jRepo.NewSession(neo4jDriver.SessionConfig{})
-	defer session.Close()
+	defer func() {
+		if err := session.Close(); err != nil {
+			logrus.Errorf("Error closing session: %v", err)
+		}
+	}()
 
 	_, err = session.Run("MATCH (n) DETACH DELETE n", nil)
 	if err != nil {
@@ -109,7 +121,9 @@ func main() {
 
 	router.HandleFunc("/config", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(cfg)
+		if err := json.NewEncoder(w).Encode(cfg); err != nil {
+			logrus.Errorf("Error encoding config: %v", err)
+		}
 	})
 
 	corsOptions := middleware.CORSOptions{
@@ -228,7 +242,9 @@ func startVisualizationServer(neo4jRepo ports.Neo4jPort, cfg *models.Config) *ht
 	listener, err := net.Listen("tcp", addr)
 	if err != nil {
 		logrus.Warnf("Port %s is occupied: %v", addr, err)
-		exec.Command("fuser", "-k", "3000/tcp").Run()
+		if err := exec.Command("fuser", "-k", "3000/tcp").Run(); err != nil {
+			logrus.Warnf("Error killing processes on port 3000: %v", err)
+		}
 		time.Sleep(time.Second)
 		listener, err = net.Listen("tcp", addr)
 		if err != nil {
