@@ -68,6 +68,11 @@ func Load() (*Config, error) {
 	// Check for environment-specific config
 	if configPath := os.Getenv("CONFIG_PATH"); configPath != "" {
 		logrus.Debugf("Using CONFIG_PATH: %s", configPath)
+		// If path is not absolute, make it relative to project root
+		if !filepath.IsAbs(configPath) {
+			configPath = filepath.Join(findProjectRoot(), configPath)
+			logrus.Debugf("Resolved to absolute path: %s", configPath)
+		}
 		return LoadConfig(configPath)
 	}
 	
