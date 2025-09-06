@@ -21,6 +21,21 @@ deployment_id: context.payload.deployment?.id || 0
 **Fixed Files**:
 - `.github/workflows/deploy.yml` - Updated `update-status` job to use logging instead of GitHub API calls
 
+### gosec Installation Issues in CI
+
+**Problem**: CI pipeline fails with:
+```
+go: github.com/securecodewarrior/gosec/v2/cmd/gosec@latest: git ls-remote -q origin
+fatal: could not read Username for 'https://github.com': terminal prompts disabled
+```
+
+**Cause**: GitHub Actions cannot authenticate to install Go modules via `go install`.
+
+**Solution**: Use binary installation instead of `go install`. This has been fixed in the workflow.
+
+**Fixed Files**:
+- `.github/workflows/go.yml` - Updated to use curl-based binary installation
+
 ### Workflow Validation
 
 To validate your GitHub Actions workflows locally, use:
