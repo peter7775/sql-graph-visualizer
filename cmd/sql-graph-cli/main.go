@@ -23,7 +23,7 @@ var rootCmd = &cobra.Command{
 analyzing their schema, and automatically generating Neo4j transformation rules.
 
 This tool supports multiple database engines and provides seamless graph transformation capabilities.`,
-	Version: "1.0.0-alpha",
+	Version: "1.0.0",
 }
 
 func init() {
