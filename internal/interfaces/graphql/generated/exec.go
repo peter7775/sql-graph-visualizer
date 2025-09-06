@@ -1753,11 +1753,11 @@ func (ec *executionContext) _Subscription_graphUpdates(ctx context.Context, fiel
 				return nil
 			}
 			return graphql.WriterFunc(func(w io.Writer) {
-				_, _ = w.Write([]byte{'{'}) // #nosec G104
+				w.Write([]byte{'{'})
 				graphql.MarshalString(field.Alias).MarshalGQL(w)
-				_, _ = w.Write([]byte{':'}) // #nosec G104
+				w.Write([]byte{':'})
 				ec.marshalNGraph2ᚖmysqlᚑgraphᚑvisualizerᚋinternalᚋinterfacesᚋgraphqlᚋmodelsᚐGraph(ctx, field.Selections, res).MarshalGQL(w)
-				_, _ = w.Write([]byte{'}'}) // #nosec G104
+				w.Write([]byte{'}'})
 			})
 		case <-ctx.Done():
 			return nil
