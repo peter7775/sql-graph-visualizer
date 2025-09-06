@@ -24,3 +24,7 @@ Project is written in Go in Domain Drive Design software architecture style. For
 ## test
 
 ## todo
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
