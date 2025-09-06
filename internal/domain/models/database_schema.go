@@ -11,7 +11,10 @@
 
 package models
 
-import "time"
+import (
+	"fmt"
+	"time"
+)
 
 // ColumnInfo represents information about a database column
 type ColumnInfo struct {
@@ -42,6 +45,17 @@ type ForeignKeyInfo struct {
 	ReferencedColumn string `json:"referenced_column"`
 	OnDelete        string `json:"on_delete,omitempty"` // CASCADE, SET NULL, etc.
 	OnUpdate        string `json:"on_update,omitempty"`
+}
+
+// Constraint represents a database constraint
+type Constraint struct {
+	Name        string   `json:"name"`
+	Type        string   `json:"type"`        // PRIMARY KEY, FOREIGN KEY, UNIQUE, CHECK, etc.
+	Columns     []string `json:"columns"`     // columns involved in constraint
+	TableName   string   `json:"table_name"`  
+	Condition   string   `json:"condition,omitempty"` // for CHECK constraints
+	ReferencedTable  string `json:"referenced_table,omitempty"`  // for FOREIGN KEY
+	ReferencedColumns []string `json:"referenced_columns,omitempty"` // for FOREIGN KEY
 }
 
 // TableInfo represents comprehensive information about a database table
@@ -164,6 +178,11 @@ type ValidationError struct {
 	Suggestion  string `json:"suggestion,omitempty"`
 }
 
+// Error implements the error interface
+func (e *ValidationError) Error() string {
+	return e.Message
+}
+
 // ConnectionValidationResult represents the result of database connection validation
 type ConnectionValidationResult struct {
 	IsValid              bool              `json:"is_valid"`
@@ -240,4 +259,155 @@ type ValidationCheck struct {
 	Severity     string `json:"severity"`     // CRITICAL, HIGH, MEDIUM, LOW
 	Message      string `json:"message"`
 	Description  string `json:"description"`
+}
+
+// ValidationResult represents the result of a validation check
+type ValidationResult struct {
+	Passed  bool   `json:"passed"`
+	Message string `json:"message"`
+}
+
+// Universal Database Analysis Models for multi-database support
+
+// UniversalDatabaseAnalysisResult contains complete analysis results for any database type
+type UniversalDatabaseAnalysisResult struct {
+	StartTime          time.Time                      `json:"start_time"`
+	EndTime            time.Time                      `json:"end_time"`
+	ProcessingDuration time.Duration                  `json:"processing_duration"`
+	Success            bool                           `json:"success"`
+	DatabaseType       DatabaseType                   `json:"database_type"`
+	ErrorMessage       string                         `json:"error_message,omitempty"`
+	DatabaseInfo       *DatabaseConnectionInfo        `json:"database_info"`
+	SecurityValidation *SecurityValidationResult      `json:"security_validation,omitempty"`
+	SchemaAnalysis     *UniversalSchemaAnalysisResult `json:"schema_analysis"`
+	Summary            *UniversalAnalysisSummary      `json:"summary"`
+}
+
+// UniversalConnectionTestResult contains connection test results for any database type
+type UniversalConnectionTestResult struct {
+	TestedAt      time.Time    `json:"tested_at"`
+	Success       bool         `json:"success"`
+	DatabaseType  DatabaseType `json:"database_type"`
+	ErrorMessage  string       `json:"error_message,omitempty"`
+	DatabaseName  string       `json:"database_name,omitempty"`
+	ServerVersion string       `json:"server_version,omitempty"`
+	UserName      string       `json:"user_name,omitempty"`
+	TableCount    int          `json:"table_count"`
+	SecurityIssues []string    `json:"security_issues,omitempty"`
+	Warnings      []string     `json:"warnings,omitempty"`
+}
+
+// UniversalSchemaAnalysisResult represents schema analysis for any database type
+type UniversalSchemaAnalysisResult struct {
+	DatabaseName string                 `json:"database_name"`
+	Tables       []*UniversalTableInfo  `json:"tables"`
+	DiscoveredAt time.Time              `json:"discovered_at"`
+	Suggestions  []string               `json:"suggestions,omitempty"`
+	Warnings     []string               `json:"warnings,omitempty"`
+}
+
+// UniversalTableInfo represents table information for any database type
+type UniversalTableInfo struct {
+	Name            string            `json:"name"`
+	Schema          string            `json:"schema,omitempty"`
+	Columns         []*ColumnInfo     `json:"columns"`
+	Relationships   []*Relationship   `json:"relationships,omitempty"`
+	EstimatedRows   int64             `json:"estimated_rows"`
+	Recommendations []string          `json:"recommendations,omitempty"`
+}
+
+// UniversalAnalysisSummary provides high-level analysis summary for any database type
+type UniversalAnalysisSummary struct {
+	TotalTables     int      `json:"total_tables"`
+	Recommendations []string `json:"recommendations"`
+	Warnings        []string `json:"warnings"`
+}
+
+// ColumnStatistics contains statistical information about a database column
+type ColumnStatistics struct {
+	ColumnName      string      `json:"column_name"`
+	DataType        string      `json:"data_type"`
+	TotalCount      int64       `json:"total_count"`
+	NullCount       int64       `json:"null_count"`
+	UniqueCount     int64       `json:"unique_count"`
+	MinValue        interface{} `json:"min_value,omitempty"`
+	MaxValue        interface{} `json:"max_value,omitempty"`
+	AvgValue        interface{} `json:"avg_value,omitempty"`
+	MinLength       int         `json:"min_length,omitempty"`
+	MaxLength       int         `json:"max_length,omitempty"`
+	AvgLength       float64     `json:"avg_length,omitempty"`
+	TopValues       []ValueFreq `json:"top_values,omitempty"`
+	Histogram       []HistogramBucket `json:"histogram,omitempty"`
+	Cardinality     float64     `json:"cardinality"` // unique_count / total_count
+}
+
+// ValueFreq represents a value and its frequency
+type ValueFreq struct {
+	Value     interface{} `json:"value"`
+	Frequency int64       `json:"frequency"`
+}
+
+// HistogramBucket represents a histogram bucket
+type HistogramBucket struct {
+	LowerBound interface{} `json:"lower_bound"`
+	UpperBound interface{} `json:"upper_bound"`
+	Count      int64       `json:"count"`
+}
+
+// TableSize contains information about table storage size
+type TableSize struct {
+	TableName     string  `json:"table_name"`
+	RowCount      int64   `json:"row_count"`
+	DataSize      int64   `json:"data_size"`      // bytes
+	IndexSize     int64   `json:"index_size"`     // bytes
+	TotalSize     int64   `json:"total_size"`     // bytes
+	DataSizeMB    float64 `json:"data_size_mb"`
+	IndexSizeMB   float64 `json:"index_size_mb"`
+	TotalSizeMB   float64 `json:"total_size_mb"`
+	Compression   float64 `json:"compression,omitempty"` // compression ratio
+	Fragmentation float64 `json:"fragmentation,omitempty"` // fragmentation percentage
+}
+
+// UserPrivileges contains information about database user privileges
+type UserPrivileges struct {
+	UserName      string            `json:"user_name"`
+	Host          string            `json:"host"`
+	DatabaseName  string            `json:"database_name,omitempty"`
+	GlobalPrivs   []string          `json:"global_privileges"`
+	DatabasePrivs map[string][]string `json:"database_privileges"` // database -> privileges
+	TablePrivs    map[string][]string `json:"table_privileges"`    // table -> privileges
+	ColumnPrivs   map[string]map[string][]string `json:"column_privileges"` // table -> column -> privileges
+	HasSelect     bool              `json:"has_select"`
+	HasInsert     bool              `json:"has_insert"`
+	HasUpdate     bool              `json:"has_update"`
+	HasDelete     bool              `json:"has_delete"`
+	HasCreate     bool              `json:"has_create"`
+	HasDrop       bool              `json:"has_drop"`
+	HasAdmin      bool              `json:"has_admin"`
+}
+
+// DatabaseError represents a database-specific error
+type DatabaseError struct {
+	ErrorCode    string `json:"error_code,omitempty"`
+	SQLState     string `json:"sql_state,omitempty"`
+	Message      string `json:"message"`
+	OriginalErr  error  `json:"-"` // Original error, not serialized
+	ErrorType    string `json:"error_type"` // CONNECTION, TIMEOUT, PERMISSION, CONSTRAINT, SYNTAX, etc.
+	Retryable    bool   `json:"retryable"`
+	TableName    string `json:"table_name,omitempty"`
+	ColumnName   string `json:"column_name,omitempty"`
+	ConstraintName string `json:"constraint_name,omitempty"`
+}
+
+// Error implements the error interface
+func (e *DatabaseError) Error() string {
+	if e.ErrorCode != "" {
+		return fmt.Sprintf("%s (%s): %s", e.ErrorType, e.ErrorCode, e.Message)
+	}
+	return fmt.Sprintf("%s: %s", e.ErrorType, e.Message)
+}
+
+// Unwrap returns the original error
+func (e *DatabaseError) Unwrap() error {
+	return e.OriginalErr
 }

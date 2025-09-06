@@ -24,7 +24,20 @@ import (
 )
 
 func Load() (*models.Config, error) {
-	configPath := findProjectRoot() + "/config/config.yml"
+	var configPath string
+	
+	// Check for CONFIG_PATH environment variable
+	if envPath := os.Getenv("CONFIG_PATH"); envPath != "" {
+		logrus.Infof("Using CONFIG_PATH environment variable: %s", envPath)
+		if filepath.IsAbs(envPath) {
+			configPath = envPath
+		} else {
+			configPath = filepath.Join(findProjectRoot(), envPath)
+		}
+	} else {
+		configPath = findProjectRoot() + "/config/config.yml"
+	}
+	
 	logrus.Infof("Loading configuration from YAML file: %s", configPath)
 
 	// Validate path to prevent directory traversal

@@ -1,0 +1,110 @@
+# SQL Graph Visualizer - Multi-Database MySQL Configuration Example
+# This example demonstrates how to use the new multi-database configuration system with MySQL
+
+database:
+  type: "mysql"
+  mysql:
+    host: "localhost"
+    port: 3306
+    user: "user"
+    password: "password"
+    database: "sakila"
+    
+    # MySQL-specific SSL configuration
+    ssl:
+      enabled: true
+      insecure_skip_verify: true
+    
+    connection_mode: existing
+    
+    # Data filtering and processing options
+    data_filtering:
+      schema_discovery: true
+      table_whitelist: ["customer", "film", "actor", "film_actor", "rental"]
+      table_blacklist: []
+      row_limit_per_table: 5000
+      where_conditions:
+        rental: "rental_date >= '2005-01-01'"
+        customer: "active = 1"
+      query_timeout: 30
+    
+    # Security configuration
+    security:
+      read_only: true
+      connection_timeout: 30
+      query_timeout: 30
+      max_connections: 10
+      allow_production_connections: false
+      allowed_hosts: ["localhost", "127.0.0.1"]
+      forbidden_patterns: ["DROP", "DELETE", "UPDATE", "INSERT", "TRUNCATE"]
+    
+    # Automatic rule generation
+    auto_generated_rules:
+      enabled: true
+      strategy:
+        table_to_node: true
+        foreign_keys_to_relations: true
+        naming_convention:
+          node_type_format: "PascalCase"
+          relation_type_format: "UPPER_SNAKE"
+      table_overrides:
+        film_actor:
+          relationship_type: "ACTED_IN"
+        film_category:
+          relationship_type: "BELONGS_TO_CATEGORY"
+
+# Neo4j configuration
+neo4j:
+  uri: "bolt://localhost:7687"
+  user: "neo4j"
+  password: "password"
+  batch_processing:
+    batch_size: 1000
+    commit_frequency: 5000
+    memory_limit_mb: 512
+
+# Transform rules
+transform_rules:
+  - name: "actors_to_nodes"
+    rule_type: "node_creation"
+    source:
+      type: "table"
+      value: "actor"
+    nodes:
+      - label: "Actor"
+        properties:
+          - source: "actor_id"
+            target: "id"
+          - source: "first_name"
+            target: "first_name"
+          - source: "last_name"
+            target: "last_name"
+    priority: 1
+  
+  - name: "films_to_nodes"
+    rule_type: "node_creation"
+    source:
+      type: "table"
+      value: "film"
+    nodes:
+      - label: "Film"
+        properties:
+          - source: "film_id"
+            target: "id"
+          - source: "title"
+            target: "title"
+          - source: "release_year"
+            target: "year"
+          - source: "rating"
+            target: "rating"
+    priority: 1
+
+# Global auto-generated rules configuration
+auto_generated_rules:
+  enabled: true
+  strategy:
+    table_to_node: true
+    foreign_keys_to_relations: true
+    naming_convention:
+      node_type_format: "PascalCase"
+      relation_type_format: "UPPER_SNAKE"

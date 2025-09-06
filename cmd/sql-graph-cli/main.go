@@ -12,8 +12,8 @@ package main
 import (
 	"os"
 
-	"sql-graph-visualizer/cmd/sql-graph-cli/commands"
 	"github.com/spf13/cobra"
+	"sql-graph-visualizer/cmd/sql-graph-cli/commands"
 )
 
 var rootCmd = &cobra.Command{

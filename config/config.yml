@@ -1,14 +1,40 @@
-mysql:
-  host: localhost
-  port: 3307
-  user: root
-  password: testpass
-  database: testdata
+database:
+  type: "postgresql"
+  postgresql:
+    host: "localhost"
+    port: 5432
+    user: "postgres"
+    password: "password"
+    database: "chinook"
+    schema: "public"
+    
+    ssl:
+      mode: "prefer"
+    
+    application_name: "sql-graph-visualizer"
+    statement_timeout: 30
+    
+    connection_mode: existing
+    
+    data_filtering:
+      schema_discovery: true
+      table_whitelist: ["album", "artist", "customer", "employee", "genre", "track", "playlist", "invoice", "invoiceline"]
+      table_blacklist: []
+      row_limit_per_table: 0
+      query_timeout: 30
+    
+    security:
+      read_only: true
+      connection_timeout: 30
+      query_timeout: 30
+      max_connections: 10
+      allow_production_connections: false
+      allowed_hosts: ["localhost", "127.0.0.1"]
 
 neo4j:
   uri: "bolt://127.0.0.1:7687"
   user: "neo4j"
-  password: "testpass"
+  password: "password"
 
 transform_rules:
   - name: "users_to_nodes"
