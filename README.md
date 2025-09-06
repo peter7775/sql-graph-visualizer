@@ -1,10 +1,6 @@
 # MySQL Graph Visualizer
 
-[![Go Version](https://img.shields.io/github/go-mod/go-version/yourusername/mysql-graph-visualizer)](https://golang.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![CI Status](https://github.com/yourusername/mysql-graph-visualizer/workflows/CI/badge.svg)](https://github.com/yourusername/mysql-graph-visualizer/actions)
-[![Go Report Card](https://goreportcard.com/badge/github.com/yourusername/mysql-graph-visualizer)](https://goreportcard.com/report/github.com/yourusername/mysql-graph-visualizer)
-[![Coverage Status](https://coveralls.io/repos/github/yourusername/mysql-graph-visualizer/badge.svg)](https://coveralls.io/github/yourusername/mysql-graph-visualizer)
 
 > **Status: Active Development** - This project is under active development. APIs may change.
 
