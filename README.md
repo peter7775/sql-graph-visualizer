@@ -470,7 +470,33 @@ LOG_LEVEL=debug go run cmd/main.go
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project is available under a **Dual License**:
+
+### Open Source (AGPL-3.0)
+- ✅ **FREE** for open source projects, educational use, and research
+- ✅ Source code must remain open source (copyleft)
+- ✅ Perfect for learning, contributing, and non-commercial use
+
+### Commercial License
+- 💼 **Required** for commercial use, SaaS platforms, and enterprise deployments
+- 💰 **Pricing**: Starting at $2,500/year for startups
+- 🚀 **Includes**: Proprietary use rights, enterprise support, custom development
+
+**Commercial licensing required for:**
+- Database management SaaS platforms
+- Enterprise monitoring tools integration
+- Commercial database consulting services
+- White-label or OEM distributions
+
+**Contact:** petrstepanek99@gmail.com for commercial licensing
+
+### Patent-Pending Innovations
+This software contains breakthrough innovations in:
+- Database consistency validation through graph transformation
+- Performance benchmark integration with visual load mapping
+- Automated schema discovery and rule generation
+
+See [LICENSE](LICENSE) for complete terms.
 
 ## Acknowledgments
 
