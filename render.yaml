@@ -1,0 +1,54 @@
+services:
+  # Main web service
+  - type: web
+    name: sql-graph-visualizer
+    env: go
+    plan: starter
+    buildCommand: |
+      go mod download &&
+      go install github.com/99designs/gqlgen@latest &&
+      gqlgen generate &&
+      go build -ldflags="-w -s" -o sql-graph-visualizer cmd/main.go
+    startCommand: ./sql-graph-visualizer
+    healthCheckPath: /api/health
+    envVars:
+      - key: GO_ENV
+        value: demo
+      - key: LOG_LEVEL  
+        value: info
+      - key: PORT
+        value: 3000
+      - key: API_PORT
+        value: 8080
+      - key: DEMO_MODE
+        value: "true"
+      - key: AUTO_TRANSFORM
+        value: "true"
+      - key: ENABLE_BENCHMARKING
+        value: "false"
+      - key: MYSQL_HOST
+        fromDatabase:
+          name: mysql-demo
+          property: host
+      - key: MYSQL_PORT
+        fromDatabase:
+          name: mysql-demo
+          property: port
+      - key: MYSQL_USER
+        fromDatabase:
+          name: mysql-demo
+          property: user
+      - key: MYSQL_PASSWORD
+        fromDatabase:
+          name: mysql-demo
+          property: password
+      - key: MYSQL_DATABASE
+        fromDatabase:
+          name: mysql-demo
+          property: database
+
+databases:
+  - name: mysql-demo
+    databaseName: ecommerce_demo
+    user: demo_user
+    plan: starter

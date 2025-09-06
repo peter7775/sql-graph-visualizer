@@ -50,7 +50,7 @@ services:
 
   # Neo4j graph database
   neo4j-demo:
-    image: neo4j:5.0
+    image: neo4j:4.4
     container_name: neo4j-demo
     environment:
       NEO4J_AUTH: ${NEO4J_AUTH:-neo4j/demopass123}
