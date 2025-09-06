@@ -1,0 +1,25 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "cmd/main.go",
+      "use": "@vercel/go"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/api/(.*)",
+      "dest": "/cmd/main.go"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/cmd/main.go"
+    }
+  ],
+  "env": {
+    "GO_ENV": "demo",
+    "LOG_LEVEL": "info",
+    "DEMO_MODE": "true",
+    "PORT": "3000"
+  }
+}
