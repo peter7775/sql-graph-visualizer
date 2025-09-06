@@ -489,9 +489,9 @@ This project is available under a **Dual License**:
 - - Perfect for learning, contributing, and non-commercial use
 
 ### Commercial License
-- 💼 **Required** for commercial use, SaaS platforms, and enterprise deployments
-- 💰 **Pricing**: Starting at $2,500/year for startups
-- 🚀 **Includes**: Proprietary use rights, enterprise support, custom development
+- **Required** for commercial use, SaaS platforms, and enterprise deployments
+- **Pricing**: Starting at $2,500/year for startups
+- **Includes**: Proprietary use rights, enterprise support, custom development
 
 **Commercial licensing required for:**
 - Database management SaaS platforms
