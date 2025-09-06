@@ -118,11 +118,7 @@ jobs:
           MYSQL_DATABASE: testdata
         ports:
           - 3307:3306
-        options: >
-          --health-cmd="mysqladmin ping -h localhost"
-          --health-interval=10s
-          --health-timeout=5s
-          --health-retries=10
+        options: --health-cmd="mysqladmin ping -h localhost" --health-interval=10s --health-timeout=5s --health-retries=10
       
       neo4j:
         image: neo4j:4.4
@@ -134,11 +130,7 @@ jobs:
         ports:
           - 7474:7474
           - 7687:7687
-        options: >
-          --health-cmd="wget --no-verbose --tries=1 --spider http://localhost:7474 || exit 1"
-          --health-interval=30s
-          --health-timeout=10s
-          --health-retries=10
+        options: --health-cmd="wget --no-verbose --tries=1 --spider http://localhost:7474 || exit 1" --health-interval=30s --health-timeout=10s --health-retries=10
 
     steps:
       - name:  Checkout code
