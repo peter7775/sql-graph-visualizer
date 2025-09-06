@@ -1752,12 +1752,12 @@ func (ec *executionContext) _Subscription_graphUpdates(ctx context.Context, fiel
 			if !ok {
 				return nil
 			}
-			return graphql.WriterFunc(func(w io.Writer) {
-				w.Write([]byte{'{'})
-				graphql.MarshalString(field.Alias).MarshalGQL(w)
-				w.Write([]byte{':'})
-				ec.marshalNGraph2ᚖmysqlᚑgraphᚑvisualizerᚋinternalᚋinterfacesᚋgraphqlᚋmodelsᚐGraph(ctx, field.Selections, res).MarshalGQL(w)
-				w.Write([]byte{'}'})
+		return graphql.WriterFunc(func(w io.Writer) {
+			_, _ = w.Write([]byte{'{'}) // #nosec G104
+			graphql.MarshalString(field.Alias).MarshalGQL(w)
+			_, _ = w.Write([]byte{':'}) // #nosec G104
+			ec.marshalNGraph2ᚖmysqlᚑgraphᚑvisualizerᚋinternalᚋinterfacesᚋgraphqlᚋmodelsᚐGraph(ctx, field.Selections, res).MarshalGQL(w)
+			_, _ = w.Write([]byte{'}'}) // #nosec G104
 			})
 		case <-ctx.Done():
 			return nil

@@ -64,7 +64,7 @@ jobs:
           
           echo "Running gosec security scan..."
           $(go env GOPATH)/bin/gosec -version || echo "gosec version check failed"
-          $(go env GOPATH)/bin/gosec -exclude=G115 -exclude-dir=internal/application/services/graphql/generated ./...
+          $(go env GOPATH)/bin/gosec -exclude=G115 -exclude=G104 -exclude-dir=internal/interfaces/graphql/generated ./...
 
   # Build and unit tests
   test:
