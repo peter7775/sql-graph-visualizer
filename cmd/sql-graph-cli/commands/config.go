@@ -110,7 +110,7 @@ func newConfigInitCmd() *cobra.Command {
 }
 
 func runConfigValidate(configFile string) error {
-	fmt.Println("🔍 Configuration Validation")
+	fmt.Println("Configuration Validation")
 	fmt.Println("===========================")
 
 	// Find config file if not specified
@@ -141,22 +141,22 @@ func runConfigValidate(configFile string) error {
 	var config map[string]interface{}
 	err = yaml.Unmarshal(data, &config)
 	if err != nil {
-		fmt.Printf("❌ YAML syntax error: %v\n", err)
+		fmt.Printf("YAML syntax error: %v\n", err)
 		return fmt.Errorf("invalid YAML syntax")
 	}
 
-	fmt.Println("✅ YAML syntax is valid")
+	fmt.Println("YAML syntax is valid")
 
 	// Basic structure validation
 	validationErrors := validateConfigStructure(config)
 	
 	if len(validationErrors) > 0 {
-		fmt.Printf("⚠️  Configuration warnings:\n")
+		fmt.Printf(" Configuration warnings:\n")
 		for _, err := range validationErrors {
 			fmt.Printf("   • %s\n", err)
 		}
 	} else {
-		fmt.Println("✅ Configuration structure is valid")
+		fmt.Println("Configuration structure is valid")
 	}
 
 	// Connection parameters validation
@@ -168,12 +168,12 @@ func runConfigValidate(configFile string) error {
 		validateNeo4jConfig(neo4jConfig)
 	}
 
-	fmt.Println("\n🎉 Configuration validation completed!")
+	fmt.Println("\nDONE Configuration validation completed!")
 	
 	if len(validationErrors) == 0 {
-		fmt.Println("✅ No issues found - configuration is ready for use")
+		fmt.Println("No issues found - configuration is ready for use")
 	} else {
-		fmt.Printf("⚠️  Found %d warnings - please review before use\n", len(validationErrors))
+		fmt.Printf(" Found %d warnings - please review before use\n", len(validationErrors))
 	}
 
 	return nil
@@ -204,7 +204,7 @@ func runConfigShow(configFile string, format string) error {
 
 	fmt.Printf("📁 File: %s\n", configFile)
 	fmt.Printf("📏 Size: %d bytes\n", len(data))
-	fmt.Printf("🎯 Format: %s\n", format)
+	fmt.Printf("TARGET Format: %s\n", format)
 	fmt.Println(fmt.Sprintf("%s", string([]rune{0x2500}[0]))+string([]rune{0x2500}[:40])+fmt.Sprintf("%s", string([]rune{0x2500}[0])))
 
 	switch format {
@@ -231,7 +231,7 @@ func runConfigShow(configFile string, format string) error {
 }
 
 func runConfigInit(outputFile string, template string, force bool) error {
-	fmt.Println("🔧 Configuration Initialization")
+	fmt.Println("TOOL Configuration Initialization")
 	fmt.Println("===============================")
 
 	// Check if file exists
@@ -240,7 +240,7 @@ func runConfigInit(outputFile string, template string, force bool) error {
 	}
 
 	fmt.Printf("📄 Output file: %s\n", outputFile)
-	fmt.Printf("🎯 Template: %s\n", template)
+	fmt.Printf("TARGET Template: %s\n", template)
 
 	// Generate config based on template
 	outputDir := filepath.Dir(outputFile)
@@ -276,8 +276,8 @@ func runConfigInit(outputFile string, template string, force bool) error {
 		return fmt.Errorf("failed to write configuration file: %w", err)
 	}
 
-	fmt.Printf("✅ Configuration file created: %s\n", outputFile)
-	fmt.Println("\n📝 Next steps:")
+	fmt.Printf("Configuration file created: %s\n", outputFile)
+	fmt.Println("\nNOTE Next steps:")
 	fmt.Println("   1. Edit the configuration file with your database details")
 	fmt.Println("   2. Test the connection: sql-graph-cli test --config " + outputFile)
 	fmt.Println("   3. Analyze your database: sql-graph-cli analyze --config " + outputFile)
@@ -322,14 +322,14 @@ func validateConfigStructure(config map[string]interface{}) []string {
 }
 
 func validateMySQLConfig(mysqlConfig map[interface{}]interface{}) {
-	fmt.Println("\n🔍 MySQL Configuration:")
+	fmt.Println("\nDETAIL MySQL Configuration:")
 	
 	// Check required fields
 	requiredFields := []string{"host", "port", "username", "password", "database"}
 	for _, field := range requiredFields {
 		if _, ok := mysqlConfig[field]; !ok {
 			if _, ok := mysqlConfig[field+"s"]; !ok { // Check plural form too
-				fmt.Printf("   ⚠️  Missing required field: %s\n", field)
+				fmt.Printf("   WARN  Missing required field: %s\n", field)
 			}
 		}
 	}
@@ -337,36 +337,36 @@ func validateMySQLConfig(mysqlConfig map[interface{}]interface{}) {
 	// Check connection mode
 	if mode, ok := mysqlConfig["connection_mode"]; ok {
 		if mode == "existing" {
-			fmt.Println("   ✅ Connection mode: existing (direct database connection)")
+			fmt.Println("   PASS Connection mode: existing (direct database connection)")
 		}
 	} else {
-		fmt.Println("   ⚠️  Consider adding 'connection_mode: existing' for direct connections")
+		fmt.Println("   WARN  Consider adding 'connection_mode: existing' for direct connections")
 	}
 
 	// Check security settings
 	if _, ok := mysqlConfig["security"]; ok {
-		fmt.Println("   ✅ Security configuration present")
+		fmt.Println("   PASS Security configuration present")
 	} else {
-		fmt.Println("   ⚠️  Consider adding security configuration for production use")
+		fmt.Println("   WARN  Consider adding security configuration for production use")
 	}
 }
 
 func validateNeo4jConfig(neo4jConfig map[interface{}]interface{}) {
-	fmt.Println("\n🔍 Neo4j Configuration:")
+	fmt.Println("\nDETAIL Neo4j Configuration:")
 	
 	// Check required fields
 	if _, ok := neo4jConfig["uri"]; !ok {
-		fmt.Println("   ⚠️  Missing required field: uri")
+		fmt.Println("   WARN  Missing required field: uri")
 	} else {
-		fmt.Println("   ✅ URI configured")
+		fmt.Println("   PASS URI configured")
 	}
 
 	if _, ok := neo4jConfig["user"]; !ok {
-		fmt.Println("   ⚠️  Missing required field: user")
+		fmt.Println("   WARN  Missing required field: user")
 	}
 
 	if _, ok := neo4jConfig["password"]; !ok {
-		fmt.Println("   ⚠️  Missing required field: password")
+		fmt.Println("   WARN  Missing required field: password")
 	}
 }
 

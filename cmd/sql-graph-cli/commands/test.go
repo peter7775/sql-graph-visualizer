@@ -92,8 +92,8 @@ type testOptions struct {
 }
 
 func runTest(opts testOptions) error {
-	fmt.Println("🧪 SQL Graph Visualizer - Connection Test")
-	fmt.Println("===========================================")
+	fmt.Println("SQL Graph Visualizer - Connection Test")
+	fmt.Println("======================================")
 
 	// Build minimal configuration for testing
 	config := &models.MySQLConfig{
@@ -125,34 +125,34 @@ func runTest(opts testOptions) error {
 	ctx := context.Background()
 
 	// Show what we're testing
-	fmt.Printf("🎯 Target: %s@%s:%d/%s\n", opts.Username, opts.Host, opts.Port, opts.Database)
-	fmt.Printf("⏱️  Timeout: %d seconds\n", opts.ConnectionTimeout)
+	fmt.Printf("Target: %s@%s:%d/%s\n", opts.Username, opts.Host, opts.Port, opts.Database)
+	fmt.Printf("Timeout: %d seconds\n", opts.ConnectionTimeout)
 	if opts.Detailed {
-		fmt.Printf("🔍 Detailed validation: enabled\n")
+		fmt.Printf("Detailed validation: enabled\n")
 	}
 
-	fmt.Println("\n🔄 Running connection test...")
+	fmt.Println("\nRunning connection test...")
 	startTime := time.Now()
 
 	if opts.Detailed {
 		// Run full analysis for detailed validation
 		result, err := directDBService.ConnectAndAnalyze(ctx)
 		if err != nil {
-			fmt.Printf("❌ Connection test failed: %v\n", err)
-			return nil // Don't return error to avoid additional error output
+			fmt.Printf("Connection test failed: %v\n", err)
+			return nil
 		}
 
 		duration := time.Since(startTime)
 
 		if !result.Success {
-			fmt.Printf("❌ Connection test failed: %s\n", result.ErrorMessage)
+			fmt.Printf("Connection test failed: %s\n", result.ErrorMessage)
 			return nil
 		}
 
 		// Display detailed results
-		fmt.Printf("✅ Connection test passed in %v\n", duration)
+		fmt.Printf("Connection test passed in %v\n", duration)
 		
-		fmt.Println("\n📊 Connection Details:")
+		fmt.Println("\nConnection Details:")
 		fmt.Printf("   Database: %s\n", result.DatabaseInfo.Database)
 		fmt.Printf("   Server Version: %s\n", result.DatabaseInfo.Version)
 		fmt.Printf("   User: %s\n", result.DatabaseInfo.User)
@@ -162,7 +162,7 @@ func runTest(opts testOptions) error {
 			fmt.Printf("   Tables Found: %d\n", result.Summary.TotalTables)
 			
 			if len(result.Summary.Warnings) > 0 {
-				fmt.Printf("   ⚠️  Warnings: %d\n", len(result.Summary.Warnings))
+				fmt.Printf("   Warnings: %d\n", len(result.Summary.Warnings))
 				for _, warning := range result.Summary.Warnings {
 					fmt.Printf("      • %s\n", warning)
 				}
@@ -171,18 +171,18 @@ func runTest(opts testOptions) error {
 
 		// Show security validation details
 		if result.SecurityValidation != nil && len(result.SecurityValidation.Validations) > 0 {
-			fmt.Println("\n🔒 Security Validation:")
+			fmt.Println("\nSecurity Validation:")
 			for checkName, validation := range result.SecurityValidation.Validations {
-				status := "✅"
+				status := "PASS"
 				if !validation.Passed {
-					status = "❌"
+					status = "FAIL"
 				}
-				fmt.Printf("   %s %s: %s\n", status, checkName, validation.Message)
+				fmt.Printf("   [%s] %s: %s\n", status, checkName, validation.Message)
 			}
 		}
 
 		if len(result.SecurityValidation.Recommendations) > 0 {
-			fmt.Println("\n💡 Security Recommendations:")
+			fmt.Println("\nSecurity Recommendations:")
 			for _, rec := range result.SecurityValidation.Recommendations {
 				fmt.Printf("   • %s\n", rec)
 			}
@@ -192,17 +192,17 @@ func runTest(opts testOptions) error {
 		// Quick test only
 		testResult, err := directDBService.TestConnection(ctx)
 		if err != nil {
-			fmt.Printf("❌ Connection test failed: %v\n", err)
+			fmt.Printf("Connection test failed: %v\n", err)
 			return nil
 		}
 
 		duration := time.Since(startTime)
 
 		if !testResult.Success {
-			fmt.Printf("❌ Connection failed: %s\n", testResult.ErrorMessage)
+			fmt.Printf("Connection failed: %s\n", testResult.ErrorMessage)
 			
 			if len(testResult.SecurityIssues) > 0 {
-				fmt.Println("\n🔒 Security Issues:")
+				fmt.Println("\nSecurity Issues:")
 				for _, issue := range testResult.SecurityIssues {
 					fmt.Printf("   • %s\n", issue)
 				}
@@ -211,23 +211,23 @@ func runTest(opts testOptions) error {
 		}
 
 		// Display quick test results
-		fmt.Printf("✅ Connection test passed in %v\n", duration)
+		fmt.Printf("Connection test passed in %v\n", duration)
 		
-		fmt.Println("\n📊 Connection Details:")
+		fmt.Println("\nConnection Details:")
 		fmt.Printf("   Database: %s\n", testResult.DatabaseName)
 		fmt.Printf("   Server Version: %s\n", testResult.ServerVersion)
 		fmt.Printf("   User: %s\n", testResult.UserName)
 		fmt.Printf("   Tables Found: %d\n", testResult.TableCount)
 
 		if len(testResult.Warnings) > 0 {
-			fmt.Println("\n⚠️  Warnings:")
+			fmt.Println("\nWarnings:")
 			for _, warning := range testResult.Warnings {
 				fmt.Printf("   • %s\n", warning)
 			}
 		}
 	}
 
-	fmt.Println("\n🎉 Connection test completed successfully!")
+	fmt.Println("\nConnection test completed successfully!")
 	fmt.Println("You can now run 'analyze' command for full schema analysis.")
 
 	return nil

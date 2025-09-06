@@ -67,34 +67,34 @@ func main() {
 	mysqlRepo := mysql.NewMySQLRepository(nil) // We'll connect through the service
 
 	// Initialize the Direct Database Service
-	fmt.Println("🔧 Initializing Direct Database Service...")
+	fmt.Println("TOOL Initializing Direct Database Service...")
 	directDBService := services.NewDirectDatabaseService(mysqlRepo, config)
 
 	// Validate configuration
-	fmt.Println("✅ Validating configuration...")
+	fmt.Println("Validating configuration...")
 	if err := directDBService.ValidateConfiguration(); err != nil {
-		log.Fatalf("❌ Configuration validation failed: %v", err)
+		log.Fatalf("Configuration validation failed: %v", err)
 	}
-	fmt.Println("✅ Configuration is valid")
+	fmt.Println("Configuration is valid")
 
 	// Test 1: Quick Connection Test
-	fmt.Println("\n🧪 Test 1: Quick Connection Test")
+	fmt.Println("\nTEST Test 1: Quick Connection Test")
 	fmt.Println("================================")
 	
 	ctx := context.Background()
 	testResult, err := directDBService.TestConnection(ctx)
 	if err != nil {
-		log.Fatalf("❌ Connection test failed: %v", err)
+		log.Fatalf("Connection test failed: %v", err)
 	}
 	
 	if testResult.Success {
-		fmt.Printf("✅ Connection successful!\n")
+		fmt.Printf("Connection successful!\n")
 		fmt.Printf("   Database: %s\n", testResult.DatabaseName)
 		fmt.Printf("   Server Version: %s\n", testResult.ServerVersion)
 		fmt.Printf("   User: %s\n", testResult.UserName)
 		fmt.Printf("   Tables found: %d\n", testResult.TableCount)
 	} else {
-		fmt.Printf("❌ Connection failed: %s\n", testResult.ErrorMessage)
+		fmt.Printf("Connection failed: %s\n", testResult.ErrorMessage)
 		return
 	}
 
@@ -104,9 +104,9 @@ func main() {
 	
 	datasetInfo, err := directDBService.GetDataSizeEstimation(ctx)
 	if err != nil {
-		log.Printf("⚠️ Data size estimation failed: %v", err)
+		log.Printf("Data size estimation failed: %v", err)
 	} else {
-		fmt.Printf("📊 Dataset Information:\n")
+		fmt.Printf("Dataset Information:\n")
 		fmt.Printf("   Total Tables: %d\n", datasetInfo.TotalTables)
 		fmt.Printf("   Total Rows: %d\n", datasetInfo.TotalRows)
 		fmt.Printf("   Estimated Size: %.2f MB\n", datasetInfo.EstimatedSizeMB)
@@ -123,22 +123,22 @@ func main() {
 	}
 
 	// Test 3: Full Schema Analysis
-	fmt.Println("\n🔬 Test 3: Complete Database Analysis")
+	fmt.Println("\nANALYZE Test 3: Complete Database Analysis")
 	fmt.Println("====================================")
 	
 	analysisResult, err := directDBService.ConnectAndAnalyze(ctx)
 	if err != nil {
-		log.Fatalf("❌ Database analysis failed: %v", err)
+		log.Fatalf("Database analysis failed: %v", err)
 	}
 	
 	if !analysisResult.Success {
-		fmt.Printf("❌ Analysis failed: %s\n", analysisResult.ErrorMessage)
+		fmt.Printf("Analysis failed: %s\n", analysisResult.ErrorMessage)
 		return
 	}
 
 	// Display results
-	fmt.Printf("✅ Analysis completed in %v\n", analysisResult.ProcessingDuration)
-	fmt.Printf("\n🎯 Analysis Summary:\n")
+	fmt.Printf("Analysis completed in %v\n", analysisResult.ProcessingDuration)
+	fmt.Printf("\nTARGET Analysis Summary:\n")
 	fmt.Printf("   Database: %s@%s:%d/%s\n", 
 		analysisResult.DatabaseInfo.User,
 		analysisResult.DatabaseInfo.Host, 
@@ -155,14 +155,14 @@ func main() {
 		fmt.Printf("   Security Level: %s\n", analysisResult.SecurityValidation.SecurityLevel)
 		
 		if len(summary.Warnings) > 0 {
-			fmt.Printf("   ⚠️ Warnings: %d\n", len(summary.Warnings))
+			fmt.Printf("   WARN Warnings: %d\n", len(summary.Warnings))
 			for _, warning := range summary.Warnings {
 				fmt.Printf("     - %s\n", warning)
 			}
 		}
 		
 		if len(summary.Recommendations) > 0 {
-			fmt.Printf("   💡 Recommendations: %d\n", len(summary.Recommendations))
+			fmt.Printf("   TIP Recommendations: %d\n", len(summary.Recommendations))
 			for _, rec := range summary.Recommendations {
 				fmt.Printf("     - %s\n", rec)
 			}
@@ -170,7 +170,7 @@ func main() {
 	}
 
 	// Show discovered tables with their graph types
-	fmt.Printf("\n📋 Discovered Tables:\n")
+	fmt.Printf("\nINFO Discovered Tables:\n")
 	if analysisResult.SchemaAnalysis != nil {
 		for _, table := range analysisResult.SchemaAnalysis.Tables {
 			graphType := "NODE"
@@ -193,7 +193,7 @@ func main() {
 
 	// Show some generated transformation rules
 	if analysisResult.SchemaAnalysis != nil && len(analysisResult.SchemaAnalysis.GeneratedRules) > 0 {
-		fmt.Printf("\n🔄 Sample Generated Transformation Rules:\n")
+		fmt.Printf("\nRUN Sample Generated Transformation Rules:\n")
 		count := 0
 		for _, rule := range analysisResult.SchemaAnalysis.GeneratedRules {
 			if count >= 5 { // Show only first 5 rules
@@ -218,15 +218,15 @@ func main() {
 	fmt.Printf("\n💾 Saving full analysis to sakila_analysis.json...\n")
 	if jsonData, err := json.MarshalIndent(analysisResult, "", "  "); err == nil {
 		// Note: In a real implementation, you'd save this to a file
-		fmt.Printf("✅ Analysis data serialized successfully (%d bytes)\n", len(jsonData))
+		fmt.Printf("Analysis data serialized successfully (%d bytes)\n", len(jsonData))
 	}
 
-	fmt.Println("\n🎉 Sakila Database Analysis Complete!")
+	fmt.Println("\nDONE Sakila Database Analysis Complete!")
 	fmt.Println("=====================================")
 	fmt.Printf("The Direct Database Connection functionality is working correctly!\n")
-	fmt.Printf("✅ Connected to existing MySQL database\n")
-	fmt.Printf("✅ Performed comprehensive schema analysis\n") 
-	fmt.Printf("✅ Generated %d Neo4j transformation rules\n", len(analysisResult.SchemaAnalysis.GeneratedRules))
-	fmt.Printf("✅ Identified %d graph patterns\n", len(analysisResult.SchemaAnalysis.GraphPatterns))
-	fmt.Printf("✅ Validated security and permissions\n")
+	fmt.Printf("Connected to existing MySQL database\n")
+	fmt.Printf("Performed comprehensive schema analysis\n") 
+	fmt.Printf("Generated %d Neo4j transformation rules\n", len(analysisResult.SchemaAnalysis.GeneratedRules))
+	fmt.Printf("Identified %d graph patterns\n", len(analysisResult.SchemaAnalysis.GraphPatterns))
+	fmt.Printf("Validated security and permissions\n")
 }

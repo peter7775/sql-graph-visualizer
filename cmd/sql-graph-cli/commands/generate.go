@@ -67,7 +67,7 @@ type generateOptions struct {
 }
 
 func runGenerate(opts generateOptions) error {
-	fmt.Println("🔧 SQL Graph Visualizer - Configuration Generator")
+	fmt.Println("TOOL SQL Graph Visualizer - Configuration Generator")
 	fmt.Println("==================================================")
 
 	// Create output directory if it doesn't exist
@@ -76,7 +76,7 @@ func runGenerate(opts generateOptions) error {
 	}
 
 	fmt.Printf("📂 Output directory: %s\n", opts.OutputDir)
-	fmt.Printf("🎯 Template: %s\n", opts.Template)
+	fmt.Printf("TARGET Template: %s\n", opts.Template)
 
 	switch opts.Template {
 	case "production":
@@ -449,7 +449,7 @@ Issue #10 - Direct Database Connection Implementation
 func writeConfigFile(filename, content string, force bool, description string) error {
 	// Check if file exists
 	if _, err := os.Stat(filename); err == nil && !force {
-		fmt.Printf("⚠️  File %s already exists (use --force to overwrite)\n", filename)
+		fmt.Printf(" File %s already exists (use --force to overwrite)\n", filename)
 		return nil
 	}
 
@@ -459,6 +459,6 @@ func writeConfigFile(filename, content string, force bool, description string) e
 		return fmt.Errorf("failed to write %s: %w", filename, err)
 	}
 
-	fmt.Printf("✅ Generated %s configuration: %s\n", description, filename)
+	fmt.Printf("Generated %s configuration: %s\n", description, filename)
 	return nil
 }

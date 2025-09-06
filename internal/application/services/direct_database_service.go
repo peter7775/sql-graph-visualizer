@@ -67,7 +67,7 @@ func NewDirectDatabaseService(
 // 3. Schema discovery and analysis
 // 4. Transformation rule generation
 func (s *DirectDatabaseService) ConnectAndAnalyze(ctx context.Context) (*models.DirectDatabaseAnalysisResult, error) {
-	logrus.Infof("🚀 Starting direct database connection and analysis workflow")
+	logrus.Infof("Starting direct database connection and analysis workflow")
 	
 	result := &models.DirectDatabaseAnalysisResult{
 		StartTime:     time.Now(),
@@ -76,7 +76,7 @@ func (s *DirectDatabaseService) ConnectAndAnalyze(ctx context.Context) (*models.
 	}
 
 	// Step 1: Validate connection security
-	logrus.Infof("🔒 Step 1: Validating connection security")
+	logrus.Infof("Step 1: Validating connection security")
 	securityResult, err := s.securityValidator.ValidateConnectionSecurity(ctx, s.config)
 	if err != nil {
 		result.ErrorMessage = fmt.Sprintf("Security validation failed: %v", err)
@@ -91,10 +91,10 @@ func (s *DirectDatabaseService) ConnectAndAnalyze(ctx context.Context) (*models.
 		return result, nil
 	}
 	
-	logrus.Infof("✅ Security validation passed (Level: %s)", securityResult.SecurityLevel)
+	logrus.Infof("Security validation passed (Level: %s)", securityResult.SecurityLevel)
 
 	// Step 2: Establish database connection
-	logrus.Infof("🔌 Step 2: Connecting to existing database")
+	logrus.Infof("Step 2: Connecting to existing database")
 	db, err := s.mysqlPort.ConnectToExisting(ctx, s.config)
 	if err != nil {
 		result.ErrorMessage = fmt.Sprintf("Database connection failed: %v", err)
@@ -108,7 +108,7 @@ func (s *DirectDatabaseService) ConnectAndAnalyze(ctx context.Context) (*models.
 	}()
 
 	// Step 3: Validate connection and gather info
-	logrus.Infof("🔍 Step 3: Validating database connection")
+	logrus.Infof("Step 3: Validating database connection")
 	connValidation, err := s.mysqlPort.ValidateConnection(ctx, db)
 	if err != nil {
 		result.ErrorMessage = fmt.Sprintf("Connection validation failed: %v", err)
@@ -130,13 +130,13 @@ func (s *DirectDatabaseService) ConnectAndAnalyze(ctx context.Context) (*models.
 	result.DatabaseInfo.User = connValidation.DatabaseInfo["current_user"]
 	result.DatabaseInfo.Version = connValidation.ServerInfo["version"]
 
-	logrus.Infof("✅ Connected to %s (User: %s, Version: %s)", 
+	logrus.Infof("Connected to %s (User: %s, Version: %s)", 
 		result.DatabaseInfo.Database, 
 		result.DatabaseInfo.User, 
 		result.DatabaseInfo.Version)
 
 	// Step 4: Analyze database schema
-	logrus.Infof("🔬 Step 4: Analyzing database schema")
+	logrus.Infof("Step 4: Analyzing database schema")
 	schemaResult, err := s.schemaAnalyzer.AnalyzeSchemaFromConnection(ctx, db, &s.config.DataFiltering)
 	if err != nil {
 		result.ErrorMessage = fmt.Sprintf("Schema analysis failed: %v", err)
@@ -146,34 +146,33 @@ func (s *DirectDatabaseService) ConnectAndAnalyze(ctx context.Context) (*models.
 	
 	result.SchemaAnalysis = schemaResult
 	
-	logrus.Infof("✅ Schema analysis completed: %d tables, %d patterns identified, %d rules generated",
+	logrus.Infof("Schema analysis completed: %d tables, %d patterns identified, %d rules generated",
 		len(schemaResult.Tables),
 		len(schemaResult.GraphPatterns),
 		len(schemaResult.GeneratedRules))
 
 	// Step 5: Generate summary and recommendations
-	logrus.Infof("📊 Step 5: Generating analysis summary")
+	logrus.Infof("Step 5: Generating analysis summary")
 	s.generateAnalysisSummary(result)
 
 	result.Success = true
 	result.EndTime = time.Now()
 	result.ProcessingDuration = result.EndTime.Sub(result.StartTime)
 
-	logrus.Infof("🎉 Direct database analysis completed successfully in %v", result.ProcessingDuration)
+	logrus.Infof("Direct database analysis completed successfully in %v", result.ProcessingDuration)
 	
 	return result, nil
 }
 
 // TestConnection performs a quick connection test without full analysis
 func (s *DirectDatabaseService) TestConnection(ctx context.Context) (*models.ConnectionTestResult, error) {
-	logrus.Infof("🧪 Testing database connection")
+	logrus.Infof("Testing database connection")
 	
 	testResult := &models.ConnectionTestResult{
 		TestedAt: time.Now(),
 		Success:  false,
 	}
 
-	// Quick security validation
 	securityResult, err := s.securityValidator.ValidateConnectionSecurity(ctx, s.config)
 	if err != nil || !securityResult.IsValid {
 		testResult.ErrorMessage = "Connection failed security validation"
@@ -189,14 +188,12 @@ func (s *DirectDatabaseService) TestConnection(ctx context.Context) (*models.Con
 	}
 	defer db.Close()
 
-	// Quick validation
 	connValidation, err := s.mysqlPort.ValidateConnection(ctx, db)
 	if err != nil || !connValidation.IsValid {
 		testResult.ErrorMessage = "Connection validation failed"
 		return testResult, nil
 	}
 
-	// Quick schema peek
 	tables, err := s.mysqlPort.GetTables(ctx, db, &s.config.DataFiltering)
 	if err != nil {
 		testResult.Warnings = append(testResult.Warnings, "Could not list tables")
@@ -209,7 +206,7 @@ func (s *DirectDatabaseService) TestConnection(ctx context.Context) (*models.Con
 	testResult.ServerVersion = connValidation.ServerInfo["version"]
 	testResult.UserName = connValidation.DatabaseInfo["current_user"]
 
-	logrus.Infof("✅ Connection test successful: %s@%s (%d tables)",
+	logrus.Infof("Connection test successful: %s@%s (%d tables)",
 		testResult.UserName, testResult.DatabaseName, testResult.TableCount)
 
 	return testResult, nil
@@ -219,7 +216,6 @@ func (s *DirectDatabaseService) TestConnection(ctx context.Context) (*models.Con
 func (s *DirectDatabaseService) GetDataSizeEstimation(ctx context.Context) (*models.DatasetInfo, error) {
 	logrus.Infof("📏 Estimating dataset size")
 
-	// Quick connection
 	db, err := s.mysqlPort.ConnectToExisting(ctx, s.config)
 	if err != nil {
 		return nil, fmt.Errorf("connection failed: %w", err)
@@ -291,7 +287,7 @@ func (s *DirectDatabaseService) generateAnalysisSummary(result *models.DirectDat
 
 	result.Summary = summary
 	
-	logrus.Infof("📋 Analysis summary: %d tables, %d node rules, %d relationship rules, %d warnings",
+	logrus.Infof("Analysis summary: %d tables, %d node rules, %d relationship rules, %d warnings",
 		summary.TotalTables, summary.NodeRules, summary.RelationshipRules, len(summary.Warnings))
 }
 

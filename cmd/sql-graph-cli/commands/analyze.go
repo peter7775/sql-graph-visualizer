@@ -131,7 +131,7 @@ type analyzeOptions struct {
 }
 
 func runAnalyze(cmd *cobra.Command, opts analyzeOptions) error {
-	fmt.Println("🔍 SQL Graph Visualizer - Database Analysis")
+	fmt.Println("SQL Graph Visualizer - Database Analysis")
 	fmt.Println("=============================================")
 
 	// Build configuration
@@ -175,7 +175,7 @@ func runAnalyze(cmd *cobra.Command, opts analyzeOptions) error {
 	directDBService := services.NewDirectDatabaseService(mysqlRepo, config)
 
 	// Validate configuration
-	fmt.Printf("🔧 Validating configuration...\n")
+	fmt.Printf("TOOL Validating configuration...\n")
 	if err := directDBService.ValidateConfiguration(); err != nil {
 		return fmt.Errorf("configuration validation failed: %w", err)
 	}
@@ -185,20 +185,20 @@ func runAnalyze(cmd *cobra.Command, opts analyzeOptions) error {
 	// Show connection info
 	fmt.Printf("📡 Connecting to %s@%s:%d/%s\n", opts.Username, opts.Host, opts.Port, opts.Database)
 	if len(opts.TableWhitelist) > 0 {
-		fmt.Printf("🎯 Table whitelist: %s\n", strings.Join(opts.TableWhitelist, ", "))
+		fmt.Printf("TARGET Table whitelist: %s\n", strings.Join(opts.TableWhitelist, ", "))
 	}
 	if len(opts.TableBlacklist) > 0 {
 		fmt.Printf("⚫ Table blacklist: %s\n", strings.Join(opts.TableBlacklist, ", "))
 	}
 	if opts.RowLimit > 0 {
-		fmt.Printf("📊 Row limit: %d per table\n", opts.RowLimit)
+		fmt.Printf("Row limit: %d per table\n", opts.RowLimit)
 	}
 	if opts.DryRun {
-		fmt.Printf("🧪 Dry run mode: analysis only, no rule generation\n")
+		fmt.Printf("Dry run mode: analysis only, no rule generation\n")
 	}
 
 	// Start analysis
-	fmt.Printf("\n🔍 Starting database analysis...\n")
+	fmt.Printf("\nDETAIL Starting database analysis...\n")
 	startTime := time.Now()
 	
 	result, err := directDBService.ConnectAndAnalyze(ctx)
@@ -211,7 +211,7 @@ func runAnalyze(cmd *cobra.Command, opts analyzeOptions) error {
 	}
 
 	duration := time.Since(startTime)
-	fmt.Printf("✅ Analysis completed in %v\n", duration)
+	fmt.Printf("Analysis completed in %v\n", duration)
 
 	// Output results based on format
 	switch opts.OutputFormat {
@@ -229,7 +229,7 @@ func outputSummary(result *models.DirectDatabaseAnalysisResult, outputFile strin
 	
 	// Header
 	output.WriteString("\n" + strings.Repeat("=", 60) + "\n")
-	output.WriteString("📊 DATABASE ANALYSIS RESULTS\n")
+	output.WriteString("DATABASE ANALYSIS RESULTS\n")
 	output.WriteString(strings.Repeat("=", 60) + "\n\n")
 
 	// Connection info
@@ -244,32 +244,32 @@ func outputSummary(result *models.DirectDatabaseAnalysisResult, outputFile strin
 	// Summary statistics
 	if result.Summary != nil {
 		summary := result.Summary
-		output.WriteString("\n📈 ANALYSIS SUMMARY:\n")
+		output.WriteString("\nSTATS ANALYSIS SUMMARY:\n")
 		output.WriteString(fmt.Sprintf("   Tables Analyzed: %d\n", summary.TotalTables))
 		output.WriteString(fmt.Sprintf("   Generated Rules: %d (%d nodes, %d relationships)\n", 
 			summary.TotalRules, summary.NodeRules, summary.RelationshipRules))
 		output.WriteString(fmt.Sprintf("   Graph Patterns: %d\n", summary.TotalPatterns))
 
 		if len(summary.Warnings) > 0 {
-			output.WriteString(fmt.Sprintf("   ⚠️  Warnings: %d\n", len(summary.Warnings)))
+			output.WriteString(fmt.Sprintf("   WARN  Warnings: %d\n", len(summary.Warnings)))
 		}
 		
 		if len(summary.Recommendations) > 0 {
-			output.WriteString(fmt.Sprintf("   💡 Recommendations: %d\n", len(summary.Recommendations)))
+			output.WriteString(fmt.Sprintf("   TIP Recommendations: %d\n", len(summary.Recommendations)))
 		}
 	}
 
 	// Dataset information
 	if result.SchemaAnalysis != nil && result.SchemaAnalysis.DatasetInfo != nil {
 		dataset := result.SchemaAnalysis.DatasetInfo
-		output.WriteString("\n📊 DATASET INFORMATION:\n")
+		output.WriteString("\nDATA DATASET INFORMATION:\n")
 		output.WriteString(fmt.Sprintf("   Total Rows: %d\n", dataset.TotalRows))
 		output.WriteString(fmt.Sprintf("   Estimated Size: %.2f MB\n", dataset.EstimatedSizeMB))
 	}
 
 	// Tables with their types
 	if result.SchemaAnalysis != nil && len(result.SchemaAnalysis.Tables) > 0 {
-		output.WriteString("\n📋 DISCOVERED TABLES:\n")
+		output.WriteString("\nINFO DISCOVERED TABLES:\n")
 		for _, table := range result.SchemaAnalysis.Tables {
 			graphType := "NODE"
 			if table.GraphType == "RELATIONSHIP" {
@@ -291,7 +291,7 @@ func outputSummary(result *models.DirectDatabaseAnalysisResult, outputFile strin
 
 	// Sample generated rules
 	if result.SchemaAnalysis != nil && len(result.SchemaAnalysis.GeneratedRules) > 0 {
-		output.WriteString("\n🔄 GENERATED TRANSFORMATION RULES:\n")
+		output.WriteString("\nRUN GENERATED TRANSFORMATION RULES:\n")
 		nodeCount := 0
 		relCount := 0
 		
@@ -326,14 +326,14 @@ func outputSummary(result *models.DirectDatabaseAnalysisResult, outputFile strin
 	// Warnings and recommendations
 	if result.Summary != nil {
 		if len(result.Summary.Warnings) > 0 {
-			output.WriteString("\n⚠️  WARNINGS:\n")
+			output.WriteString("\nWARN  WARNINGS:\n")
 			for _, warning := range result.Summary.Warnings {
 				output.WriteString(fmt.Sprintf("   • %s\n", warning))
 			}
 		}
 
 		if len(result.Summary.Recommendations) > 0 {
-			output.WriteString("\n💡 RECOMMENDATIONS:\n")
+			output.WriteString("\nTIP RECOMMENDATIONS:\n")
 			for _, rec := range result.Summary.Recommendations {
 				output.WriteString(fmt.Sprintf("   • %s\n", rec))
 			}

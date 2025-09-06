@@ -110,7 +110,7 @@ func (r *MySQLRepository) ConnectToExisting(ctx context.Context, config *models.
 		}
 	}
 
-	logrus.Infof("🔌 Connecting to existing database: %s@%s:%d/%s", username, config.Host, config.Port, config.Database)
+	logrus.Infof("Connecting to existing database: %s@%s:%d/%s", username, config.Host, config.Port, config.Database)
 
 	db, err := sql.Open("mysql", dsn)
 	if err != nil {
@@ -130,7 +130,7 @@ func (r *MySQLRepository) ConnectToExisting(ctx context.Context, config *models.
 		return nil, fmt.Errorf("failed to ping database: %w", err)
 	}
 
-	logrus.Infof("✅ Successfully connected to existing database")
+	logrus.Infof("Successfully connected to existing database")
 	return db, nil
 }
 
@@ -216,7 +216,7 @@ func (r *MySQLRepository) checkDatabasePermissions(ctx context.Context, db *sql.
 
 // DiscoverSchema analyzes database schema and structure
 func (r *MySQLRepository) DiscoverSchema(ctx context.Context, db *sql.DB, filterConfig *models.DataFilteringConfig) (*models.SchemaAnalysisResult, error) {
-	logrus.Infof("🔍 Starting database schema discovery")
+	logrus.Infof("Starting database schema discovery")
 	
 	result := &models.SchemaAnalysisResult{
 		DatabaseName: "",
@@ -237,7 +237,7 @@ func (r *MySQLRepository) DiscoverSchema(ctx context.Context, db *sql.DB, filter
 		return nil, fmt.Errorf("failed to get tables: %w", err)
 	}
 
-	logrus.Infof("📋 Found %d tables to analyze", len(tableNames))
+	logrus.Infof("Found %d tables to analyze", len(tableNames))
 
 	// Analyze each table
 	for _, tableName := range tableNames {
@@ -250,7 +250,7 @@ func (r *MySQLRepository) DiscoverSchema(ctx context.Context, db *sql.DB, filter
 		result.Tables = append(result.Tables, tableInfo)
 	}
 
-	logrus.Infof("✅ Schema discovery completed: %d tables analyzed", len(result.Tables))
+	logrus.Infof("Schema discovery completed: %d tables analyzed", len(result.Tables))
 	return result, nil
 }
 
@@ -486,7 +486,7 @@ func (r *MySQLRepository) ExecuteQueryWithContext(ctx context.Context, query str
 
 // EstimateDataSize provides dataset size estimation
 func (r *MySQLRepository) EstimateDataSize(ctx context.Context, db *sql.DB, config *models.DataFilteringConfig) (*models.DatasetInfo, error) {
-	logrus.Infof("📊 Estimating dataset size")
+	logrus.Infof("Estimating dataset size")
 	
 	tables, err := r.GetTables(ctx, db, config)
 	if err != nil {
@@ -519,7 +519,7 @@ func (r *MySQLRepository) EstimateDataSize(ctx context.Context, db *sql.DB, conf
 	datasetInfo.TotalRows = totalRows
 	datasetInfo.EstimatedSizeMB = r.estimateDataSizeInMB(totalRows)
 
-	logrus.Infof("📊 Dataset estimation: %d tables, %d total rows (~%.2f MB)", 
+	logrus.Infof("Dataset estimation: %d tables, %d total rows (~%.2f MB)", 
 		datasetInfo.TotalTables, datasetInfo.TotalRows, datasetInfo.EstimatedSizeMB)
 
 	return datasetInfo, nil
