@@ -15,3 +15,7 @@ vendor/
 
 go.work
 
+# Monitoring sensitive data
+monitoring/results/*.json
+monitoring/monitoring-results.log
+monitoring/results/repo_search.json
