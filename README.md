@@ -4,7 +4,7 @@
 
 > **Status: Active Development** - This project is under active development. APIs may change.
 
-A powerful Go application that transforms SQL database structures (MySQL, PostgreSQL) into Neo4j graph databases with interactive visualization capabilities. Built with Domain Driven Design architecture and featuring flexible, user-configurable transformation rules.
+A powerful Go application that transforms SQL database structures (MySQL, PostgreSQL) into Neo4j graph databases with interactive visualization and comprehensive performance analysis capabilities. Built with Domain Driven Design architecture and featuring flexible transformation rules, advanced performance benchmarking, and robust database connection management.
 
 ## Table of Contents
 
@@ -40,6 +40,15 @@ A powerful Go application that transforms SQL database structures (MySQL, Postgr
 - **RESTful API** for programmatic access
 - **Customizable node appearance** and relationship styling
 - **Filter and search** capabilities within the graph
+
+### **Performance Analysis & Benchmarking**
+- **Database performance benchmarking** with sysbench, pgbench integration
+- **Automated bottleneck detection** and hotspot analysis
+- **Query performance analysis** with optimization suggestions
+- **Critical path identification** through database relationships
+- **Performance trend analysis** with historical data tracking
+- **Custom benchmark scenarios** for specific workload testing
+- **Real-time performance monitoring** with visual load mapping
 
 ### **Enterprise Architecture**
 - **Domain Driven Design (DDD)** - clean, maintainable codebase
@@ -84,7 +93,7 @@ sql-graph-visualizer/
 
 ### **Tech Stack**
 - **Language**: Go 1.24+
-- **Source Databases**: MySQL 8.0+, PostgreSQL 13+ (planned)
+- **Source Databases**: MySQL 8.0+, PostgreSQL 13+
 - **Graph Database**: Neo4j 4.4+
 - **API Layer**: GraphQL (gqlgen), REST (Gorilla Mux)
 - **Frontend**: HTML5, JavaScript, Neovis.js
@@ -92,12 +101,14 @@ sql-graph-visualizer/
 - **Logging**: Logrus with structured logging
 - **Testing**: Testify framework
 - **Containerization**: Docker & Docker Compose
+- **Performance Tools**: sysbench, pgbench integration
+- **Connection Management**: Database/sql with connection pooling
 
 ## Quick Start
 
 ### Prerequisites
 - Go 1.24 or higher
-- MySQL 8.0+
+- MySQL 8.0+ or PostgreSQL 13+
 - Neo4j 4.4+ (or use Docker)
 - Git
 
@@ -159,12 +170,28 @@ go install github.com/yourusername/sql-graph-visualizer@latest
 The application uses YAML configuration files. The main configuration file is `config/config.yml`:
 
 ```yaml
+# MySQL Configuration
 mysql:
   host: localhost
   port: 3306
   user: username
   password: password
   database: dbname
+  max_open_conns: 25
+  max_idle_conns: 5
+  conn_max_lifetime: 5m
+
+# PostgreSQL Configuration (alternative to MySQL)
+postgresql:
+  host: localhost
+  port: 5432
+  user: username
+  password: password
+  database: dbname
+  sslmode: disable
+  max_open_conns: 25
+  max_idle_conns: 5
+  conn_max_lifetime: 5m
 
 neo4j:
   uri: bolt://localhost:7687
@@ -240,10 +267,152 @@ Create Neo4j relationships between nodes:
 - **Property Transformation**: Transform data types and formats
 - **Relationship Properties**: Add metadata to relationships
 
+## Performance Benchmarking
+
+The application includes comprehensive performance benchmarking capabilities to analyze database performance and optimize graph transformations.
+
+### Supported Benchmark Tools
+
+#### sysbench (MySQL/PostgreSQL)
+```yaml
+benchmark:
+  sysbench:
+    enabled: true
+    executable_path: "/usr/bin/sysbench"
+    test_types:
+      - "oltp_read_write"
+      - "oltp_read_only"
+      - "oltp_write_only"
+      - "select_random_points"
+```
+
+#### pgbench (PostgreSQL)
+```yaml
+benchmark:
+  pgbench:
+    enabled: true
+    executable_path: "/usr/bin/pgbench"
+    default_scale: 10
+    test_duration: "5m"
+```
+
+### Custom Benchmark Configuration
+
+```yaml
+custom_benchmarks:
+  - name: "user_relationships"
+    description: "Test user-to-team relationship queries"
+    duration: "2m"
+    threads: 4
+    queries:
+      - query: "SELECT u.*, t.name FROM users u JOIN team_members tm ON u.id = tm.user_id JOIN teams t ON tm.team_id = t.id WHERE u.is_active = 1"
+        weight: 70
+        description: "Active user team memberships"
+      - query: "SELECT COUNT(*) FROM users u JOIN team_members tm ON u.id = tm.user_id GROUP BY tm.team_id"
+        weight: 30
+        description: "Team member counts"
+```
+
+### Performance Analysis Features
+
+#### Automated Bottleneck Detection
+- **Query performance analysis** with execution plan inspection
+- **Index usage monitoring** and missing index detection
+- **Join efficiency analysis** with optimization suggestions
+- **Lock contention detection** and deadlock prevention
+
+#### Hotspot Analysis
+- **Table access patterns** identification
+- **High-load relationship** detection
+- **Resource utilization** tracking (CPU, I/O, memory)
+- **Critical path analysis** through database relationships
+
+#### Optimization Suggestions
+- **Automatic index recommendations** based on query patterns
+- **Query optimization hints** with before/after comparisons
+- **Schema improvement** suggestions
+- **Connection pooling** optimization
+
+## Database Connection Management
+
+The application provides robust database connection management with automatic failover, connection pooling, and comprehensive error handling.
+
+### Connection Features
+
+#### Automatic Connection Management
+- **Connection pooling** with configurable limits
+- **Automatic reconnection** on connection failures
+- **Health checks** for database availability
+- **Graceful degradation** when databases are unavailable
+
+#### Multi-Database Support
+```yaml
+# Configure multiple databases
+databases:
+  primary:
+    type: "mysql"  # or "postgresql"
+    host: "primary-db.example.com"
+    port: 3306
+    database: "main_db"
+    # Connection pool settings
+    max_open_conns: 25
+    max_idle_conns: 5
+    conn_max_lifetime: "5m"
+    conn_max_idle_time: "10m"
+  
+  secondary:
+    type: "postgresql"
+    host: "secondary-db.example.com"
+    port: 5432
+    database: "analytics_db"
+    sslmode: "require"
+    max_open_conns: 15
+    max_idle_conns: 3
+```
+
+#### Connection Error Handling
+- **Retry mechanisms** with exponential backoff
+- **Circuit breaker** pattern for failing connections
+- **Detailed error logging** with connection diagnostics
+- **Fallback strategies** for multi-database setups
+
+#### Security Features
+- **SSL/TLS encryption** support for all database types
+- **Connection string validation** to prevent injection
+- **Credential management** with environment variable support
+- **Connection timeout** configuration
+
+### Performance Optimization
+
+#### Connection Pooling Best Practices
+```yaml
+connection_pools:
+  # Production settings
+  production:
+    max_open_conns: 50
+    max_idle_conns: 10
+    conn_max_lifetime: "1h"
+    conn_max_idle_time: "15m"
+  
+  # Development settings
+  development:
+    max_open_conns: 10
+    max_idle_conns: 2
+    conn_max_lifetime: "30m"
+    conn_max_idle_time: "5m"
+```
+
+#### Monitoring and Diagnostics
+- **Connection pool metrics** (active, idle, waiting connections)
+- **Query execution timing** and slow query detection
+- **Database health monitoring** with periodic checks
+- **Performance metrics** export to monitoring systems
+
 ## API Documentation
 
 ### REST API Endpoints
 
+#### Core Graph API
 ```bash
 # Get current configuration
 GET /api/config
@@ -261,11 +430,58 @@ GET /api/relationships/{type}
 GET /api/health
 ```
 
+#### Performance Benchmarking API
+```bash
+# Start a new benchmark
+POST /api/performance/benchmark
+{
+  "tool": "sysbench",
+  "test_type": "oltp_read_write",
+  "duration": "5m",
+  "threads": 4,
+  "database_type": "mysql"
+}
+
+# Get benchmark results
+GET /api/performance/benchmark/{execution_id}
+
+# List all benchmark executions
+GET /api/performance/benchmarks
+
+# Get performance analysis
+GET /api/performance/analysis/{execution_id}
+
+# Get bottlenecks
+GET /api/performance/bottlenecks
+
+# Get optimization suggestions
+GET /api/performance/optimizations
+```
+
+#### Database Connection API
+```bash
+# Get connection status
+GET /api/connections/status
+
+# Test database connection
+POST /api/connections/test
+{
+  "type": "postgresql",
+  "host": "localhost",
+  "port": 5432,
+  "database": "testdb"
+}
+
+# Get connection pool metrics
+GET /api/connections/metrics
+```
+
 ### GraphQL Schema
 
 The GraphQL endpoint provides a flexible query interface:
 
 ```graphql
+# Basic graph queries
 query {
   nodes(type: "User") {
     id
@@ -275,6 +491,43 @@ query {
     source
     target
     properties
+  }
+}
+
+# Performance analysis queries
+query {
+  performanceAnalysis(executionId: "abc123") {
+    overallScore {
+      score
+      rating
+    }
+    bottlenecks {
+      type
+      severity
+      description
+      recommendations
+    }
+    optimizations {
+      type
+      title
+      impact {
+        latencyImprovement
+        throughputImprovement
+      }
+    }
+  }
+}
+
+# Database connections status
+query {
+  connectionStatus {
+    database
+    status
+    poolMetrics {
+      activeConnections
+      idleConnections
+      maxConnections
+    }
   }
 }
 ```
@@ -406,27 +659,36 @@ We provide issue templates for:
 
 ## Roadmap
 
-### Completed
+### Completed ✅
 - [x] Basic MySQL to Neo4j transformation
+- [x] **PostgreSQL support** with full feature parity
 - [x] Rule-based configuration system
 - [x] GraphQL API implementation
 - [x] Web-based visualization
 - [x] Docker containerization
 - [x] CI/CD pipeline
+- [x] **Performance benchmarking integration** (sysbench, pgbench)
+- [x] **Automated bottleneck detection** and optimization suggestions
+- [x] **Robust connection management** with pooling and failover
+- [x] **Multi-database connection** support
 
-### In Progress
-- [ ] Advanced visualization features
-- [ ] Performance optimizations
-- [ ] Real-time data synchronization
+### In Progress 🚧
+- [ ] **Real-time performance monitoring** dashboard
+- [ ] **Advanced visualization features** with performance overlays
+- [ ] **Trend analysis** and predictive performance insights
+- [ ] **Enterprise authentication** and authorization
 
-### Future Plans
-- [ ] **Reverse Transformation**: Neo4j to MySQL conversion
-- [ ] **Multi-database Support**: PostgreSQL, SQLite, Oracle
-- [ ] **Advanced Analytics**: Graph algorithms integration
-- [ ] **Cloud Deployment**: Kubernetes manifests
-- [ ] **Authentication**: User management and access control
-- [ ] **Monitoring**: Metrics and observability
-- [ ] **Plugin System**: Custom transformation plugins
+### Future Plans 🚀
+- [ ] **Oracle Database Support**: Enterprise database integration
+- [ ] **SQL Server Support**: Microsoft ecosystem compatibility
+- [ ] **Reverse Transformation**: Neo4j to SQL conversion
+- [ ] **Advanced Analytics**: Graph algorithms integration (PageRank, Community Detection)
+- [ ] **Cloud Deployment**: Kubernetes manifests and Helm charts
+- [ ] **Machine Learning**: Automated optimization recommendations
+- [ ] **Monitoring Integration**: Prometheus, Grafana, DataDog
+- [ ] **Plugin System**: Custom transformation and analysis plugins
+- [ ] **Multi-tenant SaaS**: Cloud-hosted solution
+- [ ] **Streaming Data**: Real-time database change detection
 
 ## Performance
 
@@ -469,6 +731,80 @@ processing:
 **Debug Mode**
 ```bash
 LOG_LEVEL=debug go run cmd/main.go
+```
+
+### PostgreSQL Connection Issues
+
+**SSL Connection Problems**
+```bash
+# Test SSL connection
+psql "postgresql://username:password@localhost:5432/dbname?sslmode=require"
+
+# Disable SSL for development
+psql "postgresql://username:password@localhost:5432/dbname?sslmode=disable"
+```
+
+**Authentication Issues**
+```yaml
+# Update pg_hba.conf for password authentication
+postgresql:
+  host: localhost
+  port: 5432
+  user: username
+  password: password
+  database: dbname
+  sslmode: disable
+```
+
+### Performance Benchmarking Issues
+
+**sysbench Not Found**
+```bash
+# Install sysbench on Ubuntu/Debian
+sudo apt-get install sysbench
+
+# Install on macOS
+brew install sysbench
+
+# Verify installation
+sysbench --version
+```
+
+**pgbench Configuration**
+```bash
+# Initialize pgbench tables
+pgbench -i -s 10 your_database
+
+# Test pgbench connection
+pgbench -c 4 -j 2 -T 60 your_database
+```
+
+**Benchmark Permission Errors**
+```yaml
+# Ensure benchmark user has sufficient permissions
+benchmark:
+  database_permissions:
+    - "SELECT, INSERT, UPDATE, DELETE"
+    - "CREATE TABLE, DROP TABLE"
+    - "REFERENCES, INDEX"
+```
+
+### Connection Pool Issues
+
+**Too Many Connections**
+```yaml
+# Reduce connection pool size
+connection_pools:
+  max_open_conns: 10  # Reduce from default 25
+  max_idle_conns: 2   # Reduce from default 5
+```
+
+**Connection Timeouts**
+```yaml
+# Increase timeout values
+connection_timeout: "30s"
+read_timeout: "60s"
+write_timeout: "60s"
 ```
 
 ## License
