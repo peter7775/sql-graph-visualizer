@@ -223,7 +223,7 @@ func (r *queryResolver) SearchNodes(ctx context.Context, query string) ([]*model
 
 // GraphUpdates is the resolver for the graphUpdates field.
 func (r *subscriptionResolver) GraphUpdates(ctx context.Context) (<-chan *models.Graph, error) {
-	panic(fmt.Errorf("not implemented: GraphUpdates - graphUpdates"))
+	return nil, fmt.Errorf("not implemented: GraphUpdates - graphUpdates")
 }
 
 // Mutation returns generated.MutationResolver implementation.
