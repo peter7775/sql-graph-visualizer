@@ -470,6 +470,16 @@ LOG_LEVEL=debug go run cmd/main.go
 
 ## License
 
+### ⚠️ IMPORTANT: License Change Notice
+
+**This project changed from MIT to Dual License on January 6, 2025.**
+
+- **Prior clones (before Jan 6, 2025)**: Continue under MIT License ✅
+- **New features & innovations**: Require Dual License compliance 🔒
+- **See [LEGAL_NOTICE.md](LEGAL_NOTICE.md) for complete details**
+
+### Current License (From January 6, 2025)
+
 This project is available under a **Dual License**:
 
 ### Open Source (AGPL-3.0)
