@@ -503,30 +503,33 @@ jobs:
     needs: [prepare, deploy-staging, deploy-production]
     if: always()
     steps:
-      - name: Update deployment status
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const environment = '${{ needs.prepare.outputs.environment }}';
-            const imageUrl = '${{ needs.prepare.outputs.image_url }}';
-            const deployResult = environment === 'staging' 
-              ? '${{ needs.deploy-staging.result }}' 
-              : '${{ needs.deploy-production.result }}';
-            
-            const status = deployResult === 'success' ? 'success' : 'failure';
-            const description = `Deployment to ${environment}: ${deployResult}`;
-            
-            // Create deployment status
-            await github.rest.repos.createDeploymentStatus({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              deployment_id: context.payload.deployment?.id || 0,
-              state: status,
-              description: description,
-              environment: environment,
-              environment_url: environment === 'production' 
-                ? 'https://mysql-graph-visualizer.example.com'
-                : 'https://mysql-graph-visualizer-staging.example.com'
-            });
-            
-            console.log(`Deployment status updated: ${status} for ${environment}`);
+      - name: Log deployment status
+        run: |
+          ENVIRONMENT="${{ needs.prepare.outputs.environment }}"
+          IMAGE_URL="${{ needs.prepare.outputs.image_url }}"
+          DEPLOY_RESULT="${{ needs.deploy-staging.result || needs.deploy-production.result }}"
+          
+          STATUS="unknown"
+          if [[ "${{ needs.deploy-staging.result }}" == "success" ]] || [[ "${{ needs.deploy-production.result }}" == "success" ]]; then
+            STATUS="success"
+          else
+            STATUS="failure"
+          fi
+          
+          echo "=== Deployment Status Summary ==="
+          echo "Environment: $ENVIRONMENT"
+          echo "Image: $IMAGE_URL"
+          echo "Status: $STATUS"
+          echo "Staging Result: ${{ needs.deploy-staging.result }}"
+          echo "Production Result: ${{ needs.deploy-production.result }}"
+          echo "================================"
+          
+          # Create deployment summary (GitHub Actions summary)
+          {
+            echo "## Deployment Summary"
+            echo "- **Environment:** $ENVIRONMENT"
+            echo "- **Image:** $IMAGE_URL"
+            echo "- **Status:** $STATUS"
+            echo "- **Staging Result:** ${{ needs.deploy-staging.result }}"
+            echo "- **Production Result:** ${{ needs.deploy-production.result }}"
+          } >> $GITHUB_STEP_SUMMARY
