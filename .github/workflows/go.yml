@@ -127,10 +127,12 @@ jobs:
         GO_ENV: test
         CONFIG_PATH: config/config-test.yml
         LOG_LEVEL: debug
+        CI: true
       run: |
         echo "Running integration tests from directory: $(pwd)"
         echo "Environment check:"
         echo "GO_ENV=$GO_ENV"
         echo "CONFIG_PATH=$CONFIG_PATH"
         echo "LOG_LEVEL=$LOG_LEVEL"
+        echo "CI=$CI"
         go test -v -timeout 10m ./internal/tests/integration
