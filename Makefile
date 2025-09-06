@@ -1,6 +1,6 @@
 # Makefile for MySQL Graph Visualizer
 
-.PHONY: help install generate format test build run clean docker-up docker-down
+.PHONY: help install generate format test build run clean docker-up docker-down sec-scan ci-check dev quick
 
 # Default target
 help:
@@ -16,6 +16,7 @@ help:
 	@echo "  clean      - Clean build artifacts"
 	@echo "  docker-up  - Start Docker services (Neo4j)"
 	@echo "  docker-down- Stop Docker services"
+	@echo "  sec-scan   - Run security scans (govulncheck, gosec)"
 	@echo "  ci-check   - Run CI checks locally"
 	@echo ""
 
@@ -115,6 +116,18 @@ ci-check: install generate format
 dev: install generate format test
 	@echo "Development environment ready"
 
+# Run security scans
+sec-scan:
+	@echo "🔍 Running security scans..."
+	@echo "Installing security tools..."
+	go install golang.org/x/vuln/cmd/govulncheck@latest
+	go install github.com/securego/gosec/v2/cmd/gosec@latest
+	@echo "Running govulncheck..."
+	$(HOME)/go/bin/govulncheck ./...
+	@echo "Running gosec..."
+	$(HOME)/go/bin/gosec -exclude=G104,G115 -exclude-dir=internal/interfaces/graphql/generated ./...
+	@echo "✅ Security scans completed"
+
 # Quick rebuild and test
 quick: generate format test
-	@echo "Quick rebuild completed"
+	@echo "✅ Quick rebuild completed"
