@@ -26,7 +26,7 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"mysql-graph-visualizer/internal/application/ports"
-	"mysql-graph-visualizer/internal/application/services/graphql/server"
+	graphqlserver "mysql-graph-visualizer/internal/application/services/graphql"
 	"mysql-graph-visualizer/internal/application/services/transform"
 	"mysql-graph-visualizer/internal/domain/aggregates/graph"
 	"mysql-graph-visualizer/internal/domain/models"
@@ -106,7 +106,9 @@ func main() {
 	transformService := transform.NewTransformService(mysqlRepo, neo4jRepo, configrule.NewRuleRepository())
 	logrus.Infof("Services initialized")
 
-	go server.StartGraphQLServer(neo4jRepo)
+	// Start GraphQL server
+	graphqlserver.StartGraphQLServer(neo4jRepo, cfg)
+	logrus.Info("GraphQL server started")
 
 	logrus.Infof("Starting data transformation...")
 	if err := transformService.TransformAndStore(ctx); err != nil {
