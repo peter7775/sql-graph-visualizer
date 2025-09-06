@@ -1,0 +1,10 @@
+{
+  "excludes": [
+    "G115"
+  ],
+  "exclude-generated": true,
+  "exclude-dirs": [
+    "vendor",
+    "internal/application/services/graphql/generated"
+  ]
+}
