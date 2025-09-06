@@ -1,0 +1,67 @@
+# GraphQL schema for MySQL Graph Visualizer
+
+# Node representation in the graph  
+type Node {
+  id: ID!
+  label: String!
+  properties: String!
+}
+
+# Relationship between nodes
+type Relationship {
+  from: ID!
+  to: ID!
+  type: String!
+  properties: String!
+}
+
+# Graph aggregate containing nodes and relationships
+type Graph {
+  nodes: [Node!]!
+  relationships: [Relationship!]!
+}
+
+# Configuration for Neo4j connection
+type Neo4jConfig {
+  uri: String!
+  username: String!
+  password: String!
+}
+
+# Application configuration
+type Config {
+  neo4j: Neo4jConfig!
+}
+
+# Query root
+type Query {
+  # Get all graph data (nodes and relationships)
+  graph: Graph!
+  
+  # Get nodes by type/label
+  nodesByType(type: String!): [Node!]!
+  
+  # Get specific node by ID
+  node(id: ID!): Node
+  
+  # Get relationships by type
+  relationshipsByType(type: String!): [Relationship!]!
+  
+  # Get application configuration
+  config: Config!
+  
+  # Search nodes by property
+  searchNodes(query: String!): [Node!]!
+}
+
+# Mutation root (for future extensions)
+type Mutation {
+  # Trigger data transformation
+  transformData: Boolean!
+}
+
+# Subscription root (for future real-time updates)
+type Subscription {
+  # Subscribe to graph updates
+  graphUpdates: Graph!
+}
