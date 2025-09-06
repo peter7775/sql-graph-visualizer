@@ -1,0 +1,828 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Performance Monitoring Dashboard - SQL Graph Visualizer</title>
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    
+    <!-- Font Awesome for icons -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    
+    <!-- D3.js for advanced visualizations -->
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    
+    <!-- Chart.js for performance charts -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <style>
+        body {
+            background-color: #f8f9fa;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        .dashboard-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 2rem 0;
+            margin-bottom: 2rem;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        .dashboard-header h1 {
+            font-size: 2.5rem;
+            font-weight: 300;
+        }
+
+        .dashboard-header .lead {
+            opacity: 0.9;
+            font-size: 1.1rem;
+        }
+
+        .metric-card {
+            background: white;
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+            transition: transform 0.2s, box-shadow 0.2s;
+            border: none;
+        }
+
+        .metric-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.12);
+        }
+
+        .metric-value {
+            font-size: 2.5rem;
+            font-weight: 600;
+            margin: 0;
+        }
+
+        .metric-label {
+            color: #6c757d;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 0.5rem;
+        }
+
+        .metric-change {
+            font-size: 0.85rem;
+            margin-top: 0.5rem;
+        }
+
+        .metric-change.positive {
+            color: #28a745;
+        }
+
+        .metric-change.negative {
+            color: #dc3545;
+        }
+
+        .performance-graph-container {
+            background: white;
+            border-radius: 12px;
+            padding: 0;
+            margin-bottom: 2rem;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+            min-height: 600px;
+            position: relative;
+        }
+
+        .graph-header {
+            padding: 1.5rem;
+            border-bottom: 1px solid #e9ecef;
+            background: #f8f9fa;
+            border-radius: 12px 12px 0 0;
+        }
+
+        .graph-content {
+            padding: 1rem;
+            height: 500px;
+            position: relative;
+        }
+
+        #performanceGraph {
+            width: 100%;
+            height: 100%;
+            border-radius: 0 0 12px 12px;
+        }
+
+        .connection-status {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1050;
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 500;
+        }
+
+        .connection-status.connected {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .connection-status.disconnected {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .connection-status.reconnecting {
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeeba;
+        }
+
+        .controls-panel {
+            background: white;
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+        }
+
+        .control-group {
+            margin-bottom: 1rem;
+        }
+
+        .control-group:last-child {
+            margin-bottom: 0;
+        }
+
+        .control-label {
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            color: #495057;
+            font-size: 0.9rem;
+        }
+
+        .alert-panel {
+            position: fixed;
+            top: 80px;
+            right: 20px;
+            width: 350px;
+            z-index: 1040;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .performance-alert {
+            margin-bottom: 0.5rem;
+            border-radius: 8px;
+            border: none;
+        }
+
+        .performance-alert.alert-critical {
+            background: #f8d7da;
+            color: #721c24;
+            border-left: 4px solid #dc3545;
+        }
+
+        .performance-alert.alert-warning {
+            background: #fff3cd;
+            color: #856404;
+            border-left: 4px solid #ffc107;
+        }
+
+        .performance-alert.alert-info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border-left: 4px solid #17a2b8;
+        }
+
+        .chart-container {
+            background: white;
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+        }
+
+        .chart-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #495057;
+            margin-bottom: 1rem;
+        }
+
+        .status-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        .status-dot.green {
+            background: #28a745;
+        }
+
+        .status-dot.yellow {
+            background: #ffc107;
+        }
+
+        .status-dot.red {
+            background: #dc3545;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .dashboard-header {
+                padding: 1rem 0;
+            }
+
+            .dashboard-header h1 {
+                font-size: 2rem;
+            }
+
+            .metric-card {
+                margin-bottom: 1rem;
+            }
+
+            .alert-panel {
+                position: relative;
+                top: 0;
+                right: 0;
+                width: 100%;
+                margin-bottom: 2rem;
+            }
+
+            .connection-status {
+                position: relative;
+                top: 0;
+                right: 0;
+                margin-bottom: 1rem;
+                display: block;
+                text-align: center;
+            }
+        }
+
+        /* Loading states */
+        .loading {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 200px;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <!-- Connection Status Indicator -->
+    <div id="connectionStatus" class="connection-status disconnected">
+        <i class="fas fa-circle"></i> Connecting...
+    </div>
+
+    <!-- Alert Panel -->
+    <div id="alertPanel" class="alert-panel"></div>
+
+    <!-- Dashboard Header -->
+    <div class="dashboard-header">
+        <div class="container-fluid">
+            <div class="row align-items-center">
+                <div class="col-md-8">
+                    <h1><i class="fas fa-chart-line me-3"></i>Performance Dashboard</h1>
+                    <p class="lead mb-0">Real-time database performance monitoring and analysis</p>
+                </div>
+                <div class="col-md-4 text-md-end mt-3 mt-md-0">
+                    <div class="status-indicator">
+                        <div id="systemStatus" class="status-dot green"></div>
+                        <span id="systemStatusText">System Operational</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container-fluid">
+        <!-- Key Metrics Row -->
+        <div class="row">
+            <div class="col-md-3">
+                <div class="metric-card">
+                    <div class="metric-label">Queries Per Second</div>
+                    <div class="metric-value text-primary" id="qpsMetric">-</div>
+                    <div class="metric-change" id="qpsChange">
+                        <i class="fas fa-arrow-up"></i> -
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="metric-card">
+                    <div class="metric-label">Average Latency</div>
+                    <div class="metric-value text-warning" id="latencyMetric">-</div>
+                    <div class="metric-change" id="latencyChange">
+                        <i class="fas fa-arrow-down"></i> -
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="metric-card">
+                    <div class="metric-label">Error Rate</div>
+                    <div class="metric-value text-danger" id="errorRateMetric">-</div>
+                    <div class="metric-change" id="errorRateChange">
+                        <i class="fas fa-arrow-down"></i> -
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="metric-card">
+                    <div class="metric-label">Active Connections</div>
+                    <div class="metric-value text-info" id="connectionsMetric">-</div>
+                    <div class="metric-change" id="connectionsChange">
+                        <i class="fas fa-arrow-up"></i> -
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <!-- Performance Graph -->
+            <div class="col-lg-8">
+                <div class="performance-graph-container">
+                    <div class="graph-header">
+                        <div class="row align-items-center">
+                            <div class="col">
+                                <h5 class="mb-0"><i class="fas fa-project-diagram me-2"></i>Performance Graph Visualization</h5>
+                                <small class="text-muted">Interactive database performance visualization with real-time updates</small>
+                            </div>
+                            <div class="col-auto">
+                                <button class="btn btn-sm btn-outline-primary" id="fullscreenBtn">
+                                    <i class="fas fa-expand"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="graph-content">
+                        <div id="performanceGraph"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Controls and Charts -->
+            <div class="col-lg-4">
+                <!-- Controls Panel -->
+                <div class="controls-panel">
+                    <h6><i class="fas fa-sliders-h me-2"></i>Visualization Controls</h6>
+                    
+                    <div class="control-group">
+                        <div class="control-label">Display Options</div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="enableAnimations" checked>
+                            <label class="form-check-label" for="enableAnimations">
+                                Enable Animations
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="enableHeatmap" checked>
+                            <label class="form-check-label" for="enableHeatmap">
+                                Show Performance Heatmap
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="control-group">
+                        <div class="control-label">Performance Filters</div>
+                        <select class="form-select form-select-sm" id="performanceFilter">
+                            <option value="all">Show All Tables</option>
+                            <option value="slow">Slow Queries Only</option>
+                            <option value="hotspot">Hotspots Only</option>
+                            <option value="errors">Tables with Errors</option>
+                        </select>
+                    </div>
+
+                    <div class="control-group">
+                        <div class="control-label">Update Frequency</div>
+                        <select class="form-select form-select-sm" id="updateFrequency">
+                            <option value="1000">1 second</option>
+                            <option value="5000" selected>5 seconds</option>
+                            <option value="10000">10 seconds</option>
+                            <option value="30000">30 seconds</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Performance Metrics Chart -->
+                <div class="chart-container">
+                    <div class="chart-title">Query Performance Trends</div>
+                    <canvas id="performanceTrendsChart" width="400" height="200"></canvas>
+                </div>
+
+                <!-- Top Queries -->
+                <div class="chart-container">
+                    <div class="chart-title">Slowest Queries</div>
+                    <div id="topQueriesList">
+                        <div class="loading">
+                            <div class="spinner"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Benchmarks Section -->
+        <div class="row mt-4">
+            <div class="col-12">
+                <div class="chart-container">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h5 class="chart-title mb-0"><i class="fas fa-tachometer-alt me-2"></i>Benchmark Control</h5>
+                        <div>
+                            <button class="btn btn-primary btn-sm" id="startBenchmark">
+                                <i class="fas fa-play me-1"></i>Start Benchmark
+                            </button>
+                            <button class="btn btn-danger btn-sm" id="stopBenchmark" disabled>
+                                <i class="fas fa-stop me-1"></i>Stop Benchmark
+                            </button>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-8">
+                            <canvas id="benchmarkChart" width="800" height="300"></canvas>
+                        </div>
+                        <div class="col-md-4">
+                            <div id="benchmarkStatus">
+                                <p class="text-muted">No active benchmarks</p>
+                            </div>
+                            <div id="benchmarkResults" style="display: none;">
+                                <h6>Latest Results:</h6>
+                                <div id="resultsList"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- Performance Visualization Script -->
+    <script src="/static/js/performance-visualization.js"></script>
+    
+    <!-- Dashboard Control Script -->
+    <script>
+        // Dashboard initialization and control
+        let dashboardApp;
+        let performanceVisualizer;
+        let trendsChart;
+        let benchmarkChart;
+
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeDashboard();
+        });
+
+        function initializeDashboard() {
+            console.log('Initializing Performance Dashboard...');
+            
+            // Initialize performance graph visualizer
+            performanceVisualizer = new PerformanceGraphVisualizer('performanceGraph', {
+                width: document.getElementById('performanceGraph').clientWidth,
+                height: 500,
+                enableRealtime: true,
+                enableAnimations: true,
+                enableHeatmap: true
+            });
+
+            // Initialize performance trends chart
+            initializeTrendsChart();
+            
+            // Initialize benchmark chart
+            initializeBenchmarkChart();
+            
+            // Set up event handlers
+            setupEventHandlers();
+            
+            // Start dashboard updates
+            startDashboardUpdates();
+            
+            console.log('Performance Dashboard initialized successfully');
+        }
+
+        function initializeTrendsChart() {
+            const ctx = document.getElementById('performanceTrendsChart').getContext('2d');
+            trendsChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [
+                        {
+                            label: 'QPS',
+                            data: [],
+                            borderColor: '#007bff',
+                            backgroundColor: 'rgba(0, 123, 255, 0.1)',
+                            tension: 0.1
+                        },
+                        {
+                            label: 'Avg Latency (ms)',
+                            data: [],
+                            borderColor: '#ffc107',
+                            backgroundColor: 'rgba(255, 193, 7, 0.1)',
+                            tension: 0.1,
+                            yAxisID: 'y1'
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    interaction: {
+                        mode: 'index',
+                        intersect: false,
+                    },
+                    scales: {
+                        y: {
+                            type: 'linear',
+                            display: true,
+                            position: 'left',
+                        },
+                        y1: {
+                            type: 'linear',
+                            display: true,
+                            position: 'right',
+                            grid: {
+                                drawOnChartArea: false,
+                            },
+                        }
+                    }
+                }
+            });
+        }
+
+        function initializeBenchmarkChart() {
+            const ctx = document.getElementById('benchmarkChart').getContext('2d');
+            benchmarkChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [
+                        {
+                            label: 'Transactions/sec',
+                            data: [],
+                            borderColor: '#28a745',
+                            backgroundColor: 'rgba(40, 167, 69, 0.1)',
+                            tension: 0.1
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Transactions/sec'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function setupEventHandlers() {
+            // Control handlers
+            document.getElementById('enableAnimations').addEventListener('change', function(e) {
+                performanceVisualizer.options.enableAnimations = e.target.checked;
+            });
+
+            document.getElementById('enableHeatmap').addEventListener('change', function(e) {
+                performanceVisualizer.options.enableHeatmap = e.target.checked;
+            });
+
+            document.getElementById('updateFrequency').addEventListener('change', function(e) {
+                const interval = parseInt(e.target.value);
+                performanceVisualizer.options.updateInterval = interval;
+            });
+
+            // Benchmark controls
+            document.getElementById('startBenchmark').addEventListener('click', startBenchmark);
+            document.getElementById('stopBenchmark').addEventListener('click', stopBenchmark);
+
+            // Fullscreen toggle
+            document.getElementById('fullscreenBtn').addEventListener('click', toggleFullscreen);
+        }
+
+        function startDashboardUpdates() {
+            // Update metrics every 5 seconds
+            setInterval(updateMetrics, 5000);
+            
+            // Update trends chart every 10 seconds
+            setInterval(updateTrendsChart, 10000);
+            
+            // Update top queries every 15 seconds
+            setInterval(updateTopQueries, 15000);
+
+            // Initial updates
+            updateMetrics();
+            updateTrendsChart();
+            updateTopQueries();
+        }
+
+        async function updateMetrics() {
+            try {
+                const response = await fetch('/api/performance/metrics/summary');
+                if (!response.ok) throw new Error('Failed to fetch metrics');
+                
+                const data = await response.json();
+                if (data.success && data.data) {
+                    updateMetricCards(data.data);
+                }
+            } catch (error) {
+                console.error('Error updating metrics:', error);
+                updateConnectionStatus('disconnected');
+            }
+        }
+
+        function updateMetricCards(metrics) {
+            // Update QPS
+            document.getElementById('qpsMetric').textContent = 
+                metrics.queries_per_second ? metrics.queries_per_second.toFixed(1) : '0.0';
+            
+            // Update Latency
+            document.getElementById('latencyMetric').textContent = 
+                metrics.average_latency_ms ? metrics.average_latency_ms.toFixed(0) + 'ms' : '0ms';
+            
+            // Update Error Rate
+            document.getElementById('errorRateMetric').textContent = 
+                metrics.error_rate ? metrics.error_rate.toFixed(2) + '%' : '0%';
+            
+            // Update Connections
+            document.getElementById('connectionsMetric').textContent = 
+                metrics.active_connections || '0';
+
+            updateConnectionStatus('connected');
+        }
+
+        async function updateTrendsChart() {
+            try {
+                const response = await fetch('/api/performance/data');
+                if (!response.ok) throw new Error('Failed to fetch performance data');
+                
+                const data = await response.json();
+                if (data.success && data.data && data.data.summary) {
+                    const summary = data.data.summary;
+                    const now = new Date().toLocaleTimeString();
+                    
+                    // Add new data point
+                    if (trendsChart.data.labels.length >= 20) {
+                        trendsChart.data.labels.shift();
+                        trendsChart.data.datasets[0].data.shift();
+                        trendsChart.data.datasets[1].data.shift();
+                    }
+                    
+                    trendsChart.data.labels.push(now);
+                    trendsChart.data.datasets[0].data.push(summary.queries_per_second || 0);
+                    trendsChart.data.datasets[1].data.push(summary.average_latency_ms || 0);
+                    
+                    trendsChart.update('none');
+                }
+            } catch (error) {
+                console.error('Error updating trends chart:', error);
+            }
+        }
+
+        async function updateTopQueries() {
+            try {
+                const response = await fetch('/api/performance/metrics/queries?limit=5');
+                if (!response.ok) throw new Error('Failed to fetch top queries');
+                
+                const data = await response.json();
+                if (data.success && data.data) {
+                    renderTopQueries(data.data);
+                }
+            } catch (error) {
+                console.error('Error updating top queries:', error);
+            }
+        }
+
+        function renderTopQueries(queries) {
+            const container = document.getElementById('topQueriesList');
+            
+            if (!queries || queries.length === 0) {
+                container.innerHTML = '<p class="text-muted">No slow queries detected</p>';
+                return;
+            }
+
+            const html = queries.map(query => `
+                <div class="border-bottom pb-2 mb-2">
+                    <div class="d-flex justify-content-between">
+                        <small class="text-muted">Avg: ${(query.avg_timer_wait / 1000000).toFixed(1)}ms</small>
+                        <small class="text-muted">Count: ${query.count_star}</small>
+                    </div>
+                    <div class="small text-truncate" title="${query.digest_text}">
+                        ${query.digest_text.substring(0, 60)}...
+                    </div>
+                </div>
+            `).join('');
+
+            container.innerHTML = html;
+        }
+
+        function updateConnectionStatus(status) {
+            const statusEl = document.getElementById('connectionStatus');
+            const statusText = document.getElementById('systemStatusText');
+            const statusDot = document.getElementById('systemStatus');
+            
+            statusEl.className = `connection-status ${status}`;
+            
+            switch (status) {
+                case 'connected':
+                    statusEl.innerHTML = '<i class="fas fa-circle"></i> Connected';
+                    statusText.textContent = 'System Operational';
+                    statusDot.className = 'status-dot green';
+                    break;
+                case 'disconnected':
+                    statusEl.innerHTML = '<i class="fas fa-circle"></i> Disconnected';
+                    statusText.textContent = 'Connection Lost';
+                    statusDot.className = 'status-dot red';
+                    break;
+                case 'reconnecting':
+                    statusEl.innerHTML = '<i class="fas fa-circle"></i> Reconnecting...';
+                    statusText.textContent = 'Reconnecting';
+                    statusDot.className = 'status-dot yellow';
+                    break;
+            }
+        }
+
+        async function startBenchmark() {
+            try {
+                const response = await fetch('/api/performance/benchmarks', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        benchmark_type: 'sysbench',
+                        duration_seconds: 60,
+                        description: 'Dashboard initiated benchmark'
+                    })
+                });
+
+                if (!response.ok) throw new Error('Failed to start benchmark');
+
+                const data = await response.json();
+                if (data.success) {
+                    document.getElementById('startBenchmark').disabled = true;
+                    document.getElementById('stopBenchmark').disabled = false;
+                    
+                    document.getElementById('benchmarkStatus').innerHTML = `
+                        <div class="alert alert-info">
+                            <strong>Benchmark Running</strong><br>
+                            ID: ${data.data.id}<br>
+                            Started: ${new Date(data.data.start_time).toLocaleTimeString()}
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                console.error('Error starting benchmark:', error);
+                alert('Failed to start benchmark: ' + error.message);
+            }
+        }
+
+        async function stopBenchmark() {
+            // Implementation for stopping benchmark
+            document.getElementById('startBenchmark').disabled = false;
+            document.getElementById('stopBenchmark').disabled = true;
+        }
+
+        function toggleFullscreen() {
+            const container = document.querySelector('.performance-graph-container');
+            if (!document.fullscreenElement) {
+                container.requestFullscreen();
+            } else {
+                document.exitFullscreen();
+            }
+        }
+    </script>
+</body>
+</html>

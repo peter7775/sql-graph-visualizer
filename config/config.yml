@@ -36,6 +36,122 @@ neo4j:
   user: "neo4j"
   password: "password"
 
+# Performance monitoring and benchmarking configuration
+performance:
+  # Performance data collection settings
+  monitoring:
+    enabled: true
+    update_interval: "5s"
+    data_retention: "1h"
+    max_concurrent_queries: 10
+    
+    # MySQL Performance Schema settings
+    performance_schema:
+      enabled: true
+      statement_limit: 100
+      table_io_limit: 50
+      index_limit: 50
+      connection_limit: 25
+      cache_duration: "30s"
+      
+    # Performance analysis settings
+    analysis:
+      bottleneck_threshold: 70.0
+      slow_query_threshold: 200.0  # milliseconds
+      high_load_threshold: 80.0
+      hotspot_threshold: 75.0
+      
+  # Real-time monitoring via WebSocket
+  realtime:
+    enabled: true
+    update_interval: "5s"
+    heartbeat_interval: "30s"
+    max_connections: 100
+    write_timeout: "10s"
+    read_timeout: "60s"
+    ping_timeout: "90s"
+    max_message_size: 512
+    compression_enabled: true
+    
+    # Alert thresholds
+    alerts:
+      high_latency: 1000.0        # 1 second
+      high_error_rate: 5.0        # 5%
+      high_cpu_usage: 80.0        # 80%
+      high_memory_usage: 85.0     # 85%
+      slow_query_threshold: 200.0 # 200ms
+      deadlock_threshold: 5       # 5 deadlocks per minute
+      
+  # Benchmarking settings
+  benchmarks:
+    enabled: true
+    default_duration: "60s"
+    max_duration: "600s"
+    results_retention: "24h"
+    
+    # Sysbench configuration
+    sysbench:
+      executable_path: "sysbench"
+      temp_dir: "/tmp/sysbench"
+      cleanup_after_test: true
+      
+      # Default test parameters
+      defaults:
+        table_size: 10000
+        threads: 4
+        time: 60
+        report_interval: 10
+        
+    # Resource limits
+    limits:
+      max_concurrent_benchmarks: 3
+      memory_limit_mb: 100
+      cpu_threshold: 80.0
+      
+  # Graph visualization settings
+  visualization:
+    # Visual encoding
+    edge_thickness:
+      metric: "query_frequency"
+      scale: "linear"
+      min_thickness: 1.0
+      max_thickness: 10.0
+      multiplier: 1.0
+      
+    edge_color:
+      metric: "avg_execution_time"
+      color_scale: "green_yellow_red"
+      thresholds:
+        fast: "< 100ms"
+        medium: "100ms - 1s"
+        slow: "> 1s"
+        
+    node_size:
+      metric: "total_queries_involved"
+      min_size: 20.0
+      max_size: 100.0
+      scale: "sqrt"
+      
+    node_color:
+      metric: "avg_response_time"
+      color_scale: "green_yellow_red"
+      thresholds:
+        good: "< 50ms"
+        ok: "50ms - 200ms"
+        slow: "> 200ms"
+        
+    # Animation settings
+    animation:
+      show_data_flow: true
+      speed_based_on: "query_frequency"
+      animation_speed: 1.0
+      particle_count: 10
+      
+    # Update settings
+    update_interval: "5s"
+    history_retention: "1h"
+    max_concurrent_updates: 3
+
 transform_rules:
   - name: "users_to_nodes"
     rule_type: "node"
