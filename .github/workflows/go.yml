@@ -57,24 +57,14 @@ jobs:
       - name: Vet
         run: go vet ./...
 
-      - name:  Security scan (gosec)
-        id: gosec_action
-        continue-on-error: true
-        uses: securecodewarrior/github-action-gosec@master
-        with:
-          args: '-exclude=G115 -exclude-dir=internal/application/services/graphql/generated ./...'
-        env:
-          GO111MODULE: on
-          
-      - name: Security scan fallback notification
-        if: steps.gosec_action.outcome == 'failure'
+      - name: Security scan (gosec)
         run: |
-          echo "WARNING: Official gosec action failed."
-          echo "This may be due to GitHub action issues or network problems."
-          echo "Security scanning was not completed in CI, please run gosec locally:"
-          echo "  gosec -exclude=G115 -exclude-dir=internal/application/services/graphql/generated ./..."
-          echo "Continuing with build process..."
-          exit 0
+          echo "Installing gosec security scanner..."
+          go install github.com/securego/gosec/v2/cmd/gosec@latest
+          
+          echo "Running gosec security scan..."
+          $(go env GOPATH)/bin/gosec -version || echo "gosec version check failed"
+          $(go env GOPATH)/bin/gosec -exclude=G115 -exclude-dir=internal/application/services/graphql/generated ./...
 
   # Build and unit tests
   test:
