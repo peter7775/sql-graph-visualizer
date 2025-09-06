@@ -59,12 +59,12 @@ type GraphQLRequest struct {
 }
 
 type GraphQLResponse struct {
-	Data   interface{} `json:"data,omitempty"`
+	Data   interface{}    `json:"data,omitempty"`
 	Errors []GraphQLError `json:"errors,omitempty"`
 }
 
 type GraphQLError struct {
-	Message string `json:"message"`
+	Message string        `json:"message"`
 	Path    []interface{} `json:"path,omitempty"`
 }
 
@@ -78,9 +78,9 @@ func setupTestServer() (*Server, *MockNeo4jPort, *httptest.Server) {
 			Password: "testpass",
 		},
 	}
-	
+
 	server := NewServer(mockNeo4j, config)
-	
+
 	// Create test HTTP server
 	mux := http.NewServeMux()
 	mux.HandleFunc("/graphql", func(w http.ResponseWriter, r *http.Request) {
@@ -90,27 +90,27 @@ func setupTestServer() (*Server, *MockNeo4jPort, *httptest.Server) {
 		w.WriteHeader(http.StatusOK)
 		json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
 	})
-	
+
 	testServer := httptest.NewServer(mux)
-	
+
 	return server, mockNeo4j, testServer
 }
 
 // Helper to create test graph aggregate
 func createTestGraphAggregate() *graph.GraphAggregate {
 	graphAgg := graph.NewGraphAggregate("test-graph")
-	
+
 	// Add test nodes
 	node1Props := map[string]any{"id": "1", "name": "Test User", "email": "test@example.com"}
 	node2Props := map[string]any{"id": "2", "title": "Test Post", "content": "This is a test post"}
-	
+
 	graphAgg.AddNode("User", node1Props)
 	graphAgg.AddNode("Post", node2Props)
-	
+
 	// Add test relationship
 	relProps := map[string]any{"created_at": "2025-01-01"}
 	graphAgg.AddDirectRelationship("CREATED", "1", "2", relProps)
-	
+
 	return graphAgg
 }
 
@@ -123,9 +123,9 @@ func TestNewServer(t *testing.T) {
 			Password: "testpass",
 		},
 	}
-	
+
 	server := NewServer(mockNeo4j, config)
-	
+
 	assert.NotNil(t, server)
 	assert.Equal(t, mockNeo4j, server.neo4jRepo)
 	assert.Equal(t, config, server.config)
@@ -133,10 +133,10 @@ func TestNewServer(t *testing.T) {
 
 func TestServer_Start_Stop(t *testing.T) {
 	server, _, _ := setupTestServer()
-	
+
 	// Test that the server can be created
 	assert.NotNil(t, server)
-	
+
 	// Test Stop with no running server
 	err := server.Stop()
 	assert.NoError(t, err)
@@ -151,15 +151,15 @@ func TestStartGraphQLServer(t *testing.T) {
 			Password: "testpass",
 		},
 	}
-	
+
 	// Start server in background
 	server := StartGraphQLServer(mockNeo4j, config)
-	
+
 	// Give it a moment to start
 	time.Sleep(100 * time.Millisecond)
-	
+
 	assert.NotNil(t, server)
-	
+
 	// Stop the server
 	err := server.Stop()
 	assert.NoError(t, err)
@@ -169,7 +169,7 @@ func TestStartGraphQLServer(t *testing.T) {
 func TestGraphQLIntegration_ConfigQuery(t *testing.T) {
 	server, _, testServer := setupTestServer()
 	defer testServer.Close()
-	
+
 	// GraphQL query for config
 	query := `
 		query {
@@ -182,19 +182,19 @@ func TestGraphQLIntegration_ConfigQuery(t *testing.T) {
 			}
 		}
 	`
-	
+
 	reqBody := GraphQLRequest{
 		Query: query,
 	}
-	
+
 	jsonBody, err := json.Marshal(reqBody)
 	assert.NoError(t, err)
-	
+
 	// Make HTTP request to GraphQL endpoint
 	resp, err := http.Post(testServer.URL+"/graphql", "application/json", bytes.NewBuffer(jsonBody))
 	assert.NoError(t, err)
 	defer resp.Body.Close()
-	
+
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 	assert.NotNil(t, server)
 }
@@ -202,11 +202,11 @@ func TestGraphQLIntegration_ConfigQuery(t *testing.T) {
 func TestGraphQLIntegration_GraphQuery(t *testing.T) {
 	server, mockNeo4j, testServer := setupTestServer()
 	defer testServer.Close()
-	
+
 	// Setup mock expectations
 	testGraph := createTestGraphAggregate()
 	mockNeo4j.On("ExportGraph", "MATCH (n)-[r]->(m) RETURN n, r, m").Return(testGraph, nil)
-	
+
 	// GraphQL query for graph data
 	query := `
 		query {
@@ -225,19 +225,19 @@ func TestGraphQLIntegration_GraphQuery(t *testing.T) {
 			}
 		}
 	`
-	
+
 	reqBody := GraphQLRequest{
 		Query: query,
 	}
-	
+
 	jsonBody, err := json.Marshal(reqBody)
 	assert.NoError(t, err)
-	
+
 	// Make HTTP request to GraphQL endpoint
 	resp, err := http.Post(testServer.URL+"/graphql", "application/json", bytes.NewBuffer(jsonBody))
 	assert.NoError(t, err)
 	defer resp.Body.Close()
-	
+
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 	assert.NotNil(t, server)
 }
@@ -245,11 +245,11 @@ func TestGraphQLIntegration_GraphQuery(t *testing.T) {
 func TestGraphQLIntegration_NodesByTypeQuery(t *testing.T) {
 	server, mockNeo4j, testServer := setupTestServer()
 	defer testServer.Close()
-	
+
 	// Setup mock expectations
 	testGraph := createTestGraphAggregate()
 	mockNeo4j.On("ExportGraph", "MATCH (n:User) RETURN n").Return(testGraph, nil)
-	
+
 	// GraphQL query for nodes by type
 	query := `
 		query($type: String!) {
@@ -260,22 +260,22 @@ func TestGraphQLIntegration_NodesByTypeQuery(t *testing.T) {
 			}
 		}
 	`
-	
+
 	reqBody := GraphQLRequest{
 		Query: query,
 		Variables: map[string]interface{}{
 			"type": "User",
 		},
 	}
-	
+
 	jsonBody, err := json.Marshal(reqBody)
 	assert.NoError(t, err)
-	
+
 	// Make HTTP request to GraphQL endpoint
 	resp, err := http.Post(testServer.URL+"/graphql", "application/json", bytes.NewBuffer(jsonBody))
 	assert.NoError(t, err)
 	defer resp.Body.Close()
-	
+
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 	assert.NotNil(t, server)
 }
@@ -283,26 +283,26 @@ func TestGraphQLIntegration_NodesByTypeQuery(t *testing.T) {
 func TestGraphQLIntegration_TransformDataMutation(t *testing.T) {
 	server, _, testServer := setupTestServer()
 	defer testServer.Close()
-	
+
 	// GraphQL mutation for data transformation
 	query := `
 		mutation {
 			transformData
 		}
 	`
-	
+
 	reqBody := GraphQLRequest{
 		Query: query,
 	}
-	
+
 	jsonBody, err := json.Marshal(reqBody)
 	assert.NoError(t, err)
-	
+
 	// Make HTTP request to GraphQL endpoint
 	resp, err := http.Post(testServer.URL+"/graphql", "application/json", bytes.NewBuffer(jsonBody))
 	assert.NoError(t, err)
 	defer resp.Body.Close()
-	
+
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 	assert.NotNil(t, server)
 }
@@ -310,7 +310,7 @@ func TestGraphQLIntegration_TransformDataMutation(t *testing.T) {
 func TestGraphQLIntegration_InvalidQuery(t *testing.T) {
 	_, _, testServer := setupTestServer()
 	defer testServer.Close()
-	
+
 	// Invalid GraphQL query
 	query := `
 		query {
@@ -319,19 +319,19 @@ func TestGraphQLIntegration_InvalidQuery(t *testing.T) {
 			}
 		}
 	`
-	
+
 	reqBody := GraphQLRequest{
 		Query: query,
 	}
-	
+
 	jsonBody, err := json.Marshal(reqBody)
 	assert.NoError(t, err)
-	
+
 	// Make HTTP request to GraphQL endpoint
 	resp, err := http.Post(testServer.URL+"/graphql", "application/json", bytes.NewBuffer(jsonBody))
 	assert.NoError(t, err)
 	defer resp.Body.Close()
-	
+
 	// Should still return 200 OK as GraphQL handles errors in the response body
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 }
@@ -339,15 +339,15 @@ func TestGraphQLIntegration_InvalidQuery(t *testing.T) {
 func TestGraphQLIntegration_MalformedJSON(t *testing.T) {
 	_, _, testServer := setupTestServer()
 	defer testServer.Close()
-	
+
 	// Malformed JSON request
 	malformedJSON := `{"query": "invalid json"`
-	
+
 	// Make HTTP request to GraphQL endpoint
 	resp, err := http.Post(testServer.URL+"/graphql", "application/json", bytes.NewBuffer([]byte(malformedJSON)))
 	assert.NoError(t, err)
 	defer resp.Body.Close()
-	
+
 	// Should return error for malformed JSON
 	assert.Equal(t, http.StatusOK, resp.StatusCode) // GraphQL typically returns 200 even for errors
 }

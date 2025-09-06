@@ -51,10 +51,10 @@ func (s *Server) Start(addr string) error {
 
 	// Create HTTP mux
 	mux := http.NewServeMux()
-	
+
 	// GraphQL endpoint
 	mux.Handle("/graphql", srv)
-	
+
 	// GraphQL Playground
 	mux.Handle("/playground", playground.Handler("GraphQL playground", "/graphql"))
 
@@ -70,7 +70,7 @@ func (s *Server) Start(addr string) error {
 
 	logrus.Infof("GraphQL server starting on %s", addr)
 	logrus.Infof("GraphQL Playground available at http://%s/playground", addr)
-	
+
 	return s.server.ListenAndServe()
 }
 
@@ -79,7 +79,7 @@ func (s *Server) Stop() error {
 	if s.server == nil {
 		return nil
 	}
-	
+
 	logrus.Info("Stopping GraphQL server...")
 	return s.server.Close()
 }
@@ -87,12 +87,12 @@ func (s *Server) Stop() error {
 // StartGraphQLServer is a convenience function to start the GraphQL server in a goroutine
 func StartGraphQLServer(neo4jRepo ports.Neo4jPort, config *models.Config) *Server {
 	server := NewServer(neo4jRepo, config)
-	
+
 	go func() {
 		if err := server.Start("localhost:8081"); err != nil && err != http.ErrServerClosed {
 			logrus.Errorf("GraphQL server failed: %v", err)
 		}
 	}()
-	
+
 	return server
 }
