@@ -1,4 +1,4 @@
-name:  Deploy
+name: Deploy
 
 on:
   workflow_run:
@@ -32,7 +32,7 @@ env:
 jobs:
   # Determine deployment parameters
   prepare:
-    name:  Prepare Deployment
+    name: Prepare Deployment
     runs-on: ubuntu-latest
     if: |
       (github.event.workflow_run.conclusion == 'success' && 
@@ -45,7 +45,7 @@ jobs:
       skip_tests: ${{ steps.params.outputs.skip_tests }}
       should_deploy: ${{ steps.params.outputs.should_deploy }}
     steps:
-      - name:  Determine deployment parameters
+      - name: Determine deployment parameters
         id: params
         run: |
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
@@ -80,7 +80,7 @@ jobs:
           echo "skip_tests=$SKIP_TESTS" >> $GITHUB_OUTPUT
           echo "should_deploy=$SHOULD_DEPLOY" >> $GITHUB_OUTPUT
           
-          echo " Deployment Parameters:"
+          echo "Deployment Parameters:"
           echo "  Environment: $ENVIRONMENT"
           echo "  Image Tag: $IMAGE_TAG"
           echo "  Image URL: $IMAGE_URL"
@@ -88,39 +88,445 @@ jobs:
 
   # Pre-deployment tests
   pre-deployment-tests:
-    name:  Pre-deployment Tests
+    name: Pre-deployment Tests
     runs-on: ubuntu-latest
     needs: prepare
     if: needs.prepare.outputs.should_deploy == 'true' && needs.prepare.outputs.skip_tests == 'false'
     steps:
-      - name:  Checkout code
+      - name: Checkout code
         uses: actions/checkout@v4
 
-      - name:  Verify Docker image exists
+      - name: Verify Docker image exists
         run: |
-          echo " Verifying Docker image exists: ${{ needs.prepare.outputs.image_url }}"
+          echo "Verifying Docker image exists: ${{ needs.prepare.outputs.image_url }}"
           
           # Try to pull the image
           if docker pull "${{ needs.prepare.outputs.image_url }}"; then
-            echo " Docker image found and pulled successfully"
+            echo "Docker image found and pulled successfully"
           else
-            echo " Docker image not found: ${{ needs.prepare.outputs.image_url }}"
+            echo "Docker image not found: ${{ needs.prepare.outputs.image_url }}"
             echo "Available tags:"
             docker search "${{ env.IMAGE_NAME }}" || true
             exit 1
           fi
 
-      - name:  Run container smoke tests
+      - name: Run container smoke tests
         run: |
-          echo " Running container smoke tests..."
+          echo "Running container smoke tests..."
           
           # Run container in detached mode
-          CONTAINER_ID=$(docker run -d \\\n            --name test-container \\\n            -p 8080:8080 \\\n            -p 3000:3000 \\\n            -e LOG_LEVEL=info \\\n            "${{ needs.prepare.outputs.image_url }}")\n          \n          echo " Container ID: $CONTAINER_ID"\n          \n          # Wait for container to start\n          echo "⏳ Waiting for application to start..."\n          sleep 30\n          \n          # Check if container is running\n          if ! docker ps | grep -q "$CONTAINER_ID"; then\n            echo " Container failed to start"\n            docker logs "$CONTAINER_ID"\n            exit 1\n          fi\n          \n          echo " Container is running"\n          \n          # Test health endpoint (if available)\n          for i in {1..30}; do\n            if curl -f http://localhost:8080/api/health > /dev/null 2>&1; then\n              echo " Health check passed"\n              break\n            fi\n            echo "⏳ Attempt $i/30: Health check failed, retrying..."\n            sleep 2\n          done\n          \n          # Cleanup\n          docker stop "$CONTAINER_ID"\n          docker rm "$CONTAINER_ID"\n          \n          echo " Smoke tests completed successfully"
+          CONTAINER_ID=$(docker run -d \
+            --name test-container \
+            -p 8080:8080 \
+            -p 3000:3000 \
+            -e LOG_LEVEL=info \
+            "${{ needs.prepare.outputs.image_url }}")
+          
+          echo "Container ID: $CONTAINER_ID"
+          
+          # Wait for container to start
+          echo "Waiting for application to start..."
+          sleep 30
+          
+          # Check if container is running
+          if ! docker ps | grep -q "$CONTAINER_ID"; then
+            echo "Container failed to start"
+            docker logs "$CONTAINER_ID"
+            exit 1
+          fi
+          
+          echo "Container is running"
+          
+          # Test health endpoint (if available)
+          for i in {1..30}; do
+            if curl -f http://localhost:8080/api/health > /dev/null 2>&1; then
+              echo "Health check passed"
+              break
+            fi
+            echo "Attempt $i/30: Health check failed, retrying..."
+            sleep 2
+          done
+          
+          # Cleanup
+          docker stop "$CONTAINER_ID"
+          docker rm "$CONTAINER_ID"
+          
+          echo "Smoke tests completed successfully"
 
   # Deploy to staging
   deploy-staging:
-    name:  Deploy to Staging
+    name: Deploy to Staging
     runs-on: ubuntu-latest
     needs: [prepare, pre-deployment-tests]
     if: |
-      always() && \n      needs.prepare.outputs.should_deploy == 'true' && \n      needs.prepare.outputs.environment == 'staging' &&\n      (needs.pre-deployment-tests.result == 'success' || needs.prepare.outputs.skip_tests == 'true')\n    environment:\n      name: staging\n      url: https://mysql-graph-visualizer-staging.example.com\n    steps:\n      - name:  Checkout code\n        uses: actions/checkout@v4\n\n      - name:  Setup deployment tools\n        run: |\n          echo " Setting up deployment tools..."\n          # Install deployment tools (kubectl, helm, docker-compose, etc.)\n          # This is where you'd install your specific deployment tools\n          \n      - name:  Configure staging environment\n        run: |\n          echo " Configuring staging environment..."\n          # Configure staging environment variables, secrets, etc.\n          # This is environment-specific configuration\n          \n      - name:  Deploy to staging\n        run: |\n          echo " Deploying to staging environment..."\n          echo "Image: ${{ needs.prepare.outputs.image_url }}"\n          \n          # Example Docker Compose deployment\n          cat > docker-compose.staging.yml << EOF\n          version: '3.8'\n          services:\n            mysql-graph-visualizer:\n              image: ${{ needs.prepare.outputs.image_url }}\n              ports:\n                - \"3000:3000\"\n                - \"8080:8080\"\n              environment:\n                - LOG_LEVEL=info\n                - GO_ENV=staging\n              restart: unless-stopped\n              healthcheck:\n                test: [\"CMD\", \"curl\", \"-f\", \"http://localhost:8080/api/health\"]\n                interval: 30s\n                timeout: 10s\n                retries: 3\n                start_period: 60s\n            \n            mysql:\n              image: mysql:8.0\n              environment:\n                MYSQL_ROOT_PASSWORD: staging-password\n                MYSQL_DATABASE: mysql_graph_visualizer\n              volumes:\n                - mysql_data:/var/lib/mysql\n              restart: unless-stopped\n            \n            neo4j:\n              image: neo4j:4.4\n              environment:\n                NEO4J_AUTH: neo4j/staging-password\n                NEO4J_ACCEPT_LICENSE_AGREEMENT: 'yes'\n              ports:\n                - \"7474:7474\"\n                - \"7687:7687\"\n              volumes:\n                - neo4j_data:/data\n              restart: unless-stopped\n          \n          volumes:\n            mysql_data:\n            neo4j_data:\n          EOF\n          \n          # Deploy using docker-compose (example)\n          # In real deployment, you might use Kubernetes, Docker Swarm, or other tools\n          echo \" Deployment configuration generated\"\n          cat docker-compose.staging.yml\n          \n          # Example deployment command (customize based on your infrastructure)\n          # docker-compose -f docker-compose.staging.yml up -d\n          \n          echo \" Staging deployment completed\"\n\n      - name:  Post-deployment verification\n        run: |\n          echo \" Verifying staging deployment...\"\n          \n          # Wait for application to be ready\n          echo \"⏳ Waiting for application to be ready...\"\n          sleep 60\n          \n          # Test staging endpoints\n          STAGING_URL=\"https://mysql-graph-visualizer-staging.example.com\"\n          \n          # Basic connectivity test\n          if curl -f \"$STAGING_URL/api/health\" > /dev/null 2>&1; then\n            echo \" Staging health check passed\"\n          else\n            echo \"️ Staging health check failed (this might be expected if URL is not configured)\"\n          fi\n          \n          echo \" Staging deployment verification completed\"\n\n  # Deploy to production\n  deploy-production:\n    name:  Deploy to Production\n    runs-on: ubuntu-latest\n    needs: [prepare, pre-deployment-tests]\n    if: |\n      always() && \n      needs.prepare.outputs.should_deploy == 'true' && \n      needs.prepare.outputs.environment == 'production' &&\n      (needs.pre-deployment-tests.result == 'success' || needs.prepare.outputs.skip_tests == 'true')\n    environment:\n      name: production\n      url: https://mysql-graph-visualizer.example.com\n    steps:\n      - name:  Checkout code\n        uses: actions/checkout@v4\n\n      - name:  Configure production environment\n        run: |\n          echo \" Configuring production environment...\"\n          # Production-specific configuration\n          \n      - name:  Pre-production checks\n        run: |\n          echo \" Running pre-production checks...\"\n          \n          # Database backup verification\n          echo \" Verifying database backup...\"\n          # Add database backup verification logic\n          \n          # Resource availability check\n          echo \" Checking resource availability...\"\n          # Add resource checks\n          \n          # Dependencies health check\n          echo \" Checking dependencies...\"\n          # Add dependency checks\n          \n          echo \" Pre-production checks completed\"\n\n      - name:  Deploy to production\n        run: |\n          echo \" Deploying to production environment...\"\n          echo \"Image: ${{ needs.prepare.outputs.image_url }}\"\n          \n          # Production deployment with blue-green or rolling deployment\n          cat > docker-compose.production.yml << EOF\n          version: '3.8'\n          services:\n            mysql-graph-visualizer:\n              image: ${{ needs.prepare.outputs.image_url }}\n              ports:\n                - \"3000:3000\"\n                - \"8080:8080\"\n              environment:\n                - LOG_LEVEL=warn\n                - GO_ENV=production\n              restart: unless-stopped\n              healthcheck:\n                test: [\"CMD\", \"curl\", \"-f\", \"http://localhost:8080/api/health\"]\n                interval: 30s\n                timeout: 10s\n                retries: 5\n                start_period: 120s\n              deploy:\n                replicas: 2\n                update_config:\n                  parallelism: 1\n                  delay: 30s\n                  order: start-first\n                restart_policy:\n                  condition: on-failure\n                  delay: 5s\n                  max_attempts: 3\n            \n            mysql:\n              image: mysql:8.0\n              environment:\n                MYSQL_ROOT_PASSWORD_FILE: /run/secrets/mysql_root_password\n                MYSQL_DATABASE: mysql_graph_visualizer\n              volumes:\n                - mysql_data:/var/lib/mysql\n                - ./mysql/conf.d:/etc/mysql/conf.d:ro\n              secrets:\n                - mysql_root_password\n              restart: unless-stopped\n            \n            neo4j:\n              image: neo4j:4.4\n              environment:\n                NEO4J_AUTH_FILE: /run/secrets/neo4j_auth\n                NEO4J_ACCEPT_LICENSE_AGREEMENT: 'yes'\n                NEO4J_dbms_memory_heap_initial__size: 1G\n                NEO4J_dbms_memory_heap_max__size: 2G\n              ports:\n                - \"7474:7474\"\n                - \"7687:7687\"\n              volumes:\n                - neo4j_data:/data\n                - neo4j_logs:/logs\n              secrets:\n                - neo4j_auth\n              restart: unless-stopped\n          \n          volumes:\n            mysql_data:\n            neo4j_data:\n            neo4j_logs:\n          \n          secrets:\n            mysql_root_password:\n              external: true\n            neo4j_auth:\n              external: true\n          EOF\n          \n          echo \" Production deployment configuration generated\"\n          \n          # Production deployment (customize based on your infrastructure)\n          # docker stack deploy -c docker-compose.production.yml mysql-graph-visualizer\n          \n          echo \" Production deployment completed\"\n\n      - name:  Post-production verification\n        run: |\n          echo \" Verifying production deployment...\"\n          \n          # Extended verification for production\n          echo \"⏳ Waiting for production application to be ready...\"\n          sleep 120\n          \n          PRODUCTION_URL=\"https://mysql-graph-visualizer.example.com\"\n          \n          # Comprehensive health checks\n          echo \" Running comprehensive health checks...\"\n          \n          # API health check\n          if curl -f \"$PRODUCTION_URL/api/health\" > /dev/null 2>&1; then\n            echo \" Production API health check passed\"\n          else\n            echo \" Production API health check failed\"\n            exit 1\n          fi\n          \n          # Database connectivity check\n          echo \" Testing database connectivity...\"\n          # Add database connectivity tests\n          \n          # Performance check\n          echo \" Running performance checks...\"\n          # Add performance validation\n          \n          echo \" Production deployment verification completed\"\n\n  # Rollback capability\n  rollback:\n    name:  Rollback Deployment\n    runs-on: ubuntu-latest\n    if: failure() && (needs.deploy-staging.result == 'failure' || needs.deploy-production.result == 'failure')\n    needs: [prepare, deploy-staging, deploy-production]\n    environment:\n      name: ${{ needs.prepare.outputs.environment }}-rollback\n    steps:\n      - name:  Checkout code\n        uses: actions/checkout@v4\n\n      - name:  Initiate rollback\n        run: |\n          echo \" Initiating rollback for ${{ needs.prepare.outputs.environment }}...\"\n          \n          # Get previous successful deployment\n          echo \" Finding previous successful deployment...\"\n          \n          # Rollback logic (customize based on your deployment strategy)\n          echo \"⏪ Rolling back to previous version...\"\n          \n          # Example rollback commands\n          # docker service rollback mysql-graph-visualizer_mysql-graph-visualizer\n          # kubectl rollout undo deployment/mysql-graph-visualizer\n          \n          echo \" Rollback completed\"\n\n      - name:  Verify rollback\n        run: |\n          echo \" Verifying rollback...\"\n          \n          # Verify rollback was successful\n          sleep 60\n          \n          echo \" Rollback verification completed\"\n\n  # Post-deployment notifications\n  notify:\n    name:  Deployment Notifications\n    runs-on: ubuntu-latest\n    needs: [prepare, deploy-staging, deploy-production, rollback]\n    if: always()\n    steps:\n      - name:  Send deployment notification\n        run: |\n          ENVIRONMENT=\"${{ needs.prepare.outputs.environment }}\"\n          IMAGE_URL=\"${{ needs.prepare.outputs.image_url }}\"\n          \n          if [[ \"${{ needs.deploy-staging.result }}\" == \"success\" ]] || [[ \"${{ needs.deploy-production.result }}\" == \"success\" ]]; then\n            STATUS=\" SUCCESS\"\n            MESSAGE=\"Deployment to $ENVIRONMENT completed successfully!\"\n          elif [[ \"${{ needs.rollback.result }}\" == \"success\" ]]; then\n            STATUS=\" ROLLBACK\"\n            MESSAGE=\"Deployment to $ENVIRONMENT failed, but rollback completed successfully.\"\n          else\n            STATUS=\" FAILURE\"\n            MESSAGE=\"Deployment to $ENVIRONMENT failed!\"\n          fi\n          \n          echo \" Deployment Status: $STATUS\"\n          echo \" Environment: $ENVIRONMENT\"\n          echo \" Image: $IMAGE_URL\"\n          echo \" Message: $MESSAGE\"\n          \n          # Add your notification integrations here:\n          # - Slack webhook\n          # - Discord webhook\n          # - Microsoft Teams\n          # - Email notifications\n          # - PagerDuty alerts\n          \n          # Example Slack notification (uncomment and configure)\n          # curl -X POST -H 'Content-type: application/json' \\\n          #   --data \"{\\\"text\\\":\\\"$MESSAGE\\\"}\" \\\n          #   ${{ secrets.SLACK_WEBHOOK_URL }}\n\n  # Update deployment status\n  update-status:\n    name:  Update Deployment Status\n    runs-on: ubuntu-latest\n    needs: [prepare, deploy-staging, deploy-production]\n    if: always()\n    steps:\n      - name:  Update deployment status\n        uses: actions/github-script@v7\n        with:\n          script: |\n            const environment = '${{ needs.prepare.outputs.environment }}';\n            const imageUrl = '${{ needs.prepare.outputs.image_url }}';\n            const deployResult = environment === 'staging' \n              ? '${{ needs.deploy-staging.result }}' \n              : '${{ needs.deploy-production.result }}';\n            \n            const status = deployResult === 'success' ? 'success' : 'failure';\n            const description = `Deployment to ${environment}: ${deployResult}`;\n            \n            // Create deployment status\n            await github.rest.repos.createDeploymentStatus({\n              owner: context.repo.owner,\n              repo: context.repo.repo,\n              deployment_id: context.payload.deployment?.id || 0,\n              state: status,\n              description: description,\n              environment: environment,\n              environment_url: environment === 'production' \n                ? 'https://mysql-graph-visualizer.example.com'\n                : 'https://mysql-graph-visualizer-staging.example.com'\n            });\n            \n            console.log(`Deployment status updated: ${status} for ${environment}`);
+      always() &&
+      needs.prepare.outputs.should_deploy == 'true' &&
+      needs.prepare.outputs.environment == 'staging' &&
+      (needs.pre-deployment-tests.result == 'success' || needs.prepare.outputs.skip_tests == 'true')
+    environment:
+      name: staging
+      url: https://mysql-graph-visualizer-staging.example.com
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup deployment tools
+        run: |
+          echo "Setting up deployment tools..."
+          # Install deployment tools (kubectl, helm, docker-compose, etc.)
+          # This is where you'd install your specific deployment tools
+          
+      - name: Configure staging environment
+        run: |
+          echo "Configuring staging environment..."
+          # Configure staging environment variables, secrets, etc.
+          # This is environment-specific configuration
+          
+      - name: Deploy to staging
+        run: |
+          echo "Deploying to staging environment..."
+          echo "Image: ${{ needs.prepare.outputs.image_url }}"
+          
+          # Example Docker Compose deployment
+          cat > docker-compose.staging.yml << EOF
+          version: '3.8'
+          services:
+            mysql-graph-visualizer:
+              image: ${{ needs.prepare.outputs.image_url }}
+              ports:
+                - "3000:3000"
+                - "8080:8080"
+              environment:
+                - LOG_LEVEL=info
+                - GO_ENV=staging
+              restart: unless-stopped
+              healthcheck:
+                test: ["CMD", "curl", "-f", "http://localhost:8080/api/health"]
+                interval: 30s
+                timeout: 10s
+                retries: 3
+                start_period: 60s
+            
+            mysql:
+              image: mysql:8.0
+              environment:
+                MYSQL_ROOT_PASSWORD: staging-password
+                MYSQL_DATABASE: mysql_graph_visualizer
+              volumes:
+                - mysql_data:/var/lib/mysql
+              restart: unless-stopped
+            
+            neo4j:
+              image: neo4j:4.4
+              environment:
+                NEO4J_AUTH: neo4j/staging-password
+                NEO4J_ACCEPT_LICENSE_AGREEMENT: 'yes'
+              ports:
+                - "7474:7474"
+                - "7687:7687"
+              volumes:
+                - neo4j_data:/data
+              restart: unless-stopped
+          
+          volumes:
+            mysql_data:
+            neo4j_data:
+          EOF
+          
+          # Deploy using docker-compose (example)
+          # In real deployment, you might use Kubernetes, Docker Swarm, or other tools
+          echo "Deployment configuration generated"
+          cat docker-compose.staging.yml
+          
+          # Example deployment command (customize based on your infrastructure)
+          # docker-compose -f docker-compose.staging.yml up -d
+          
+          echo "Staging deployment completed"
+
+      - name: Post-deployment verification
+        run: |
+          echo "Verifying staging deployment..."
+          
+          # Wait for application to be ready
+          echo "Waiting for application to be ready..."
+          sleep 60
+          
+          # Test staging endpoints
+          STAGING_URL="https://mysql-graph-visualizer-staging.example.com"
+          
+          # Basic connectivity test
+          if curl -f "$STAGING_URL/api/health" > /dev/null 2>&1; then
+            echo "Staging health check passed"
+          else
+            echo "Staging health check failed (this might be expected if URL is not configured)"
+          fi
+          
+          echo "Staging deployment verification completed"
+
+  # Deploy to production
+  deploy-production:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: [prepare, pre-deployment-tests]
+    if: |
+      always() &&
+      needs.prepare.outputs.should_deploy == 'true' &&
+      needs.prepare.outputs.environment == 'production' &&
+      (needs.pre-deployment-tests.result == 'success' || needs.prepare.outputs.skip_tests == 'true')
+    environment:
+      name: production
+      url: https://mysql-graph-visualizer.example.com
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure production environment
+        run: |
+          echo "Configuring production environment..."
+          # Production-specific configuration
+          
+      - name: Pre-production checks
+        run: |
+          echo "Running pre-production checks..."
+          
+          # Database backup verification
+          echo "Verifying database backup..."
+          # Add database backup verification logic
+          
+          # Resource availability check
+          echo "Checking resource availability..."
+          # Add resource checks
+          
+          # Dependencies health check
+          echo "Checking dependencies..."
+          # Add dependency checks
+          
+          echo "Pre-production checks completed"
+
+      - name: Deploy to production
+        run: |
+          echo "Deploying to production environment..."
+          echo "Image: ${{ needs.prepare.outputs.image_url }}"
+          
+          # Production deployment with blue-green or rolling deployment
+          cat > docker-compose.production.yml << EOF
+          version: '3.8'
+          services:
+            mysql-graph-visualizer:
+              image: ${{ needs.prepare.outputs.image_url }}
+              ports:
+                - "3000:3000"
+                - "8080:8080"
+              environment:
+                - LOG_LEVEL=warn
+                - GO_ENV=production
+              restart: unless-stopped
+              healthcheck:
+                test: ["CMD", "curl", "-f", "http://localhost:8080/api/health"]
+                interval: 30s
+                timeout: 10s
+                retries: 5
+                start_period: 120s
+              deploy:
+                replicas: 2
+                update_config:
+                  parallelism: 1
+                  delay: 30s
+                  order: start-first
+                restart_policy:
+                  condition: on-failure
+                  delay: 5s
+                  max_attempts: 3
+            
+            mysql:
+              image: mysql:8.0
+              environment:
+                MYSQL_ROOT_PASSWORD_FILE: /run/secrets/mysql_root_password
+                MYSQL_DATABASE: mysql_graph_visualizer
+              volumes:
+                - mysql_data:/var/lib/mysql
+                - ./mysql/conf.d:/etc/mysql/conf.d:ro
+              secrets:
+                - mysql_root_password
+              restart: unless-stopped
+            
+            neo4j:
+              image: neo4j:4.4
+              environment:
+                NEO4J_AUTH_FILE: /run/secrets/neo4j_auth
+                NEO4J_ACCEPT_LICENSE_AGREEMENT: 'yes'
+                NEO4J_dbms_memory_heap_initial__size: 1G
+                NEO4J_dbms_memory_heap_max__size: 2G
+              ports:
+                - "7474:7474"
+                - "7687:7687"
+              volumes:
+                - neo4j_data:/data
+                - neo4j_logs:/logs
+              secrets:
+                - neo4j_auth
+              restart: unless-stopped
+          
+          volumes:
+            mysql_data:
+            neo4j_data:
+            neo4j_logs:
+          
+          secrets:
+            mysql_root_password:
+              external: true
+            neo4j_auth:
+              external: true
+          EOF
+          
+          echo "Production deployment configuration generated"
+          
+          # Production deployment (customize based on your infrastructure)
+          # docker stack deploy -c docker-compose.production.yml mysql-graph-visualizer
+          
+          echo "Production deployment completed"
+
+      - name: Post-production verification
+        run: |
+          echo "Verifying production deployment..."
+          
+          # Extended verification for production
+          echo "Waiting for production application to be ready..."
+          sleep 120
+          
+          PRODUCTION_URL="https://mysql-graph-visualizer.example.com"
+          
+          # Comprehensive health checks
+          echo "Running comprehensive health checks..."
+          
+          # API health check
+          if curl -f "$PRODUCTION_URL/api/health" > /dev/null 2>&1; then
+            echo "Production API health check passed"
+          else
+            echo "Production API health check failed"
+            exit 1
+          fi
+          
+          # Database connectivity check
+          echo "Testing database connectivity..."
+          # Add database connectivity tests
+          
+          # Performance check
+          echo "Running performance checks..."
+          # Add performance validation
+          
+          echo "Production deployment verification completed"
+
+  # Rollback capability
+  rollback:
+    name: Rollback Deployment
+    runs-on: ubuntu-latest
+    if: failure() && (needs.deploy-staging.result == 'failure' || needs.deploy-production.result == 'failure')
+    needs: [prepare, deploy-staging, deploy-production]
+    environment:
+      name: ${{ needs.prepare.outputs.environment }}-rollback
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Initiate rollback
+        run: |
+          echo "Initiating rollback for ${{ needs.prepare.outputs.environment }}..."
+          
+          # Get previous successful deployment
+          echo "Finding previous successful deployment..."
+          
+          # Rollback logic (customize based on your deployment strategy)
+          echo "Rolling back to previous version..."
+          
+          # Example rollback commands
+          # docker service rollback mysql-graph-visualizer_mysql-graph-visualizer
+          # kubectl rollout undo deployment/mysql-graph-visualizer
+          
+          echo "Rollback completed"
+
+      - name: Verify rollback
+        run: |
+          echo "Verifying rollback..."
+          
+          # Verify rollback was successful
+          sleep 60
+          
+          echo "Rollback verification completed"
+
+  # Post-deployment notifications
+  notify:
+    name: Deployment Notifications
+    runs-on: ubuntu-latest
+    needs: [prepare, deploy-staging, deploy-production, rollback]
+    if: always()
+    steps:
+      - name: Send deployment notification
+        run: |
+          ENVIRONMENT="${{ needs.prepare.outputs.environment }}"
+          IMAGE_URL="${{ needs.prepare.outputs.image_url }}"
+          
+          if [[ "${{ needs.deploy-staging.result }}" == "success" ]] || [[ "${{ needs.deploy-production.result }}" == "success" ]]; then
+            STATUS="SUCCESS"
+            MESSAGE="Deployment to $ENVIRONMENT completed successfully!"
+          elif [[ "${{ needs.rollback.result }}" == "success" ]]; then
+            STATUS="ROLLBACK"
+            MESSAGE="Deployment to $ENVIRONMENT failed, but rollback completed successfully."
+          else
+            STATUS="FAILURE"
+            MESSAGE="Deployment to $ENVIRONMENT failed!"
+          fi
+          
+          echo "Deployment Status: $STATUS"
+          echo "Environment: $ENVIRONMENT"
+          echo "Image: $IMAGE_URL"
+          echo "Message: $MESSAGE"
+          
+          # Add your notification integrations here:
+          # - Slack webhook
+          # - Discord webhook
+          # - Microsoft Teams
+          # - Email notifications
+          # - PagerDuty alerts
+          
+          # Example Slack notification (uncomment and configure)
+          # if [ -n "${SLACK_WEBHOOK_URL:-}" ]; then
+          #   curl -X POST -H 'Content-type: application/json' \
+          #     --data "{\"text\":\"$MESSAGE\"}" \
+          #     "$SLACK_WEBHOOK_URL"
+          # fi
+
+  # Update deployment status
+  update-status:
+    name: Update Deployment Status
+    runs-on: ubuntu-latest
+    needs: [prepare, deploy-staging, deploy-production]
+    if: always()
+    steps:
+      - name: Update deployment status
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const environment = '${{ needs.prepare.outputs.environment }}';
+            const imageUrl = '${{ needs.prepare.outputs.image_url }}';
+            const deployResult = environment === 'staging' 
+              ? '${{ needs.deploy-staging.result }}' 
+              : '${{ needs.deploy-production.result }}';
+            
+            const status = deployResult === 'success' ? 'success' : 'failure';
+            const description = `Deployment to ${environment}: ${deployResult}`;
+            
+            // Create deployment status
+            await github.rest.repos.createDeploymentStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              deployment_id: context.payload.deployment?.id || 0,
+              state: status,
+              description: description,
+              environment: environment,
+              environment_url: environment === 'production' 
+                ? 'https://mysql-graph-visualizer.example.com'
+                : 'https://mysql-graph-visualizer-staging.example.com'
+            });
+            
+            console.log(`Deployment status updated: ${status} for ${environment}`);
