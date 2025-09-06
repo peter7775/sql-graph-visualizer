@@ -1,6 +1,7 @@
 vendor/
 .idea/
 .concepts/
+.local-scripts/
 
 *.exe
 *.exe~
