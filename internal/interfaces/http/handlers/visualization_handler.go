@@ -38,7 +38,9 @@ func (h *VisualizationHandler) GetGraphData(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	json.NewEncoder(w).Encode(data)
+	if err := json.NewEncoder(w).Encode(data); err != nil {
+		log.Printf("Error encoding JSON: %v", err)
+	}
 }
 
 func (h *VisualizationHandler) ExportGraph(w http.ResponseWriter, r *http.Request) {
@@ -52,7 +54,9 @@ func (h *VisualizationHandler) ExportGraph(w http.ResponseWriter, r *http.Reques
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(data)
+	if err := json.NewEncoder(w).Encode(data); err != nil {
+		log.Printf("Error encoding JSON: %v", err)
+	}
 }
 
 func (h *VisualizationHandler) GetConfig(w http.ResponseWriter, r *http.Request) {

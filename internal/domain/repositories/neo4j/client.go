@@ -42,7 +42,11 @@ func (c *Client) Close() error {
 
 func (c *Client) InsertData(data any) error {
 	session := c.driver.NewSession(neo4j.SessionConfig{})
-	defer session.Close()
+	defer func() {
+		if err := session.Close(); err != nil {
+			logrus.Errorf("Error closing session: %v", err)
+		}
+	}()
 
 	// Implementation of data insertion
 	return nil
@@ -56,7 +60,11 @@ func (c *Client) SearchNodes(criteria string) ([]*graph.GraphAggregate, error) {
 
 func (c *Client) ExportGraph(query string) (any, error) {
 	session := c.driver.NewSession(neo4j.SessionConfig{})
-	defer session.Close()
+	defer func() {
+		if err := session.Close(); err != nil {
+			logrus.Errorf("Error closing session: %v", err)
+		}
+	}()
 
 	result, err := session.Run(query, nil)
 	if err != nil {
@@ -64,7 +72,7 @@ func (c *Client) ExportGraph(query string) (any, error) {
 	}
 
 	if result.Next() {
-		return result.Record().GetByIndex(0), nil
+		return result.Record().Values[0], nil
 	}
 
 	return nil, nil
@@ -72,7 +80,11 @@ func (c *Client) ExportGraph(query string) (any, error) {
 
 func (c *Client) StoreGraph(graph *graph.GraphAggregate) error {
 	session := c.driver.NewSession(neo4j.SessionConfig{})
-	defer session.Close()
+	defer func() {
+		if err := session.Close(); err != nil {
+			logrus.Errorf("Error closing session: %v", err)
+		}
+	}()
 
 	logrus.Infof("Number of nodes to save: %d", len(graph.GetNodes()))
 
@@ -140,7 +152,11 @@ func (c *Client) StoreGraph(graph *graph.GraphAggregate) error {
 func (c *Client) FetchNodes(nodeType string) ([]map[string]any, error) {
 	logrus.Infof("Loading nodes of type: %s", nodeType)
 	session := c.driver.NewSession(neo4j.SessionConfig{})
-	defer session.Close()
+	defer func() {
+		if err := session.Close(); err != nil {
+			logrus.Errorf("Error closing session: %v", err)
+		}
+	}()
 
 	result, err := session.Run("MATCH (n:Node {type: $nodeType}) RETURN n", map[string]any{
 		"nodeType": nodeType,
@@ -152,7 +168,7 @@ func (c *Client) FetchNodes(nodeType string) ([]map[string]any, error) {
 	var nodes []map[string]any
 	for result.Next() {
 		record := result.Record()
-		node := record.GetByIndex(0).(neo4j.Node)
+		node := record.Values[0].(neo4j.Node)
 		properties := node.Props
 		logrus.Infof("Loaded node: %v", properties)
 		nodes = append(nodes, properties)

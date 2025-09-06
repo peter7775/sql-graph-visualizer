@@ -10,6 +10,7 @@ package mysql
 import (
 	"database/sql"
 	"fmt"
+	"log"
 
 	_ "github.com/go-sql-driver/mysql"
 )
@@ -56,7 +57,11 @@ func (c *Client) FetchData() ([]map[string]any, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() {
+		if err := rows.Close(); err != nil {
+			log.Printf("Error closing rows: %v", err)
+		}
+	}()
 
 	columns, err := rows.Columns()
 	if err != nil {

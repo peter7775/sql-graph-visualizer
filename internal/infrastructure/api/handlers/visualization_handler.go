@@ -37,7 +37,10 @@ func (h *VisualizationHandler) GetConfig(w http.ResponseWriter, r *http.Request)
 			"password": h.neo4jPassword,
 		},
 	}
-	json.NewEncoder(w).Encode(config)
+	if err := json.NewEncoder(w).Encode(config); err != nil {
+		http.Error(w, "Error encoding response", http.StatusInternalServerError)
+		return
+	}
 }
 
 func (h *VisualizationHandler) Search(w http.ResponseWriter, r *http.Request) {
@@ -47,7 +50,10 @@ func (h *VisualizationHandler) Search(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	json.NewEncoder(w).Encode(results)
+	if err := json.NewEncoder(w).Encode(results); err != nil {
+		http.Error(w, "Error encoding response", http.StatusInternalServerError)
+		return
+	}
 }
 
 func (h *VisualizationHandler) Export(w http.ResponseWriter, r *http.Request) {
@@ -68,7 +74,10 @@ func (h *VisualizationHandler) Export(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		w.Header().Set("Content-Type", "image/png")
-		w.Write(data)
+		if _, err := w.Write(data); err != nil {
+			http.Error(w, "Error writing response", http.StatusInternalServerError)
+			return
+		}
 	case "json":
 		// Export to JSON
 		data, err := h.graphService.ExportJSON()
@@ -77,7 +86,10 @@ func (h *VisualizationHandler) Export(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(data)
+		if err := json.NewEncoder(w).Encode(data); err != nil {
+			http.Error(w, "Error encoding response", http.StatusInternalServerError)
+			return
+		}
 	default:
 		http.Error(w, "Unsupported format", http.StatusBadRequest)
 	}

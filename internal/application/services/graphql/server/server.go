@@ -54,7 +54,7 @@ func StartGraphQLServer(neo4jPort ports.Neo4jPort) {
 	}
 
 	// Create GraphQL server
-	srv := handler.NewDefaultServer(graphql.NewExecutableSchema(graphql.Config{
+	srv := handler.New(graphql.NewExecutableSchema(graphql.Config{
 		Resolvers: &Resolver{neo4jPort: neo4jPort},
 	}))
 

@@ -9,6 +9,7 @@ package neo4j
 
 import (
 	"fmt"
+	"log"
 	"mysql-graph-visualizer/internal/domain/aggregates/graph"
 
 	"github.com/neo4j/neo4j-go-driver/v4/neo4j"
@@ -32,7 +33,11 @@ func NewNeo4jRepository(uri, username, password string) (*Neo4jRepository, error
 
 func (r *Neo4jRepository) StoreGraph(graph *graph.GraphAggregate) error {
 	session := r.driver.NewSession(neo4j.SessionConfig{})
-	defer session.Close()
+	defer func() {
+		if err := session.Close(); err != nil {
+			log.Printf("Error closing session: %v", err)
+		}
+	}()
 
 	// Store nodes
 	for _, node := range graph.GetNodes() {
@@ -90,7 +95,11 @@ func (r *Neo4jRepository) StoreGraph(graph *graph.GraphAggregate) error {
 
 func (r *Neo4jRepository) SearchNodes(criteria string) ([]*graph.GraphAggregate, error) {
 	session := r.driver.NewSession(neo4j.SessionConfig{})
-	defer session.Close()
+	defer func() {
+		if err := session.Close(); err != nil {
+			log.Printf("Error closing session: %v", err)
+		}
+	}()
 
 	result, err := session.Run(criteria, nil)
 	if err != nil {
@@ -107,10 +116,12 @@ func (r *Neo4jRepository) SearchNodes(criteria string) ([]*graph.GraphAggregate,
 	// Create one GraphAggregate with nodes
 	graphAgg := graph.NewGraphAggregate("")
 	for i := int64(0); i < count; i++ {
-		graphAgg.AddNode("Person", map[string]any{
+		if err := graphAgg.AddNode("Person", map[string]any{
 			"id":   i + 1,
 			"name": fmt.Sprintf("Person %d", i+1),
-		})
+		}); err != nil {
+			logrus.Errorf("Error adding Person node: %v", err)
+		}
 	}
 
 	return []*graph.GraphAggregate{graphAgg}, nil
@@ -118,7 +129,11 @@ func (r *Neo4jRepository) SearchNodes(criteria string) ([]*graph.GraphAggregate,
 
 func (r *Neo4jRepository) ExportGraph(query string) (any, error) {
 	session := r.driver.NewSession(neo4j.SessionConfig{})
-	defer session.Close()
+	defer func() {
+		if err := session.Close(); err != nil {
+			log.Printf("Error closing session: %v", err)
+		}
+	}()
 
 	graphAgg := graph.NewGraphAggregate("")
 
@@ -131,7 +146,7 @@ func (r *Neo4jRepository) ExportGraph(query string) (any, error) {
 	processedNodes := make(map[int64]bool)
 	for nodeResult.Next() {
 		record := nodeResult.Record()
-		node := record.GetByIndex(0).(neo4j.Node)
+		node := record.Values[0].(neo4j.Node)
 
 		// Check if we've already processed this node
 		if processedNodes[node.Id] {
@@ -156,7 +171,9 @@ func (r *Neo4jRepository) ExportGraph(query string) (any, error) {
 		}
 
 		logrus.Debugf("Adding node to graph: ID=%d, Label=%s, Props=%+v", node.Id, label, nodeProps)
-		graphAgg.AddNode(label, nodeProps)
+		if err := graphAgg.AddNode(label, nodeProps); err != nil {
+			logrus.Errorf("Error adding %s node: %v", label, err)
+		}
 	}
 
 	if err = nodeResult.Err(); err != nil {
@@ -171,9 +188,9 @@ func (r *Neo4jRepository) ExportGraph(query string) (any, error) {
 
 	for relResult.Next() {
 		record := relResult.Record()
-		sourceNode := record.GetByIndex(0).(neo4j.Node)
-		rel := record.GetByIndex(1).(neo4j.Relationship)
-		targetNode := record.GetByIndex(2).(neo4j.Node)
+		sourceNode := record.Values[0].(neo4j.Node)
+		rel := record.Values[1].(neo4j.Relationship)
+		targetNode := record.Values[2].(neo4j.Node)
 
 		// Create relationship properties
 		relProps := make(map[string]any)
@@ -217,7 +234,11 @@ func (r *Neo4jRepository) NewSession(config neo4j.SessionConfig) neo4j.Session {
 
 func (r *Neo4jRepository) FetchNodes(nodeType string) ([]map[string]any, error) {
 	session := r.driver.NewSession(neo4j.SessionConfig{})
-	defer session.Close()
+	defer func() {
+		if err := session.Close(); err != nil {
+			logrus.Errorf("Error closing session: %v", err)
+		}
+	}()
 
 	query := fmt.Sprintf("MATCH (n:%s) RETURN n", nodeType)
 	result, err := session.Run(query, nil)
@@ -228,7 +249,7 @@ func (r *Neo4jRepository) FetchNodes(nodeType string) ([]map[string]any, error) 
 	var nodes []map[string]any
 	for result.Next() {
 		record := result.Record()
-		node := record.GetByIndex(0).(neo4j.Node)
+		node := record.Values[0].(neo4j.Node)
 		nodes = append(nodes, node.Props)
 	}
 

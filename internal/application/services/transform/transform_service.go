@@ -9,7 +9,6 @@ package transform
 
 import (
 	"context"
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"mysql-graph-visualizer/internal/application/ports"
@@ -247,12 +246,6 @@ func (s *TransformService) createNode(nodeType string, data map[string]any, grap
 	delete(data, "_type")
 	logrus.Infof("Saving node to graph: type=%s, data=%+v", nodeType, data)
 	return graph.AddNode(nodeType, data)
-}
-
-// Helper function to check if a string is base64 encoded
-func isBase64Encoded(s string) bool {
-	_, err := base64.StdEncoding.DecodeString(s)
-	return err == nil
 }
 
 func (s *TransformService) createRelationship(data map[string]any, graph *graph.GraphAggregate) error {

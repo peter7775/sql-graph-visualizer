@@ -9,6 +9,7 @@ package rest
 
 import (
 	"encoding/json"
+	"log"
 	"mysql-graph-visualizer/internal/application/services/visualization"
 	"mysql-graph-visualizer/internal/domain/valueobjects"
 	"net/http"
@@ -35,5 +36,7 @@ func (h *VisualizationHandler) HandleVisualization(w http.ResponseWriter, r *htt
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(result)
+	if err := json.NewEncoder(w).Encode(result); err != nil {
+		log.Printf("Error encoding JSON: %v", err)
+	}
 }

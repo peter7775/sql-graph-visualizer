@@ -11,7 +11,6 @@ import (
 	"fmt"
 	"mysql-graph-visualizer/internal/domain/entities"
 	"mysql-graph-visualizer/internal/domain/events"
-	"mysql-graph-visualizer/internal/domain/valueobjects"
 	"mysql-graph-visualizer/internal/domain/valueobjects/transform"
 
 	"github.com/sirupsen/logrus"
@@ -20,7 +19,6 @@ import (
 type GraphAggregate struct {
 	entities.BaseEntity
 	nodes         []*entities.Node
-	criteria      valueobjects.SearchCriteria
 	events        []events.DomainEvent
 	relationships []Relationship
 }

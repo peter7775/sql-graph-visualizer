@@ -9,6 +9,7 @@ package mysql
 
 import (
 	"database/sql"
+	"log"
 	"mysql-graph-visualizer/internal/application/ports"
 
 	"github.com/sirupsen/logrus"
@@ -36,7 +37,11 @@ func (r *MySQLRepository) ExecuteQuery(query string) ([]map[string]any, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() {
+		if err := rows.Close(); err != nil {
+			log.Printf("Error closing rows: %v", err)
+		}
+	}()
 
 	columns, err := rows.Columns()
 	if err != nil {
