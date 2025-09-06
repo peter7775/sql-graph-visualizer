@@ -88,10 +88,10 @@ body:
       description: Have you tried connecting to the databases using other tools?
       placeholder: |
         Example:
-        - MySQL Workbench: ✅ Success / ❌ Failed
-        - Neo4j Browser: ✅ Success / ❌ Failed
-        - Command line mysql client: ✅ Success / ❌ Failed
-        - Cypher shell: ✅ Success / ❌ Failed
+        - MySQL Workbench:  Success /  Failed
+        - Neo4j Browser:  Success /  Failed
+        - Command line mysql client:  Success /  Failed
+        - Cypher shell:  Success /  Failed
 
   - type: textarea
     id: docker_setup

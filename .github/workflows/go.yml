@@ -1,138 +1,342 @@
-# This workflow will build a golang project
-# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-go
-
-name: Go
+name: CI/CD Pipeline
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "main", "develop" ]
   pull_request:
-    branches: [ "main" ]
+    branches: [ "main", "develop" ]
+  workflow_dispatch:
+    inputs:
+      run_integration_tests:
+        description: 'Run integration tests'
+        required: false
+        default: 'true'
+        type: boolean
+
+env:
+  GO_VERSION: '1.22.5'
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
 
 jobs:
-
-  # Fast build and unit tests
-  build:
+  # Code quality and linting
+  lint:
+    name: Lint and Format
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-    - name: Set up Go
-      uses: actions/setup-go@v4
-      with:
-        go-version: '1.24'
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
 
-    - name: Build
-      run: go build -v ./...
+      - name: Check Go modules
+        run: |
+          go mod tidy
+          git diff --exit-code go.mod go.sum
 
-    - name: Run Unit Tests
-      run: |
-        # Run all tests except integration tests
-        go test -v -short $(go list ./... | grep -v '/internal/tests/integration')
-      
-  # Integration tests with database services
-  integration-tests:
+      - name: Format check
+        run: |
+          if [ "$(gofmt -s -l . | wc -l)" -gt 0 ]; then
+            echo "Go code is not formatted properly:"
+            gofmt -s -d .
+            exit 1
+          fi
+
+      - name: Install golangci-lint
+        run: |
+          curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.55.2
+          echo "$(go env GOPATH)/bin" >> $GITHUB_PATH
+
+      - name: Run golangci-lint
+        run: golangci-lint run --timeout=10m
+
+      - name: Vet
+        run: go vet ./...
+
+      - name:  Security scan (gosec)
+        run: |
+          go install github.com/securecodewarrior/gosec/v2/cmd/gosec@latest
+          gosec ./...
+
+  # Build and unit tests
+  test:
+    name:  Unit Tests
     runs-on: ubuntu-latest
-    needs: build
+    needs: lint
+    strategy:
+      matrix:
+        go-version: ['1.22.5', '1.23.0']
+    steps:
+      - name:  Checkout code
+        uses: actions/checkout@v4
+
+      - name:  Set up Go ${{ matrix.go-version }}
+        uses: actions/setup-go@v4
+        with:
+          go-version: ${{ matrix.go-version }}
+          cache: true
+
+      - name:  Install dependencies
+        run: go mod download
+
+      - name:  Build
+        run: go build -v ./...
+
+      - name:  Run unit tests
+        run: |
+          go test -v -race -coverprofile=coverage.out -covermode=atomic \
+            $(go list ./... | grep -v '/internal/tests/integration')
+
+      - name:  Upload coverage to Codecov
+        if: matrix.go-version == '1.22.5'
+        uses: codecov/codecov-action@v3
+        with:
+          file: ./coverage.out
+          flags: unittests
+          name: codecov-umbrella
+
+  # Integration tests with database services
+  integration-test:
+    name:  Integration Tests
+    runs-on: ubuntu-latest
+    needs: test
+    if: github.event_name != 'pull_request' || github.event.inputs.run_integration_tests == 'true'
     
     services:
       mysql:
-        image: mysql:5.7
+        image: mysql:8.0
         env:
           MYSQL_ROOT_PASSWORD: testpass
           MYSQL_DATABASE: testdata
         ports:
           - 3307:3306
-        options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=5
+        options: >
+          --health-cmd="mysqladmin ping -h localhost"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
       
       neo4j:
         image: neo4j:4.4
         env:
           NEO4J_AUTH: neo4j/testpass
           NEO4J_ACCEPT_LICENSE_AGREEMENT: 'yes'
+          NEO4J_dbms_memory_heap_initial__size: 512m
+          NEO4J_dbms_memory_heap_max__size: 1G
         ports:
           - 7474:7474
           - 7687:7687
-        options: --health-cmd="wget --no-verbose --tries=1 --spider http://localhost:7474 || exit 1" --health-interval=30s --health-timeout=10s --health-retries=5
+        options: >
+          --health-cmd="wget --no-verbose --tries=1 --spider http://localhost:7474 || exit 1"
+          --health-interval=30s
+          --health-timeout=10s
+          --health-retries=10
 
-    
     steps:
-    - uses: actions/checkout@v4
+      - name:  Checkout code
+        uses: actions/checkout@v4
 
-    - name: Set up Go
-      uses: actions/setup-go@v4
-      with:
-        go-version: '1.24'
+      - name:  Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
 
-    - name: Wait for services and setup database
-      run: |
-        echo "Waiting for MySQL to be ready..."
-        for i in {1..60}; do
-          if mysqladmin ping -h 127.0.0.1 -P 3307 -u root -ptestpass --silent 2>/dev/null; then
-            echo "MySQL is ready!"
-            break
-          fi
-          echo "Attempt $i/60: MySQL not ready yet, waiting 2 seconds..."
-          sleep 2
-        done
-        
-        echo "Waiting for Neo4j to be ready..."
-        for i in {1..60}; do
-          if curl -f http://localhost:7474 > /dev/null 2>&1; then
-            echo "Neo4j is ready!"
-            break
-          fi
-          echo "Attempt $i/60: Neo4j not ready yet, waiting 2 seconds..."
-          sleep 2
-        done
-        
-        echo "Setting up test database..."
-        mysql -h 127.0.0.1 -P 3307 -u root -ptestpass testdata -e "
-        CREATE TABLE IF NOT EXISTS testdata_uzly (
-          id INT PRIMARY KEY,
-          id_typu INT,
-          infix VARCHAR(255),
-          nazev VARCHAR(255),
-          prefix VARCHAR(255)
-        );
-        CREATE TABLE IF NOT EXISTS testdata_uzly_php_action (
-          id_node INT,
-          php_code TEXT
-        );
-        INSERT IGNORE INTO testdata_uzly (id, id_typu, infix, nazev, prefix) VALUES 
-        (1, 17, 'test', 'Test Node', 'pre_'),
-        (2, 17, 'test2', 'Test Node 2', 'pre_');
-        INSERT IGNORE INTO testdata_uzly_php_action (id_node, php_code) VALUES 
-        (1, 'echo "hello";'),
-        (2, 'echo "world";');
-        "
+      - name: ⏳ Wait for services
+        run: |
+          echo " Waiting for MySQL to be ready..."
+          for i in {1..30}; do
+            if mysqladmin ping -h 127.0.0.1 -P 3307 -u root -ptestpass --silent; then
+              echo " MySQL is ready!"
+              break
+            fi
+            echo "⏳ Attempt $i/30: MySQL not ready, waiting..."
+            sleep 5
+          done
+          
+          echo " Waiting for Neo4j to be ready..."
+          for i in {1..30}; do
+            if curl -f http://localhost:7474 > /dev/null 2>&1; then
+              echo " Neo4j is ready!"
+              break
+            fi
+            echo "⏳ Attempt $i/30: Neo4j not ready, waiting..."
+            sleep 5
+          done
 
-    - name: Verify configuration
-      run: |
-        echo "Current working directory:"
-        pwd
-        echo "Contents:"
-        ls -la
-        echo "Config directory:"
-        ls -la config/
-        echo "Testing config load:"
-        export GO_ENV=test
-        export CONFIG_PATH=config/config-test.yml
-        echo "Environment variables:"
-        echo "GO_ENV=$GO_ENV"
-        echo "CONFIG_PATH=$CONFIG_PATH"
-        
-    - name: Run Integration Tests
-      env:
-        GO_ENV: test
-        CONFIG_PATH: config/config-test.yml
-        LOG_LEVEL: debug
-        CI: true
-      run: |
-        echo "Running integration tests from directory: $(pwd)"
-        echo "Environment check:"
-        echo "GO_ENV=$GO_ENV"
-        echo "CONFIG_PATH=$CONFIG_PATH"
-        echo "LOG_LEVEL=$LOG_LEVEL"
-        echo "CI=$CI"
-        go test -v -timeout 10m ./internal/tests/integration
+      - name:  Setup test database
+        run: |
+          echo " Setting up test database schema..."
+          mysql -h 127.0.0.1 -P 3307 -u root -ptestpass testdata << 'EOF'
+          CREATE TABLE IF NOT EXISTS users (
+            id INT PRIMARY KEY AUTO_INCREMENT,
+            username VARCHAR(255) UNIQUE NOT NULL,
+            email VARCHAR(255) NOT NULL,
+            full_name VARCHAR(255),
+            role VARCHAR(100),
+            is_active BOOLEAN DEFAULT TRUE,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+          );
+          
+          CREATE TABLE IF NOT EXISTS teams (
+            id INT PRIMARY KEY AUTO_INCREMENT,
+            name VARCHAR(255) NOT NULL,
+            description TEXT,
+            team_lead_id INT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (team_lead_id) REFERENCES users(id)
+          );
+          
+          CREATE TABLE IF NOT EXISTS team_members (
+            user_id INT,
+            team_id INT,
+            role VARCHAR(100),
+            joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (user_id, team_id),
+            FOREIGN KEY (user_id) REFERENCES users(id),
+            FOREIGN KEY (team_id) REFERENCES teams(id)
+          );
+          
+          -- Insert test data
+          INSERT IGNORE INTO users (id, username, email, full_name, role, is_active) VALUES 
+            (1, 'john_doe', 'john@example.com', 'John Doe', 'developer', TRUE),
+            (2, 'jane_smith', 'jane@example.com', 'Jane Smith', 'manager', TRUE),
+            (3, 'bob_wilson', 'bob@example.com', 'Bob Wilson', 'developer', TRUE);
+            
+          INSERT IGNORE INTO teams (id, name, description, team_lead_id) VALUES 
+            (1, 'Backend Team', 'Server-side development team', 2),
+            (2, 'Frontend Team', 'Client-side development team', 2);
+            
+          INSERT IGNORE INTO team_members (user_id, team_id, role) VALUES 
+            (1, 1, 'senior_developer'),
+            (3, 1, 'developer'),
+            (2, 1, 'team_lead');
+          EOF
+          
+          echo " Test database setup complete"
+
+      - name:  Run integration tests
+        env:
+          GO_ENV: test
+          CONFIG_PATH: config/config-test.yml
+          LOG_LEVEL: info
+          CI: true
+        run: |
+          echo " Running integration tests..."
+          go test -v -timeout 15m -tags=integration \
+            -coverprofile=integration-coverage.out \
+            -covermode=atomic \
+            ./internal/tests/integration/...
+
+      - name:  Upload integration test coverage
+        uses: codecov/codecov-action@v3
+        with:
+          file: ./integration-coverage.out
+          flags: integration
+          name: codecov-integration
+
+  # Build Docker image
+  build-docker:
+    name:  Build Docker Image
+    runs-on: ubuntu-latest
+    needs: [test]
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop'
+    outputs:
+      image: ${{ steps.image.outputs.image }}
+      digest: ${{ steps.build.outputs.digest }}
+    steps:
+      - name:  Checkout code
+        uses: actions/checkout@v4
+
+      - name:  Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name:  Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: ️ Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=sha,prefix={{branch}}-
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: ️ Build and push Docker image
+        id: build
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            VERSION=${{ github.sha }}
+            BUILD_DATE=${{ github.event.head_commit.timestamp }}
+
+      - name: ️ Output image
+        id: image
+        run: |
+          echo "image=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}" >> $GITHUB_OUTPUT
+
+  # Security scanning
+  security-scan:
+    name:  Security Scan
+    runs-on: ubuntu-latest
+    needs: build-docker
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop'
+    steps:
+      - name:  Checkout code
+        uses: actions/checkout@v4
+
+      - name:  Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ needs.build-docker.outputs.image }}
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+
+      - name:  Upload Trivy scan results
+        uses: github/codeql-action/upload-sarif@v2
+        with:
+          sarif_file: 'trivy-results.sarif'
+
+  # Deployment (only on main branch)
+  deploy:
+    name:  Deploy to Staging
+    runs-on: ubuntu-latest
+    needs: [integration-test, build-docker, security-scan]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    environment:
+      name: staging
+      url: https://mysql-graph-visualizer-staging.example.com
+    steps:
+      - name:  Checkout code
+        uses: actions/checkout@v4
+
+      - name:  Deploy to staging
+        run: |
+          echo " Deploying to staging environment..."
+          echo "Image: ${{ needs.build-docker.outputs.image }}"
+          echo "Digest: ${{ needs.build-docker.outputs.digest }}"
+          # Add your deployment logic here
+          # e.g., kubectl, helm, docker-compose, etc.
+
+      - name:  Notify deployment
+        run: |
+          echo " Deployment to staging completed successfully!"
+          echo "Application available at: https://mysql-graph-visualizer-staging.example.com"

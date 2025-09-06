@@ -1,0 +1,390 @@
+name:  Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag (e.g., v1.0.0)'
+        required: true
+        type: string
+
+env:
+  GO_VERSION: '1.22.5'
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  # Validate release
+  validate:
+    name:  Validate Release
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.tag.outputs.tag }}
+      version: ${{ steps.tag.outputs.version }}
+      is_prerelease: ${{ steps.tag.outputs.is_prerelease }}
+    steps:
+      - name:  Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: ️ Determine tag
+        id: tag
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            TAG="${{ github.event.inputs.tag }}"
+          else
+            TAG="${{ github.ref_name }}"
+          fi
+          
+          # Validate tag format
+          if [[ ! "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-.*)?$ ]]; then
+            echo " Invalid tag format: $TAG"
+            echo "Expected format: v1.0.0 or v1.0.0-beta.1"
+            exit 1
+          fi
+          
+          VERSION=${TAG#v}
+          IS_PRERELEASE="false"
+          
+          if [[ "$TAG" =~ -[a-zA-Z] ]]; then
+            IS_PRERELEASE="true"
+          fi
+          
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "is_prerelease=$IS_PRERELEASE" >> $GITHUB_OUTPUT
+          
+          echo " Release Info:"
+          echo "  Tag: $TAG"
+          echo "  Version: $VERSION"
+          echo "  Pre-release: $IS_PRERELEASE"
+
+      - name:  Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name:  Run tests
+        run: |
+          echo " Running tests before release..."
+          go test -v -short ./...
+
+  # Build release binaries
+  build:
+    name:  Build Binaries
+    runs-on: ubuntu-latest
+    needs: validate
+    strategy:
+      matrix:
+        include:
+          - os: linux
+            arch: amd64
+            goos: linux
+            goarch: amd64
+          - os: linux
+            arch: arm64
+            goos: linux
+            goarch: arm64
+          - os: darwin
+            arch: amd64
+            goos: darwin
+            goarch: amd64
+          - os: darwin
+            arch: arm64
+            goos: darwin
+            goarch: arm64
+          - os: windows
+            arch: amd64
+            goos: windows
+            goarch: amd64
+            ext: .exe
+    steps:
+      - name:  Checkout code
+        uses: actions/checkout@v4
+
+      - name:  Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name:  Build binary
+        env:
+          CGO_ENABLED: 0
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+        run: |
+          BINARY_NAME="mysql-graph-visualizer-${{ matrix.os }}-${{ matrix.arch }}${{ matrix.ext }}"
+          
+          echo " Building $BINARY_NAME..."
+          go build \
+            -ldflags="-s -w -X main.version=${{ needs.validate.outputs.version }} -X main.buildDate=$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            -o "dist/$BINARY_NAME" \
+            ./cmd/main.go
+
+      - name:  Create archive
+        run: |
+          cd dist
+          BINARY_NAME="mysql-graph-visualizer-${{ matrix.os }}-${{ matrix.arch }}${{ matrix.ext }}"
+          ARCHIVE_NAME="mysql-graph-visualizer-${{ needs.validate.outputs.version }}-${{ matrix.os }}-${{ matrix.arch }}"
+          
+          if [ "${{ matrix.os }}" = "windows" ]; then
+            zip "$ARCHIVE_NAME.zip" "$BINARY_NAME"
+            echo "ARCHIVE_PATH=dist/$ARCHIVE_NAME.zip" >> $GITHUB_ENV
+          else
+            tar -czf "$ARCHIVE_NAME.tar.gz" "$BINARY_NAME"
+            echo "ARCHIVE_PATH=dist/$ARCHIVE_NAME.tar.gz" >> $GITHUB_ENV
+          fi
+
+      - name:  Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: binary-${{ matrix.os }}-${{ matrix.arch }}
+          path: ${{ env.ARCHIVE_PATH }}
+          retention-days: 7
+
+  # Build and push Docker images
+  docker:
+    name:  Build Docker Images
+    runs-on: ubuntu-latest
+    needs: validate
+    outputs:
+      image: ${{ steps.image.outputs.image }}
+      digest: ${{ steps.build.outputs.digest }}
+    steps:
+      - name:  Checkout code
+        uses: actions/checkout@v4
+
+      - name:  Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name:  Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: ️ Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=ref,event=tag
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}},enable=${{ !needs.validate.outputs.is_prerelease }}
+            type=raw,value=latest,enable=${{ !needs.validate.outputs.is_prerelease }}
+
+      - name: ️ Build and push Docker image
+        id: build
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            VERSION=${{ needs.validate.outputs.version }}
+            BUILD_DATE=${{ github.event.head_commit.timestamp }}
+
+      - name: ️ Output image info
+        id: image
+        run: |
+          echo "image=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ needs.validate.outputs.tag }}" >> $GITHUB_OUTPUT
+
+  # Generate changelog and create release
+  release:
+    name:  Create Release
+    runs-on: ubuntu-latest
+    needs: [validate, build, docker]
+    permissions:
+      contents: write
+      packages: write
+    steps:
+      - name:  Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name:  Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist/
+          merge-multiple: true
+
+      - name:  List artifacts
+        run: |
+          echo " Release artifacts:"
+          ls -la dist/
+
+      - name:  Generate changelog
+        id: changelog
+        run: |
+          echo " Generating changelog..."
+          
+          # Get the previous tag
+          PREV_TAG=$(git tag --sort=-version:refname | grep -A1 "${{ needs.validate.outputs.tag }}" | tail -n1)
+          if [ -z "$PREV_TAG" ]; then
+            PREV_TAG=$(git rev-list --max-parents=0 HEAD)
+          fi
+          
+          echo "️ Previous tag: $PREV_TAG"
+          echo "️ Current tag: ${{ needs.validate.outputs.tag }}"
+          
+          # Generate changelog
+          cat > CHANGELOG.md << 'EOF'
+          ## What's Changed
+          
+          EOF
+          
+          # Add commit messages since last tag
+          git log --oneline --pretty=format:"* %s (%an)" "$PREV_TAG..${{ needs.validate.outputs.tag }}" >> CHANGELOG.md
+          
+          # Add Docker image info
+          cat >> CHANGELOG.md << EOF
+          
+          ##  Docker Images
+          
+          \`\`\`bash
+          docker pull ${{ needs.docker.outputs.image }}
+          \`\`\`
+          
+          **Multi-architecture support:** linux/amd64, linux/arm64
+          
+          ##  Installation
+          
+          ### Using Go
+          \`\`\`bash
+          go install github.com/${{ github.repository }}@${{ needs.validate.outputs.tag }}
+          \`\`\`
+          
+          ### Using Docker
+          \`\`\`bash
+          docker run --rm ${{ needs.docker.outputs.image }} --version
+          \`\`\`
+          
+          ### Download Binary
+          Choose the appropriate binary for your platform from the assets below.
+          
+          ##  Verification
+          
+          **Docker Image Digest:** \`${{ needs.docker.outputs.digest }}\`
+          
+          **Full Changelog:** https://github.com/${{ github.repository }}/compare/$PREV_TAG...${{ needs.validate.outputs.tag }}
+          EOF
+          
+          echo " Generated changelog:"
+          cat CHANGELOG.md
+
+      - name:  Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ needs.validate.outputs.tag }}
+          name: Release ${{ needs.validate.outputs.tag }}
+          body_path: CHANGELOG.md
+          files: |
+            dist/*.tar.gz
+            dist/*.zip
+          prerelease: ${{ needs.validate.outputs.is_prerelease == 'true' }}
+          generate_release_notes: true
+          make_latest: ${{ needs.validate.outputs.is_prerelease == 'false' }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # Security scan of release
+  security-scan:
+    name:  Security Scan Release
+    runs-on: ubuntu-latest
+    needs: [validate, docker]
+    if: needs.validate.outputs.is_prerelease == 'false'
+    steps:
+      - name:  Checkout code
+        uses: actions/checkout@v4
+
+      - name:  Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ needs.docker.outputs.image }}
+          format: 'table'
+          exit-code: '0'
+          severity: 'CRITICAL,HIGH'
+
+      - name:  Run Trivy for SARIF
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ needs.docker.outputs.image }}
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+
+      - name:  Upload Trivy scan results
+        uses: github/codeql-action/upload-sarif@v2
+        with:
+          sarif_file: 'trivy-results.sarif'
+
+  # Notify on success/failure
+  notify:
+    name:  Notify Release Status
+    runs-on: ubuntu-latest
+    needs: [validate, build, docker, release, security-scan]
+    if: always()
+    steps:
+      - name:  Release Success Notification
+        if: needs.release.result == 'success'
+        run: |
+          echo " Release ${{ needs.validate.outputs.tag }} created successfully!"
+          echo " Release URL: ${{ github.server_url }}/${{ github.repository }}/releases/tag/${{ needs.validate.outputs.tag }}"
+          echo " Docker Image: ${{ needs.docker.outputs.image }}"
+          
+          # Add webhook notifications, Slack, Discord, etc. here if needed
+
+      - name:  Release Failure Notification
+        if: needs.release.result == 'failure' || needs.build.result == 'failure' || needs.docker.result == 'failure'
+        run: |
+          echo " Release ${{ needs.validate.outputs.tag }} failed!"
+          echo " Check the workflow logs for details."
+          
+          # Add failure notifications here if needed
+
+  # Update documentation (post-release)
+  update-docs:
+    name:  Update Documentation
+    runs-on: ubuntu-latest
+    needs: [validate, release]
+    if: needs.validate.outputs.is_prerelease == 'false'
+    steps:
+      - name:  Checkout code
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name:  Update version in README
+        run: |
+          echo " Updating version references in documentation..."
+          
+          # Update version badges and references
+          sed -i "s|mysql-graph-visualizer@latest|mysql-graph-visualizer@${{ needs.validate.outputs.tag }}|g" README.md
+          
+          # Update Docker image references
+          sed -i "s|mysql-graph-visualizer:latest|mysql-graph-visualizer:${{ needs.validate.outputs.version }}|g" README.md
+
+      - name:  Commit documentation updates
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          
+          if git diff --quiet; then
+            echo " No documentation changes needed"
+          else
+            git add README.md
+            git commit -m " Update documentation for release ${{ needs.validate.outputs.tag }}"
+            git push origin main
+            echo " Documentation updated"
+          fi

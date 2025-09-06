@@ -1,0 +1,434 @@
+name:  Dependencies & Security
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths:
+      - 'go.mod'
+      - 'go.sum'
+      - '.github/workflows/dependencies.yml'
+  pull_request:
+    branches: [ main, develop ]
+    paths:
+      - 'go.mod'
+      - 'go.sum'
+  schedule:
+    # Run dependency checks every Monday at 9 AM UTC
+    - cron: '0 9 * * 1'
+  workflow_dispatch:
+    inputs:
+      update_dependencies:
+        description: 'Update dependencies to latest versions'
+        required: false
+        default: false
+        type: boolean
+
+env:
+  GO_VERSION: '1.22.5'
+
+jobs:
+  # Dependency vulnerability scanning
+  security-scan:
+    name:  Vulnerability Scan
+    runs-on: ubuntu-latest
+    steps:
+      - name:  Checkout code
+        uses: actions/checkout@v4
+
+      - name:  Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name:  Download dependencies
+        run: go mod download
+
+      - name:  Run Nancy security scan
+        run: |
+          go install github.com/sonatypecommunity/nancy@latest
+          go list -json -deps ./... | nancy sleuth
+
+      - name:  Run Govulncheck
+        run: |
+          go install golang.org/x/vuln/cmd/govulncheck@latest
+          govulncheck ./...
+
+      - name:  Generate SBOM (Software Bill of Materials)
+        run: |
+          go install github.com/anchore/syft/cmd/syft@latest
+          syft packages . -o spdx-json=sbom.spdx.json
+          syft packages . -o syft-json=sbom.syft.json
+
+      - name:  Upload SBOM artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: software-bill-of-materials
+          path: |
+            sbom.spdx.json
+            sbom.syft.json
+          retention-days: 90
+
+  # License compliance check
+  license-check:
+    name:  License Compliance
+    runs-on: ubuntu-latest
+    steps:
+      - name:  Checkout code
+        uses: actions/checkout@v4
+
+      - name:  Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name:  Check licenses
+        run: |
+          go install github.com/google/go-licenses@latest
+          
+          echo " Scanning for licenses..."
+          go-licenses report ./... > licenses.txt
+          
+          echo " License Summary:"
+          echo "==================="
+          go-licenses report ./... | cut -f2 | sort | uniq -c | sort -nr
+          
+          echo ""
+          echo " Full License Report:"
+          echo "======================"
+          cat licenses.txt
+
+      - name:  Check for forbidden licenses
+        run: |
+          # Define forbidden licenses (GPL, AGPL, etc.)
+          FORBIDDEN_LICENSES="GPL-2.0|GPL-3.0|AGPL-3.0|LGPL-2.1|LGPL-3.0"
+          
+          if grep -iE "($FORBIDDEN_LICENSES)" licenses.txt; then
+            echo " Forbidden licenses detected!"
+            echo "The following dependencies have incompatible licenses:"
+            grep -iE "($FORBIDDEN_LICENSES)" licenses.txt
+            exit 1
+          else
+            echo " No forbidden licenses found"
+          fi
+
+      - name:  Upload license report
+        uses: actions/upload-artifact@v4
+        with:
+          name: license-report
+          path: licenses.txt
+          retention-days: 90
+
+  # Dependency analysis and updates
+  dependency-analysis:
+    name:  Dependency Analysis
+    runs-on: ubuntu-latest
+    outputs:
+      updates-available: ${{ steps.check.outputs.updates-available }}
+      update-summary: ${{ steps.check.outputs.update-summary }}
+    steps:
+      - name:  Checkout code
+        uses: actions/checkout@v4
+
+      - name:  Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name:  Check for dependency updates
+        id: check
+        run: |
+          echo " Checking for available dependency updates..."
+          
+          # Install go-mod-outdated
+          go install github.com/psampaz/go-mod-outdated@latest
+          
+          # Check for updates
+          go list -u -m all > current_deps.txt
+          go list -u -m -json all | go-mod-outdated -update -direct > updates.json || true
+          
+          # Count available updates
+          UPDATE_COUNT=$(jq length updates.json 2>/dev/null || echo "0")
+          
+          if [ "$UPDATE_COUNT" -gt 0 ]; then
+            echo "updates-available=true" >> $GITHUB_OUTPUT
+            echo " Found $UPDATE_COUNT dependency updates available"
+            
+            # Generate summary
+            echo "update-summary<<EOF" >> $GITHUB_OUTPUT
+            echo "##  Available Dependency Updates ($UPDATE_COUNT)" >> $GITHUB_OUTPUT
+            echo "" >> $GITHUB_OUTPUT
+            jq -r '.[] | "- **\(.ModuleName)**: \(.Current) → \(.Latest)"' updates.json >> $GITHUB_OUTPUT || true
+            echo "EOF" >> $GITHUB_OUTPUT
+            
+            # Display updates
+            echo " Available Updates:"
+            jq -r '.[] | "  \(.ModuleName): \(.Current) → \(.Latest)"' updates.json || true
+          else
+            echo "updates-available=false" >> $GITHUB_OUTPUT
+            echo " All dependencies are up to date"
+          fi
+
+      - name:  Analyze dependency tree
+        run: |
+          echo " Dependency tree analysis:"
+          echo "============================="
+          
+          # Show direct dependencies
+          echo " Direct dependencies:"
+          go list -m -f '{{.Path}} {{.Version}}' all | grep -v "^$(go list -m)$" | head -20
+          
+          echo ""
+          echo " Dependency statistics:"
+          TOTAL_DEPS=$(go list -m all | wc -l)
+          DIRECT_DEPS=$(grep -c "require" go.mod || echo "0")
+          INDIRECT_DEPS=$((TOTAL_DEPS - DIRECT_DEPS - 1))
+          
+          echo "  Total dependencies: $TOTAL_DEPS"
+          echo "  Direct dependencies: $DIRECT_DEPS"
+          echo "  Indirect dependencies: $INDIRECT_DEPS"
+
+      - name:  Upload dependency analysis
+        uses: actions/upload-artifact@v4
+        with:
+          name: dependency-analysis
+          path: |
+            current_deps.txt
+            updates.json
+          retention-days: 30
+
+  # Automatic dependency updates (if enabled)
+  update-dependencies:
+    name:  Update Dependencies
+    runs-on: ubuntu-latest
+    needs: [dependency-analysis, security-scan, license-check]
+    if: |
+      (github.event.inputs.update_dependencies == 'true' || github.event.schedule) &&
+      needs.dependency-analysis.outputs.updates-available == 'true' &&
+      github.ref == 'refs/heads/main'
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name:  Checkout code
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name:  Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name:  Update dependencies
+        id: update
+        run: |
+          echo " Updating dependencies..."
+          
+          # Create a new branch for updates
+          BRANCH_NAME="deps/auto-update-$(date +%Y%m%d-%H%M%S)"
+          git checkout -b "$BRANCH_NAME"
+          
+          echo "branch-name=$BRANCH_NAME" >> $GITHUB_OUTPUT
+          
+          # Update all dependencies
+          go get -u ./...
+          go mod tidy
+          
+          # Check if there are actual changes
+          if git diff --quiet go.mod go.sum; then
+            echo "changes=false" >> $GITHUB_OUTPUT
+            echo " No dependency changes after update"
+            exit 0
+          fi
+          
+          echo "changes=true" >> $GITHUB_OUTPUT
+          
+          # Show what changed
+          echo " Dependency changes:"
+          git diff --name-only
+          
+          # Commit changes
+          git config --local user.email "action@github.com"
+          git config --local user.name "Dependency Update Bot"
+          
+          git add go.mod go.sum
+          git commit -m " Auto-update dependencies
+
+          ${{ needs.dependency-analysis.outputs.update-summary }}
+          
+          Generated by GitHub Actions"
+
+      - name:  Run tests with updated dependencies
+        if: steps.update.outputs.changes == 'true'
+        run: |
+          echo " Running tests with updated dependencies..."
+          go test -v -short ./...
+
+      - name:  Push changes and create PR
+        if: steps.update.outputs.changes == 'true'
+        run: |
+          # Push branch
+          git push origin "${{ steps.update.outputs.branch-name }}"
+          
+          # Create PR using GitHub CLI
+          gh pr create \
+            --title " Auto-update dependencies" \
+            --body "This PR was automatically created to update project dependencies.
+
+          ${{ needs.dependency-analysis.outputs.update-summary }}
+          
+          ##  What's included:
+          - Updated Go dependencies to latest versions
+          - Dependency vulnerability scan passed
+          - License compliance check passed
+          - All tests pass with updated dependencies
+          
+          ##  Review checklist:
+          - [ ] Review dependency changes
+          - [ ] Check for breaking changes in major version updates
+          - [ ] Verify all tests pass
+          - [ ] Test the application manually if needed
+          
+          ---
+          *This PR was generated automatically by GitHub Actions*" \
+            --head "${{ steps.update.outputs.branch-name }}" \
+            --base main \
+            --label "dependencies" \
+            --label "automated"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # Security advisory check
+  security-advisory:
+    name:  Security Advisories
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    steps:
+      - name:  Checkout code
+        uses: actions/checkout@v4
+
+      - name:  Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name:  Check security advisories
+        run: |
+          echo " Checking for security advisories..."
+          
+          # Install dependencies
+          go install golang.org/x/vuln/cmd/govulncheck@latest
+          
+          # Run vulnerability check with detailed output
+          if govulncheck -json ./... > vulns.json; then
+            echo " No vulnerabilities found"
+          else
+            echo "️ Vulnerabilities detected!"
+            
+            # Parse and display vulnerabilities
+            if [ -s vulns.json ]; then
+              echo " Vulnerability Report:"
+              echo "======================"
+              cat vulns.json | jq -r '.finding // empty | select(.trace) | 
+                " " + .osv + ": " + .trace[0].function + " (Fixed in: " + (.osv_entry.affected[0].ranges[0].events[-1].fixed // "Not fixed") + ")"'
+            fi
+            
+            # Exit with error if vulnerabilities found
+            exit 1
+          fi
+
+      - name:  Create security report
+        if: always()
+        run: |
+          echo " Creating security report..."
+          
+          cat > security-report.md << 'EOF'
+          #  Security Report
+          
+          **Generated:** $(date -u +"%Y-%m-%d %H:%M:%S UTC")
+          **Repository:** ${{ github.repository }}
+          **Branch:** ${{ github.ref_name }}
+          **Commit:** ${{ github.sha }}
+          
+          ##  Vulnerability Scan
+          
+          EOF
+          
+          if [ -s vulns.json ]; then
+            echo "### ️ Vulnerabilities Found" >> security-report.md
+            echo "" >> security-report.md
+            cat vulns.json | jq -r '.finding // empty | select(.trace) | 
+              "- **" + .osv + "**: " + .trace[0].function + " (Fixed in: " + (.osv_entry.affected[0].ranges[0].events[-1].fixed // "Not available") + ")"' >> security-report.md
+          else
+            echo "###  No Vulnerabilities Found" >> security-report.md
+            echo "" >> security-report.md
+            echo "All dependencies are secure and up to date." >> security-report.md
+          fi
+          
+          echo "" >> security-report.md
+          echo "---" >> security-report.md
+          echo "*Report generated by GitHub Actions*" >> security-report.md
+
+      - name:  Upload security report
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-report
+          path: security-report.md
+          retention-days: 90
+
+  # Dependency summary report
+  summary:
+    name:  Summary Report
+    runs-on: ubuntu-latest
+    needs: [security-scan, license-check, dependency-analysis]
+    if: always()
+    steps:
+      - name:  Generate summary
+        run: |
+          echo " Dependency Management Summary"
+          echo "================================"
+          echo ""
+          echo " Security Scan: ${{ needs.security-scan.result }}"
+          echo " License Check: ${{ needs.license-check.result }}"
+          echo " Dependency Analysis: ${{ needs.dependency-analysis.result }}"
+          echo ""
+          
+          if [[ "${{ needs.dependency-analysis.outputs.updates-available }}" == "true" ]]; then
+            echo " Updates Available: Yes"
+          else
+            echo " Updates Available: No"
+          fi
+          
+          echo ""
+          echo "️ Run Details:"
+          echo "  Event: ${{ github.event_name }}"
+          echo "  Ref: ${{ github.ref }}"
+          echo "  SHA: ${{ github.sha }}"
+          echo "  Actor: ${{ github.actor }}"
+
+      - name:  Comment on PR (if applicable)
+        if: |
+          github.event_name == 'pull_request' && 
+          needs.dependency-analysis.outputs.updates-available == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const summary = `
+            ##  Dependency Analysis Report
+            
+            ${{ needs.dependency-analysis.outputs.update-summary }}
+            
+            ###  Security Status
+            - **Vulnerability Scan**: ${{ needs.security-scan.result }}
+            - **License Compliance**: ${{ needs.license-check.result }}
+            
+            ---
+            *This report was generated automatically by the dependency management workflow.*
+            `;
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: summary
+            });
