@@ -1,4 +1,5 @@
 # Makefile for MySQL Graph Visualizer
+# Requires Go 1.24+
 
 .PHONY: help install generate format test build run clean docker-up docker-down sec-scan ci-check dev quick
 

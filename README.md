@@ -80,7 +80,7 @@ mysql-graph-visualizer/
 ```
 
 ### **Tech Stack**
-- **Language**: Go 1.22.5+
+- **Language**: Go 1.24+
 - **Source Database**: MySQL 8.0+
 - **Graph Database**: Neo4j 4.4+
 - **API Layer**: GraphQL (gqlgen), REST (Gorilla Mux)
@@ -93,7 +93,7 @@ mysql-graph-visualizer/
 ## Quick Start
 
 ### Prerequisites
-- Go 1.22.5 or higher
+- Go 1.24 or higher
 - MySQL 8.0+
 - Neo4j 4.4+ (or use Docker)
 - Git

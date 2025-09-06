@@ -14,7 +14,7 @@ on:
         type: boolean
 
 env:
-  GO_VERSION: '1.23.0'
+  GO_VERSION: '1.24.6'
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
 
@@ -94,7 +94,7 @@ jobs:
     needs: lint
     strategy:
       matrix:
-        go-version: ['1.22.5', '1.23.0']
+        go-version: ['1.23.0', '1.24.6']
     steps:
       - name:  Checkout code
         uses: actions/checkout@v4
@@ -117,7 +117,7 @@ jobs:
             $(go list ./... | grep -v '/internal/tests/integration')
 
       - name:  Upload coverage to Codecov
-        if: matrix.go-version == '1.22.5'
+        if: matrix.go-version == '1.24.6'
         uses: codecov/codecov-action@v3
         with:
           file: ./coverage.out
