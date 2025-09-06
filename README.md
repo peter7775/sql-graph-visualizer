@@ -25,12 +25,14 @@ A powerful Go application that transforms SQL database structures (MySQL, Postgr
 ## Features
 
 ### **Database Transformation**
-- **Complete SQL to Neo4j conversion** with support for MySQL and PostgreSQL
+- **Complete SQL to Neo4j conversion** with full support for MySQL and PostgreSQL
 - **Flexible rule-based mapping** with custom transformation rules
 - **Custom SQL query support** - transform not just tables, but any SQL query result
 - **Relationship modeling** - define directional logical links between nodes
 - **Property mapping** - map SQL columns to Neo4j node properties
 - **Aggregation support** - create analytical nodes from complex queries
+- **Direct database connections** - robust connection management with automatic failover
+- **Connection pooling** - optimized performance for high-throughput scenarios
 
 ### **Visualization & Analysis**
 - **Interactive graph visualization** using Neovis.js and D3.js
