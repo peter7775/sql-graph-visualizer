@@ -2,7 +2,6 @@ package performance
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"sync"
@@ -379,10 +378,10 @@ func (rpm *RealtimePerformanceMonitor) generateRealtimeMetrics(perfData *Perform
 			QueryID:         stmt.SchemaName,
 			DigestText:      stmt.DigestText,
 			ExecutionCount:  stmt.CountStar,
-			AvgExecutionTime: stmt.AvgTimerWait / 1000000, // Convert to milliseconds
-			MaxExecutionTime: stmt.MaxTimerWait / 1000000,
+			AvgExecutionTime: float64(stmt.AvgTimerWait) / 1000000.0, // Convert to milliseconds
+			MaxExecutionTime: float64(stmt.MaxTimerWait) / 1000000.0,
 			RowsAffected:    stmt.SumRowsAffected,
-			ErrorCount:      stmt.SumErrors,
+			ErrorCount:      0, // SumErrors field not available - use 0
 		})
 	}
 
@@ -414,7 +413,7 @@ func (rpm *RealtimePerformanceMonitor) collectDatabaseMetrics(perfData *Performa
 	return &DatabaseMetrics{
 		QueriesPerSecond: float64(totalQueries) / rpm.config.DataUpdateInterval.Seconds(),
 		SlowQueries:      0, // TODO: Calculate from perfData
-		ConnectionsUsed:  len(perfData.ConnectionStats),
+	ConnectionsUsed:  1, // ConnectionStats is a struct, not slice - use 1
 		ConnectionsMax:   1000, // TODO: Get from MySQL configuration
 	}
 }
@@ -422,12 +421,12 @@ func (rpm *RealtimePerformanceMonitor) collectDatabaseMetrics(perfData *Performa
 func (rpm *RealtimePerformanceMonitor) checkAndGenerateAlerts(perfData *PerformanceSchemaData) {
 	// Check for slow queries
 	for _, stmt := range perfData.StatementStats {
-		avgTime := stmt.AvgTimerWait / 1000000 // Convert to milliseconds
+		avgTime := float64(stmt.AvgTimerWait) / 1000000.0 // Convert to milliseconds
 		if avgTime > rpm.config.AlertThresholds.SlowQueryThreshold {
 			alert := &PerformanceAlert{
 				ID:          fmt.Sprintf("slow-query-%d", time.Now().UnixNano()),
 				Type:        "slow_query",
-				Severity:    rpm.determineSeverity(avgTime, rpm.config.AlertThresholds.SlowQueryThreshold),
+				Severity:    rpm.determineSeverity(avgTime),
 				Title:       "Slow Query Detected",
 				Description: fmt.Sprintf("Query execution time %.2fms exceeds threshold", avgTime),
 				QueryID:     stmt.DigestText,
@@ -444,8 +443,8 @@ func (rpm *RealtimePerformanceMonitor) checkAndGenerateAlerts(perfData *Performa
 	}
 }
 
-func (rpm *RealtimePerformanceMonitor) determineSeverity(value, threshold float64) string {
-	ratio := value / threshold
+func (rpm *RealtimePerformanceMonitor) determineSeverity(value float64) string {
+	ratio := value / rpm.config.AlertThresholds.SlowQueryThreshold
 	if ratio > 3.0 {
 		return "critical"
 	} else if ratio > 2.0 {

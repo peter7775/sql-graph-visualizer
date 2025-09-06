@@ -173,6 +173,23 @@ func main() {
 		logrus.Info("Performance monitoring is disabled")
 	}
 	
+	// Initialize SimpleMetricsInjector for demo visualization (always enabled)
+	logrus.Info("Initializing performance metrics visualization...")
+	metricsInjectorConfig := &performance.SimpleMetricsConfig{
+		UpdateInterval:   5 * time.Second,
+		MetricsRetention: 1 * time.Hour,
+		SimulationMode:   true,
+	}
+	
+	metricsInjector := performance.NewSimpleMetricsInjector(neo4jRepo, logrus.StandardLogger(), metricsInjectorConfig)
+	
+	// Start MetricsInjector for live performance visualization
+	if err := metricsInjector.Start(ctx); err != nil {
+		logrus.Errorf("Failed to start metrics injector: %v", err)
+	} else {
+		logrus.Info("🚀 Performance metrics visualization started!")
+	}
+	
 	logrus.Infof("Services initialized")
 
 	// Start GraphQL server
@@ -415,6 +432,7 @@ type PerformanceServiceContainer struct {
 	PSAdapter          *performance.PerformanceSchemaAdapter
 	GraphMapper        *performance.GraphPerformanceMapper
 	RealtimeMonitor    *performance.RealtimePerformanceMonitor
+	MetricsInjector    *performance.SimpleMetricsInjector
 }
 
 // initializePerformanceServices creates and configures all performance services
@@ -428,35 +446,63 @@ func initializePerformanceServices(cfg *models.Config, db *sql.DB) *PerformanceS
 		updateInterval = 5 * time.Second
 	}
 	
-	cacheDuration, err := time.ParseDuration(cfg.Performance.Monitoring.PerformanceSchema.CacheDuration)
-	if err != nil {
-		logrus.Warnf("Invalid cache_duration, using default 30s: %v", err)
-		cacheDuration = 30 * time.Second
+	// Cache duration is handled internally by the performance schema adapter
+	
+	// Create Performance Schema Adapter configuration with safe defaults
+	maxStatements := 100
+	maxTables := 50
+	if cfg.Performance != nil && cfg.Performance.Monitoring != nil && cfg.Performance.Monitoring.PerformanceSchema != nil {
+		maxStatements = cfg.Performance.Monitoring.PerformanceSchema.StatementLimit
+		maxTables = cfg.Performance.Monitoring.PerformanceSchema.TableIOLimit
 	}
 	
-	// Create Performance Schema Adapter configuration
 	psConfig := &performance.PerformanceSchemaConfig{
-		StatementLimit:  cfg.Performance.Monitoring.PerformanceSchema.StatementLimit,
-		TableIOLimit:    cfg.Performance.Monitoring.PerformanceSchema.TableIOLimit,
-		IndexLimit:      cfg.Performance.Monitoring.PerformanceSchema.IndexLimit,
-		ConnectionLimit: cfg.Performance.Monitoring.PerformanceSchema.ConnectionLimit,
-		CacheDuration:   cacheDuration,
-		UpdateInterval:  updateInterval,
+		CollectionInterval:  updateInterval,
+		SlowQueryThreshold:  1 * time.Second,
+		MaxHistoryRetention: 1 * time.Hour,
+		CollectStatements:   true,
+		CollectTableIO:      true,
+		CollectIndexUsage:   true,
+		CollectWaitEvents:   true,
+		CollectConnections:  true,
+		CollectReplication:  false,
+		MaxStatements:       maxStatements,
+		MaxTables:          maxTables,
+		IgnoredSchemas:      []string{"mysql", "information_schema", "performance_schema", "sys"},
+		IgnoredUsers:        []string{"root", "mysql.sys", "mysql.session"},
+		EnableDigestText:    true,
+		MinExecutionCount:   10,
+		MinAvgLatency:       10.0,
 	}
 	
 	// Initialize Performance Schema Adapter
-	psAdapter := performance.NewPerformanceSchemaAdapter(logger, psConfig, db)
+	psAdapter := performance.NewPerformanceSchemaAdapter(db, logger, psConfig)
 	
-	// Create Performance Analyzer configuration
+	// Create Performance Analyzer configuration with safe defaults
+	slowQueryThreshold := 200.0 // Default 200ms
+	if cfg.Performance != nil && cfg.Performance.Monitoring != nil && cfg.Performance.Monitoring.Analysis != nil {
+		slowQueryThreshold = cfg.Performance.Monitoring.Analysis.SlowQueryThreshold
+	}
+	
 	analyzerConfig := &performance.PerformanceAnalyzerConfig{
-		BottleneckThreshold: cfg.Performance.Monitoring.Analysis.BottleneckThreshold,
-		SlowQueryThreshold:  cfg.Performance.Monitoring.Analysis.SlowQueryThreshold,
-		HighLoadThreshold:   cfg.Performance.Monitoring.Analysis.HighLoadThreshold,
-		HotspotThreshold:    cfg.Performance.Monitoring.Analysis.HotspotThreshold,
+		HighLatencyThreshold:       time.Duration(slowQueryThreshold) * time.Millisecond,
+		LowThroughputThreshold:     10.0, // Default value
+		HighErrorRateThreshold:     1.0,  // Default value
+		HotspotLatencyWeight:       0.4,
+		HotspotFrequencyWeight:     0.4,
+		HotspotResourceWeight:      0.2,
+		MaxCriticalPaths:           10,
+		MinPathImpactScore:         50.0,
+		MinPatternFrequency:        100,
+		SimilarityThreshold:        0.8,
+		IndexSuggestionMinGain:     20.0,
+		QueryRewriteMinComplexity:  3,
+		MinDataPoints:              5,
+		TrendSignificanceLevel:     0.05,
 	}
 	
 	// Initialize Performance Analyzer
-	performanceAnalyzer := performance.NewPerformanceAnalyzer(logger, analyzerConfig, psAdapter)
+	performanceAnalyzer := performance.NewPerformanceAnalyzer(logger, analyzerConfig)
 	
 	// Create Graph Performance Mapper configuration
 	graphMapperConfig := createGraphMapperConfig(cfg)
@@ -473,24 +519,13 @@ func initializePerformanceServices(cfg *models.Config, db *sql.DB) *PerformanceS
 	// Create Benchmark Service configuration
 	benchmarkConfig := createBenchmarkConfig(cfg)
 	
-	// Initialize Benchmark Service with Sysbench adapter
-	sysbenchConfig := &performance.SysbenchConfig{
-		ExecutablePath:   cfg.Performance.Benchmarks.Sysbench.ExecutablePath,
-		TempDir:         cfg.Performance.Benchmarks.Sysbench.TempDir,
-		CleanupAfterTest: cfg.Performance.Benchmarks.Sysbench.CleanupAfterTest,
-		Defaults: &performance.SysbenchDefaults{
-			TableSize:      cfg.Performance.Benchmarks.Sysbench.Defaults.TableSize,
-			Threads:        cfg.Performance.Benchmarks.Sysbench.Defaults.Threads,
-			Time:           cfg.Performance.Benchmarks.Sysbench.Defaults.Time,
-			ReportInterval: cfg.Performance.Benchmarks.Sysbench.Defaults.ReportInterval,
-		},
-	}
+	// TODO: Initialize benchmark tools when implemented
+	// For now, create benchmark service with minimal configuration
+	benchmarkService := performance.NewBenchmarkService(nil, nil, nil, performanceAnalyzer, logger, benchmarkConfig)
 	
-	sysbenchAdapter := performance.NewSysbenchAdapter(logger, sysbenchConfig, db)
-	benchmarkService := performance.NewBenchmarkService(logger, benchmarkConfig, []ports.BenchmarkToolPort{sysbenchAdapter})
 	
 	// Start real-time monitoring if enabled
-	if cfg.Performance.Realtime != nil && cfg.Performance.Realtime.Enabled {
+	if cfg.Performance != nil && cfg.Performance.Realtime != nil && cfg.Performance.Realtime.Enabled {
 		ctx := context.Background()
 		if err := realtimeMonitor.Start(ctx); err != nil {
 			logrus.Errorf("Failed to start real-time monitor: %v", err)
@@ -505,6 +540,7 @@ func initializePerformanceServices(cfg *models.Config, db *sql.DB) *PerformanceS
 		PSAdapter:          psAdapter,
 		GraphMapper:        graphMapper,
 		RealtimeMonitor:    realtimeMonitor,
+		MetricsInjector:    nil, // Handled separately in main function
 	}
 }
 
@@ -569,22 +605,24 @@ func createRealtimeConfig(cfg *models.Config) *performance.RealtimeMonitorConfig
 	return config
 }
 
-func createBenchmarkConfig(cfg *models.Config) *performance.BenchmarkConfig {
-	config := &performance.BenchmarkConfig{}
+func createBenchmarkConfig(cfg *models.Config) *performance.BenchmarkServiceConfig {
+	config := &performance.BenchmarkServiceConfig{}
 	
 	if cfg.Performance.Benchmarks != nil {
 		defaultDuration, _ := time.ParseDuration(cfg.Performance.Benchmarks.DefaultDuration)
 		maxDuration, _ := time.ParseDuration(cfg.Performance.Benchmarks.MaxDuration)
 		resultsRetention, _ := time.ParseDuration(cfg.Performance.Benchmarks.ResultsRetention)
+		cleanupInterval := 15 * time.Minute // Default cleanup interval
 		
-		config.DefaultDuration = defaultDuration
+		config.DefaultTimeout = defaultDuration
 		config.MaxDuration = maxDuration
-		config.ResultsRetention = resultsRetention
+		config.RetainResults = resultsRetention
+		config.CleanupInterval = cleanupInterval
 		
 		if cfg.Performance.Benchmarks.Limits != nil {
-			config.MaxConcurrentBenchmarks = cfg.Performance.Benchmarks.Limits.MaxConcurrentBenchmarks
-			config.MemoryLimitMB = cfg.Performance.Benchmarks.Limits.MemoryLimitMB
-			config.CPUThreshold = cfg.Performance.Benchmarks.Limits.CPUThreshold
+			config.MaxConcurrentRuns = cfg.Performance.Benchmarks.Limits.MaxConcurrentBenchmarks
+			config.MaxResultsInMemory = cfg.Performance.Benchmarks.Limits.MemoryLimitMB
+			// CPUThreshold not available in BenchmarkServiceConfig
 		}
 	}
 	

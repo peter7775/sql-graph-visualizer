@@ -9,7 +9,7 @@ database:
     schema: "public"
     
     ssl:
-      mode: "prefer"
+      mode: "disable"
     
     application_name: "sql-graph-visualizer"
     statement_timeout: 30
@@ -34,7 +34,7 @@ database:
 neo4j:
   uri: "bolt://127.0.0.1:7687"
   user: "neo4j"
-  password: "password"
+  password: "testpass"
 
 # Performance monitoring and benchmarking configuration
 performance:
@@ -88,6 +88,7 @@ performance:
     default_duration: "60s"
     max_duration: "600s"
     results_retention: "24h"
+    cleanup_interval: "15m"
     
     # Sysbench configuration
     sysbench:

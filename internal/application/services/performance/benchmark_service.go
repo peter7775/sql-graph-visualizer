@@ -2,13 +2,11 @@ package performance
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"sync"
 	"time"
 
 	"sql-graph-visualizer/internal/application/ports"
-	"sql-graph-visualizer/internal/domain/models"
 
 	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
@@ -505,7 +503,7 @@ func (s *BenchmarkService) CreatePerformanceGraph(ctx context.Context, benchmark
 	}
 
 	// Analyze query patterns to extract table relationships
-	relationships, err := s.extractTableRelationships(benchmarkResult.QueryResults)
+	_, err := s.extractTableRelationships(benchmarkResult.QueryResults)
 	if err != nil {
 		return nil, fmt.Errorf("failed to extract relationships: %w", err)
 	}
@@ -603,6 +601,73 @@ type TableRelationship struct {
 	Type        string
 	Frequency   int64
 	AvgLatency  time.Duration
+}
+
+// Missing methods for API compatibility
+
+// ListRunningBenchmarks returns all running benchmarks
+func (s *BenchmarkService) ListRunningBenchmarks(ctx context.Context) []*BenchmarkExecution {
+	s.runsMutex.RLock()
+	defer s.runsMutex.RUnlock()
+
+	running := make([]*BenchmarkExecution, 0)
+	for _, execution := range s.activeRuns {
+		execution.mutex.RLock()
+		if execution.Status == ports.BenchmarkStatusRunning || execution.Status == ports.BenchmarkStatusPending {
+			running = append(running, execution)
+		}
+		execution.mutex.RUnlock()
+	}
+
+	return running
+}
+
+// GetBenchmarkStatus returns the status of a benchmark
+func (s *BenchmarkService) GetBenchmarkStatus(ctx context.Context, executionID string) *BenchmarkExecution {
+	s.runsMutex.RLock()
+	defer s.runsMutex.RUnlock()
+
+	if execution, exists := s.activeRuns[executionID]; exists {
+		return execution
+	}
+	return nil
+}
+
+// StopBenchmark stops a running benchmark
+func (s *BenchmarkService) StopBenchmark(ctx context.Context, executionID string) error {
+	s.runsMutex.RLock()
+	execution, exists := s.activeRuns[executionID]
+	s.runsMutex.RUnlock()
+
+	if !exists {
+		return fmt.Errorf("benchmark execution not found: %s", executionID)
+	}
+
+	execution.mutex.Lock()
+	defer execution.mutex.Unlock()
+
+	if execution.Status != ports.BenchmarkStatusRunning && execution.Status != ports.BenchmarkStatusPending {
+		return fmt.Errorf("benchmark is not running: %s", execution.Status)
+	}
+
+	execution.CancelFunc()
+	execution.Status = ports.BenchmarkStatusCancelled
+
+	s.logger.WithField("execution_id", executionID).Info("Benchmark stopped")
+	return nil
+}
+
+// GetBenchmarkResults returns the results of a benchmark
+func (s *BenchmarkService) GetBenchmarkResults(ctx context.Context, executionID string) *ports.BenchmarkResult {
+	s.runsMutex.RLock()
+	defer s.runsMutex.RUnlock()
+
+	if execution, exists := s.activeRuns[executionID]; exists {
+		execution.mutex.RLock()
+		defer execution.mutex.RUnlock()
+		return execution.Result
+	}
+	return nil
 }
 
 func (s *BenchmarkService) createPerformanceNode(tableName string, query *ports.QueryPerformance) *PerformanceNode {

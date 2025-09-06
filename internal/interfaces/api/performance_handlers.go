@@ -1,13 +1,13 @@
 package api
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"strconv"
 	"time"
 
+	"sql-graph-visualizer/internal/application/ports"
 	"sql-graph-visualizer/internal/application/services/performance"
 	"sql-graph-visualizer/internal/domain/models"
 
@@ -68,10 +68,10 @@ type PerformanceDataResponse struct {
 	StatementStats        []performance.StatementStatistic       `json:"statement_stats"`
 	TableIOStats          []performance.TableIOStatistic         `json:"table_io_stats"`
 	IndexStats            []performance.IndexStatistic           `json:"index_stats"`
-	ConnectionStats       []performance.ConnectionStatistic      `json:"connection_stats"`
+	ConnectionStats       performance.ConnectionStatistics       `json:"connection_stats"`
 	Summary               *PerformanceSummary                    `json:"summary"`
 	GraphData             *performance.PerformanceGraphData      `json:"graph_data,omitempty"`
-	AnalysisResults       *performance.PerformanceAnalysisResult `json:"analysis_results,omitempty"`
+	AnalysisResults       interface{}                            `json:"analysis_results,omitempty"`
 }
 
 // PerformanceSummary provides a high-level summary of performance metrics
@@ -161,25 +161,24 @@ func (ph *PerformanceHandlers) StartBenchmark(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	// Create benchmark configuration
-	config := &performance.BenchmarkConfig{
-		BenchmarkType: req.BenchmarkType,
-		Duration:      time.Duration(req.Duration) * time.Second,
-		Description:   req.Description,
-		Parameters:    req.Config,
+	// Create benchmark configuration from ports
+	config := ports.BenchmarkConfig{
+		TestType:     req.BenchmarkType,
+		Duration:     time.Duration(req.Duration) * time.Second,
+		CustomParams: req.Config,
 	}
 
 	// Start benchmark
-	result, err := ph.benchmarkService.ExecuteBenchmark(r.Context(), config)
+	executionID, err := ph.benchmarkService.ExecuteBenchmark(r.Context(), config, req.BenchmarkType)
 	if err != nil {
 		ph.sendErrorResponse(w, http.StatusInternalServerError, "benchmark_error", "Failed to start benchmark", err.Error())
 		return
 	}
 
 	response := BenchmarkStatusResponse{
-		ID:        result.ID,
+		ID:        executionID,
 		Status:    "started",
-		StartTime: result.StartTime,
+		StartTime: time.Now(),
 		Progress:  0.0,
 		Metadata:  map[string]interface{}{
 			"benchmark_type": req.BenchmarkType,
@@ -210,15 +209,27 @@ func (ph *PerformanceHandlers) GetBenchmark(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
+	var endTime *time.Time
+	if status.Result != nil && status.Result.Status == ports.BenchmarkStatusCompleted {
+		endTime = &status.Result.EndTime
+	}
+
+	var progressFloat float64 = 0.0
+	if status.Progress != nil {
+		progressFloat = float64(status.Progress.CompletedSteps) / float64(status.Progress.TotalSteps) * 100
+	}
+
 	response := BenchmarkStatusResponse{
 		ID:        status.ID,
-		Status:    status.Status,
+		Status:    string(status.Status),
 		StartTime: status.StartTime,
-		EndTime:   status.EndTime,
-		Progress:  status.Progress,
-		Results:   status.Results,
-		Error:     status.Error,
-		Metadata:  status.Metadata,
+		EndTime:   endTime,
+		Progress:  progressFloat,
+		Results:   status.Result,
+		Error:     "", // No direct error field in execution
+		Metadata:  map[string]interface{}{
+			"config": status.Config,
+		},
 	}
 
 	ph.sendJSONResponse(w, http.StatusOK, APIResponse{
@@ -291,7 +302,7 @@ func (ph *PerformanceHandlers) GetCurrentPerformanceData(w http.ResponseWriter, 
 		StatementStats:  perfData.StatementStats,
 		TableIOStats:    perfData.TableIOStats,
 		IndexStats:      perfData.IndexStats,
-		ConnectionStats: perfData.ConnectionStats,
+	ConnectionStats: *perfData.ConnectionStats,
 		Summary:         ph.generatePerformanceSummary(perfData),
 	}
 
@@ -309,9 +320,10 @@ func (ph *PerformanceHandlers) GetCurrentPerformanceData(w http.ResponseWriter, 
 
 	// Include analysis if requested
 	if includeAnalysis {
-		analysisResults, err := ph.performanceAnalyzer.AnalyzePerformance(r.Context(), perfData)
-		if err == nil {
-			response.AnalysisResults = analysisResults
+		// TODO: Implement performance analysis when method is available
+		response.AnalysisResults = map[string]interface{}{
+			"status": "analysis_not_available",
+			"message": "Performance analysis feature is under development",
 		}
 	}
 
@@ -386,11 +398,11 @@ func (ph *PerformanceHandlers) GetPerformanceAnalysis(w http.ResponseWriter, r *
 		return
 	}
 
-	// Analyze performance
-	analysisResults, err := ph.performanceAnalyzer.AnalyzePerformance(r.Context(), perfData)
-	if err != nil {
-		ph.sendErrorResponse(w, http.StatusInternalServerError, "analysis_error", "Failed to analyze performance", err.Error())
-		return
+	// TODO: Implement performance analysis
+	analysisResults := map[string]interface{}{
+		"status": "analysis_not_available",
+		"message": "Performance analysis feature is under development",
+		"data": perfData,
 	}
 
 	ph.sendJSONResponse(w, http.StatusOK, APIResponse{
@@ -581,7 +593,8 @@ func (ph *PerformanceHandlers) generatePerformanceSummary(perfData *performance.
 	for _, stmt := range perfData.StatementStats {
 		totalQueries += stmt.CountStar
 		totalLatency += float64(stmt.SumTimerWait) / 1000000 // Convert to milliseconds
-		totalErrors += stmt.SumErrors
+		// SumErrors field not available in StatementStatistic - use 0
+		// totalErrors += stmt.SumErrors
 
 		avgTime := float64(stmt.AvgTimerWait) / 1000000
 		if avgTime > 200.0 { // 200ms threshold

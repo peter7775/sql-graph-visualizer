@@ -3,8 +3,6 @@ package ports
 import (
 	"context"
 	"time"
-
-	"sql-graph-visualizer/internal/domain/models"
 )
 
 // BenchmarkToolPort defines the interface for benchmark tool integrations

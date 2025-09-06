@@ -3,11 +3,8 @@ package performance
 import (
 	"context"
 	"fmt"
-	"math"
-	"sort"
 	"time"
 
-	"sql-graph-visualizer/internal/application/ports"
 	"sql-graph-visualizer/internal/domain/models"
 
 	"github.com/sirupsen/logrus"
@@ -425,14 +422,28 @@ func (gpm *GraphPerformanceMapper) createPerformanceNode(
 	node *models.Node,
 	tableMap map[string]*TablePerformanceInfo,
 ) PerformanceGraphNode {
+	// Extract table name from node properties or label
+	tableName := node.Label
+	if tableNameProp, exists := node.Properties["table_name"]; exists {
+		if tn, ok := tableNameProp.(string); ok {
+			tableName = tn
+		}
+	}
+
+	// Generate ID from label if not directly available
+	nodeID := fmt.Sprintf("%s_%s", node.Label, tableName)
+	if idProp, exists := node.Properties["id"]; exists {
+		nodeID = fmt.Sprintf("%v", idProp)
+	}
+
 	// Get performance data for this table
 	var perfInfo *TablePerformanceInfo
-	if info, exists := tableMap[node.Name]; exists {
+	if info, exists := tableMap[tableName]; exists {
 		perfInfo = info
 	} else {
 		// Create default performance info
 		perfInfo = &TablePerformanceInfo{
-			TableName: node.Name,
+			TableName: tableName,
 		}
 	}
 
@@ -440,18 +451,35 @@ func (gpm *GraphPerformanceMapper) createPerformanceNode(
 	visual := gpm.calculateNodeVisualProperties(perfInfo)
 	performance := gpm.mapNodePerformanceData(perfInfo)
 
+	// Extract position from properties with defaults
+	var x, y float64 = 0, 0
+	if xProp, exists := node.Properties["x"]; exists {
+		if xVal, ok := xProp.(float64); ok {
+			x = xVal
+		} else if xInt, ok := xProp.(int); ok {
+			x = float64(xInt)
+		}
+	}
+	if yProp, exists := node.Properties["y"]; exists {
+		if yVal, ok := yProp.(float64); ok {
+			y = yVal
+		} else if yInt, ok := yProp.(int); ok {
+			y = float64(yInt)
+		}
+	}
+
 	return PerformanceGraphNode{
-		ID:        node.ID,
-		TableName: node.Name,
-		Label:     node.Name,
+		ID:        nodeID,
+		TableName: tableName,
+		Label:     node.Label,
 		Position: NodePosition{
-			X: float64(node.Properties["x"].(int)),
-			Y: float64(node.Properties["y"].(int)),
+			X: x,
+			Y: y,
 		},
 		Visual:          visual,
 		Performance:     performance,
 		Issues:          perfInfo.Issues,
-		Recommendations: gmp.generateNodeRecommendations(perfInfo),
+		Recommendations: gpm.generateNodeRecommendations(perfInfo),
 	}
 }
 
@@ -465,10 +493,16 @@ func (gpm *GraphPerformanceMapper) createPerformanceEdge(
 	// Calculate visual properties
 	visual := gpm.calculateEdgeVisualProperties(edgePerf)
 
+	// Generate edge ID from type and endpoints
+	edgeID := fmt.Sprintf("%s_%s_%s", edge.Type, edge.From, edge.To)
+	if idProp, exists := edge.Properties["id"]; exists {
+		edgeID = fmt.Sprintf("%v", idProp)
+	}
+
 	return PerformanceGraphEdge{
-		ID:           edge.ID,
-		SourceID:     edge.StartNodeID,
-		TargetID:     edge.EndNodeID,
+		ID:           edgeID,
+		SourceID:     edge.From,
+		TargetID:     edge.To,
 		RelationType: edge.Type,
 		Label:        edge.Type,
 		Visual:       visual,
@@ -482,7 +516,7 @@ func (gpm *GraphPerformanceMapper) createPerformanceEdge(
 func (gpm *GraphPerformanceMapper) extractTableNames(digestText string) []string { return []string{} }
 func (gpm *GraphPerformanceMapper) aggregateTablePerformance(info *TablePerformanceInfo, stmt *StatementStatistic) {}
 func (gpm *GraphPerformanceMapper) createTablePerformanceInfo(tableName string, stmt *StatementStatistic) *TablePerformanceInfo { return nil }
-func (gmp *GraphPerformanceMapper) generateNodeRecommendations(perfInfo *TablePerformanceInfo) []string { return []string{} }
+func (gpm *GraphPerformanceMapper) generateNodeRecommendations(perfInfo *TablePerformanceInfo) []string { return []string{} }
 func (gpm *GraphPerformanceMapper) enhanceWithIOStats(info *TablePerformanceInfo, tableIO *TableIOStatistic) {}
 func (gpm *GraphPerformanceMapper) calculateNodeVisualProperties(info *TablePerformanceInfo) NodeVisualProperties { return NodeVisualProperties{} }
 func (gpm *GraphPerformanceMapper) mapNodePerformanceData(info *TablePerformanceInfo) NodePerformanceData { return NodePerformanceData{} }

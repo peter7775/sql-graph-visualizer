@@ -1,0 +1,239 @@
+database:
+  type: "postgresql"
+  postgresql:
+    host: "localhost"
+    port: 5432
+    user: "postgres"
+    password: "password"
+    database: "chinook"
+    schema: "public"
+    
+    ssl:
+      mode: "disable"
+    
+    application_name: "sql-graph-visualizer"
+    statement_timeout: 30
+    
+    connection_mode: existing
+    
+    data_filtering:
+      schema_discovery: true
+      table_whitelist: ["album", "artist", "customer", "genre", "track"]
+      table_blacklist: []
+      row_limit_per_table: 100  # Limit pro demo
+      query_timeout: 30
+    
+    security:
+      read_only: true
+      connection_timeout: 30
+      query_timeout: 30
+      max_connections: 10
+      allow_production_connections: false
+      allowed_hosts: ["localhost", "127.0.0.1"]
+
+neo4j:
+  uri: "bolt://127.0.0.1:7687"
+  user: "neo4j"
+  password: "testpass"
+
+# Performance monitoring and benchmarking configuration
+performance:
+  # Performance data collection settings
+  monitoring:
+    enabled: false  # Disable MySQL Performance Schema for PostgreSQL
+    update_interval: "5s"
+    data_retention: "1h"
+    max_concurrent_queries: 10
+    
+    # Performance analysis settings
+    analysis:
+      bottleneck_threshold: 70.0
+      slow_query_threshold: 200.0  # milliseconds
+      high_load_threshold: 80.0
+      hotspot_threshold: 75.0
+      
+  # Real-time monitoring via WebSocket
+  realtime:
+    enabled: false  # Disable for PostgreSQL demo
+    update_interval: "5s"
+    heartbeat_interval: "30s"
+    max_connections: 100
+    write_timeout: "10s"
+    read_timeout: "60s"
+    ping_timeout: "90s"
+    max_message_size: 512
+    compression_enabled: true
+    
+    # Alert thresholds
+    alerts:
+      high_latency: 1000.0        # 1 second
+      high_error_rate: 5.0        # 5%
+      high_cpu_usage: 80.0        # 80%
+      high_memory_usage: 85.0     # 85%
+      slow_query_threshold: 200.0 # 200ms
+      deadlock_threshold: 5       # 5 deadlocks per minute
+      
+  # Benchmarking settings
+  benchmarks:
+    enabled: true
+    default_duration: "60s"
+    max_duration: "600s"
+    results_retention: "24h"
+    cleanup_interval: "15m"
+    
+    # Resource limits
+    limits:
+      max_concurrent_benchmarks: 3
+      memory_limit_mb: 100
+      cpu_threshold: 80.0
+      
+  # Graph visualization settings
+  visualization:
+    # Visual encoding
+    edge_thickness:
+      metric: "query_frequency"
+      scale: "linear"
+      min_thickness: 1.0
+      max_thickness: 10.0
+      multiplier: 1.0
+      
+    edge_color:
+      metric: "avg_execution_time"
+      color_scale: "green_yellow_red"
+      thresholds:
+        fast: "< 100ms"
+        medium: "100ms - 1s"
+        slow: "> 1s"
+        
+    node_size:
+      metric: "total_queries_involved"
+      min_size: 20.0
+      max_size: 100.0
+      scale: "sqrt"
+      
+    node_color:
+      metric: "avg_response_time"
+      color_scale: "green_yellow_red"
+      thresholds:
+        good: "< 50ms"
+        ok: "50ms - 200ms"
+        slow: "> 200ms"
+        
+    # Animation settings
+    animation:
+      show_data_flow: true
+      speed_based_on: "query_frequency"
+      animation_speed: 1.0
+      particle_count: 10
+      
+    # Update settings
+    update_interval: "5s"
+    history_retention: "1h"
+    max_concurrent_updates: 3
+
+# Chinook Database Transform Rules
+transform_rules:
+  # Node rules - vytvoří uzly v grafu
+  - name: "artists_to_nodes"
+    rule_type: "node"
+    source:
+      type: "query"
+      value: "SELECT artistid as id, name FROM artist LIMIT 50"
+    target_type: "Artist"
+    field_mappings:
+      id: "id"
+      name: "name"
+
+  - name: "albums_to_nodes"
+    rule_type: "node"
+    source:
+      type: "query"
+      value: "SELECT albumid as id, title as name, artistid FROM album LIMIT 100"
+    target_type: "Album"
+    field_mappings:
+      id: "id"
+      name: "name"
+      artistid: "artistid"
+
+  - name: "tracks_to_nodes"
+    rule_type: "node"
+    source:
+      type: "query"
+      value: "SELECT trackid as id, name, albumid, genreid, milliseconds, bytes FROM track LIMIT 500"
+    target_type: "Track"
+    field_mappings:
+      id: "id"
+      name: "name"
+      albumid: "albumid"
+      genreid: "genreid"
+      milliseconds: "milliseconds"
+      bytes: "bytes"
+
+  - name: "genres_to_nodes"
+    rule_type: "node"
+    source:
+      type: "query"
+      value: "SELECT genreid as id, name FROM genre"
+    target_type: "Genre"
+    field_mappings:
+      id: "id"
+      name: "name"
+
+  - name: "customers_to_nodes"
+    rule_type: "node"
+    source:
+      type: "query"
+      value: "SELECT customerid as id, firstname, lastname, email, country FROM customer LIMIT 100"
+    target_type: "Customer"
+    field_mappings:
+      id: "id"
+      firstname: "firstname"
+      lastname: "lastname"
+      email: "email"
+      country: "country"
+
+  # Relationship rules - vytvoří vztahy mezi uzly
+  - name: "artist_album_relationship"
+    rule_type: "relationship"
+    relationship_type: "CREATED"
+    direction: "outgoing"
+    source_node:
+      type: "Artist"
+      key: "artistid"
+      target_field: "id"
+    target_node:
+      type: "Album"
+      key: "id"
+      target_field: "id"
+    field_mappings:
+      artistid: "id"
+
+  - name: "album_track_relationship"
+    rule_type: "relationship"
+    relationship_type: "CONTAINS"
+    direction: "outgoing"
+    source_node:
+      type: "Album"
+      key: "albumid"
+      target_field: "id"
+    target_node:
+      type: "Track"
+      key: "id"
+      target_field: "id"
+    field_mappings:
+      albumid: "id"
+
+  - name: "track_genre_relationship"
+    rule_type: "relationship"
+    relationship_type: "BELONGS_TO"
+    direction: "outgoing"
+    source_node:
+      type: "Track"
+      key: "id"
+      target_field: "id"
+    target_node:
+      type: "Genre"
+      key: "genreid"
+      target_field: "id"
+    field_mappings:
+      genreid: "id"

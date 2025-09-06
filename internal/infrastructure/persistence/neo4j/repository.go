@@ -264,3 +264,37 @@ func (r *Neo4jRepository) FetchNodes(nodeType string) ([]map[string]any, error) 
 
 	return nodes, nil
 }
+
+// ExecuteQuery executes a generic Cypher query and returns results as maps
+func (r *Neo4jRepository) ExecuteQuery(query string, params map[string]interface{}) ([]map[string]interface{}, error) {
+	session := r.driver.NewSession(neo4j.SessionConfig{})
+	defer func() {
+		if err := session.Close(); err != nil {
+			logrus.Errorf("Error closing session: %v", err)
+		}
+	}()
+
+	result, err := session.Run(query, params)
+	if err != nil {
+		return nil, err
+	}
+
+	var results []map[string]interface{}
+	for result.Next() {
+		record := result.Record()
+		row := make(map[string]interface{})
+		
+		// Extract all values from the record
+		for i, key := range record.Keys {
+			row[key] = record.Values[i]
+		}
+		
+		results = append(results, row)
+	}
+
+	if err = result.Err(); err != nil {
+		return nil, err
+	}
+
+	return results, nil
+}

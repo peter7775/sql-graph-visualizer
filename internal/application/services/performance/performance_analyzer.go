@@ -173,9 +173,14 @@ func (pa *PerformanceAnalyzer) DetectHotspots(ctx context.Context, metrics []*po
 		return hotspots[i].HotspotScore > hotspots[j].HotspotScore
 	})
 
+	topScore := 0.0
+	if len(hotspots) > 0 {
+		topScore = hotspots[0].HotspotScore
+	}
+	
 	pa.logger.WithFields(logrus.Fields{
 		"hotspots_detected": len(hotspots),
-		"top_score":         func() float64 { if len(hotspots) > 0 { return hotspots[0].HotspotScore } return 0 }(),
+		"top_score":         topScore,
 	}).Info("Hotspot detection completed")
 
 	return hotspots, nil
