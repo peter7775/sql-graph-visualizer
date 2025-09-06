@@ -1,10 +1,38 @@
 # SQL Graph Visualizer
 
+<div align="center">
+
 [![License: Dual](https://img.shields.io/badge/License-AGPL%2BCommercial-blue.svg)](LICENSE-DUAL.md)
+[![Go Version](https://img.shields.io/github/go-mod/go-version/peter7775/sql-graph-visualizer)](https://golang.org/)
+[![Release](https://img.shields.io/github/v/release/peter7775/sql-graph-visualizer)](https://github.com/peter7775/sql-graph-visualizer/releases)
+[![Stars](https://img.shields.io/github/stars/peter7775/sql-graph-visualizer?style=social)](https://github.com/peter7775/sql-graph-visualizer/stargazers)
+
+[![MySQL](https://img.shields.io/badge/MySQL-8.0+-4479A1?logo=mysql&logoColor=white)](https://mysql.com/)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-13+-336791?logo=postgresql&logoColor=white)](https://postgresql.org/)
+[![Neo4j](https://img.shields.io/badge/Neo4j-4.4+-008CC1?logo=neo4j&logoColor=white)](https://neo4j.com/)
+[![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?logo=docker&logoColor=white)](https://hub.docker.com/)
+
+[![Performance](https://img.shields.io/badge/Performance-Benchmarking-orange?logo=speedtest&logoColor=white)](#performance-benchmarking)
+[![Enterprise](https://img.shields.io/badge/Enterprise-Ready-success?logo=enterprise&logoColor=white)](#enterprise-architecture)
+[![API](https://img.shields.io/badge/API-GraphQL%20%7C%20REST-purple?logo=graphql&logoColor=white)](#api-documentation)
+
+</div>
 
 > **Status: Active Development** - This project is under active development. APIs may change.
 
 A powerful Go application that transforms SQL database structures (MySQL, PostgreSQL) into Neo4j graph databases with interactive visualization and comprehensive performance analysis capabilities. Built with Domain Driven Design architecture and featuring flexible transformation rules, advanced performance benchmarking, and robust database connection management.
+
+<div align="center">
+
+**[📚 Quick Start](#quick-start)** • 
+**[🚀 Live Demo](https://demo.example.com)** • 
+**[📖 Documentation](https://docs.example.com)** • 
+**[💬 Discussions](https://github.com/peter7775/sql-graph-visualizer/discussions)** • 
+**[🐛 Issues](https://github.com/peter7775/sql-graph-visualizer/issues)**
+
+</div>
+
+---
 
 ## Table of Contents
 
