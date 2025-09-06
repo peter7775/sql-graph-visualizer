@@ -2,7 +2,7 @@
 
 Thank you for your interest in contributing to MySQL Graph Visualizer! This document provides guidelines and information for contributors.
 
-## 🚀 Quick Start
+##  Quick Start
 
 1. **Fork** the repository on GitHub
 2. **Clone** your fork locally
@@ -11,7 +11,7 @@ Thank you for your interest in contributing to MySQL Graph Visualizer! This docu
 5. **Run** tests: `go test ./...`
 6. **Start** the application: `go run cmd/main.go`
 
-## 📋 How to Contribute
+##  How to Contribute
 
 ### Reporting Bugs
 
@@ -75,7 +75,7 @@ Feature requests are welcome! Please:
    - Link related issues
    - Provide clear description
 
-## 🏗️ Development Setup
+## ️ Development Setup
 
 ### Prerequisites
 
@@ -128,7 +128,7 @@ Feature requests are welcome! Please:
    go test ./internal/domain/...
    ```
 
-## 📝 Coding Standards
+##  Coding Standards
 
 ### Go Style Guide
 
@@ -176,7 +176,7 @@ internal/
 - Include examples for complex functions
 - Update README.md for user-facing changes
 
-## 🧪 Testing Guidelines
+##  Testing Guidelines
 
 ### Test Structure
 
@@ -203,7 +203,7 @@ func TestUserService_CreateUser_ReturnsErrorWhenEmailExists(t *testing.T)
 - Inline comments for complex logic
 - Architecture decision records (ADRs) for major decisions
 
-## 🏷️ Issue Labels
+## ️ Issue Labels
 
 Understanding our issue labels:
 
