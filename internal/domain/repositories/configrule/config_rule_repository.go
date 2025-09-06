@@ -26,18 +26,18 @@ func NewRuleRepository() *RuleRepository {
 }
 
 func (r *RuleRepository) GetAllRules(ctx context.Context) ([]*transformAgg.RuleAggregate, error) {
-	logrus.Infof("🔍 GetAllRules called - current rules count: %d", len(r.rules))
+	logrus.Infof("GetAllRules called - current rules count: %d", len(r.rules))
 	if len(r.rules) == 0 {
-		logrus.Infof("📥 Loading rules from config file...")
+		logrus.Infof("Loading rules from config file...")
 		loadedRules, err := r.LoadRulesFromConfig("config/config.yml")
 		if err != nil {
-			logrus.Errorf("❌ Failed to load rules: %v", err)
+			logrus.Errorf("Failed to load rules: %v", err)
 			return nil, err
 		}
 		r.rules = loadedRules
-		logrus.Infof("✅ Successfully loaded %d rules", len(r.rules))
+		logrus.Infof("Successfully loaded %d rules", len(r.rules))
 	}
-	logrus.Infof("📤 Returning %d rules from GetAllRules", len(r.rules))
+	logrus.Infof("Returning %d rules from GetAllRules", len(r.rules))
 	return r.rules, nil
 }
 
