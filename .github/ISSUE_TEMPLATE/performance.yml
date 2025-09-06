@@ -1,0 +1,162 @@
+name: Performance Issue
+description: Report performance problems or optimization suggestions
+title: "[Performance]: "
+labels: ["performance", "needs-triage"]
+assignees: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Experiencing performance issues? Help us understand what's happening so we can optimize the application.
+
+  - type: checkboxes
+    id: terms
+    attributes:
+      label: Prerequisites
+      description: By submitting this issue, you confirm you've checked the following
+      options:
+        - label: I have searched existing performance-related issues
+          required: true
+        - label: I have tested with different dataset sizes to isolate the issue
+          required: true
+
+  - type: dropdown
+    id: performance_area
+    attributes:
+      label: Performance Area
+      description: Which part of the application is experiencing performance issues?
+      options:
+        - MySQL Data Extraction
+        - Data Transformation
+        - Neo4j Data Loading
+        - Graph Visualization Rendering
+        - API Response Time
+        - Memory Usage
+        - Application Startup Time
+        - Overall Application Performance
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Performance Issue Description
+      description: Describe the performance problem you're experiencing
+      placeholder: |
+        Example:
+        - The graph visualization takes 30+ seconds to load
+        - Memory usage grows continuously during data transformation
+        - API responses are timing out after 60 seconds
+    validations:
+      required: true
+
+  - type: textarea
+    id: dataset_info
+    attributes:
+      label: Dataset Information
+      description: Please provide details about your data
+      placeholder: |
+        - Number of MySQL tables: 
+        - Approximate number of records per table: 
+        - Total database size: 
+        - Number of relationships/foreign keys: 
+        - Neo4j graph size (nodes/relationships): 
+      render: markdown
+    validations:
+      required: true
+
+  - type: textarea
+    id: performance_metrics
+    attributes:
+      label: Performance Metrics
+      description: If available, please provide specific performance measurements
+      placeholder: |
+        - Time taken for operation: 
+        - Memory usage (before/after): 
+        - CPU usage during operation: 
+        - API response times: 
+        - Database query execution times: 
+      render: markdown
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: System Environment
+      description: Please provide your system specifications
+      value: |
+        - OS: 
+        - CPU: 
+        - RAM: 
+        - Storage (SSD/HDD): 
+        - Go Version: 
+        - MySQL Version: 
+        - Neo4j Version: 
+        - Docker (if used): 
+      render: markdown
+    validations:
+      required: true
+
+  - type: textarea
+    id: configuration
+    attributes:
+      label: Configuration Details
+      description: Please share relevant configuration that might affect performance
+      render: yaml
+      placeholder: |
+        # Any custom timeouts, batch sizes, or optimization settings
+        mysql:
+          # connection pool settings, query timeouts, etc.
+        
+        neo4j:
+          # batch sizes, transaction settings, etc.
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Performance Logs
+      description: If available, provide logs showing performance issues (with debug logging enabled)
+      render: text
+      placeholder: Paste relevant logs here, especially timing information...
+
+  - type: dropdown
+    id: severity
+    attributes:
+      label: Performance Impact
+      description: How severely does this performance issue affect your use of the application?
+      options:
+        - Minor - Slightly slower than expected
+        - Moderate - Noticeably slow but usable
+        - Severe - Very slow, impacts productivity
+        - Critical - Unusable, times out, or crashes
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to Reproduce Performance Issue
+      description: How can we reproduce this performance problem?
+      placeholder: |
+        1. Set up database with X tables and Y records
+        2. Configure transformation rules for...
+        3. Start the application and...
+        4. Observe slow performance when...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected_performance
+    attributes:
+      label: Expected Performance
+      description: What performance would you expect for this operation?
+      placeholder: |
+        Based on the dataset size and complexity, I would expect:
+        - Operation to complete in under X seconds
+        - Memory usage to remain under Y MB
+        - etc.
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional Context
+      description: Any other information that might help us understand or reproduce the performance issue

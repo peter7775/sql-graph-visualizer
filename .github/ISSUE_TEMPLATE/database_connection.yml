@@ -1,0 +1,134 @@
+name: Database Connection Issue
+description: Report issues with MySQL or Neo4j database connections
+title: "[DB]: "
+labels: ["database", "connection", "needs-triage"]
+assignees: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Having trouble connecting to MySQL or Neo4j? This template will help us diagnose connection issues.
+
+  - type: checkboxes
+    id: terms
+    attributes:
+      label: Prerequisites
+      description: By submitting this issue, you confirm you've checked the following
+      options:
+        - label: I have verified my database credentials are correct
+          required: true
+        - label: I have checked that the database services are running
+          required: true
+        - label: I have searched existing issues for similar connection problems
+          required: true
+
+  - type: dropdown
+    id: database_type
+    attributes:
+      label: Database Type
+      description: Which database are you having trouble connecting to?
+      options:
+        - MySQL
+        - Neo4j
+        - Both MySQL and Neo4j
+    validations:
+      required: true
+
+  - type: textarea
+    id: error_message
+    attributes:
+      label: Error Message
+      description: Please provide the exact error message you're seeing
+      render: text
+      placeholder: Paste the complete error message here...
+    validations:
+      required: true
+
+  - type: textarea
+    id: configuration
+    attributes:
+      label: Database Configuration
+      description: Please share your database configuration (remove passwords and sensitive data)
+      render: yaml
+      placeholder: |
+        mysql:
+          host: localhost
+          port: 3306
+          user: username
+          password: [REDACTED]
+          database: dbname
+        
+        neo4j:
+          uri: bolt://localhost:7687
+          user: neo4j
+          password: [REDACTED]
+    validations:
+      required: true
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment Details
+      description: Please provide your environment information
+      value: |
+        - OS: 
+        - Go Version: 
+        - MySQL Version: 
+        - Neo4j Version: 
+        - Docker (if used): 
+        - Network setup (local/remote): 
+      render: markdown
+    validations:
+      required: true
+
+  - type: textarea
+    id: connection_test
+    attributes:
+      label: Connection Test Results
+      description: Have you tried connecting to the databases using other tools?
+      placeholder: |
+        Example:
+        - MySQL Workbench: ✅ Success / ❌ Failed
+        - Neo4j Browser: ✅ Success / ❌ Failed
+        - Command line mysql client: ✅ Success / ❌ Failed
+        - Cypher shell: ✅ Success / ❌ Failed
+
+  - type: textarea
+    id: docker_setup
+    attributes:
+      label: Docker Setup (if applicable)
+      description: If using Docker, please provide relevant docker-compose.yml sections or container information
+      render: yaml
+      placeholder: |
+        version: '3.8'
+        services:
+          neo4j-test:
+            image: neo4j:4.4
+            ports:
+              - "7474:7474"
+              - "7687:7687"
+            # ... other config
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Application Logs
+      description: Please provide relevant application logs with LOG_LEVEL=debug
+      render: text
+      placeholder: Paste application logs here...
+
+  - type: textarea
+    id: network_info
+    attributes:
+      label: Network Information
+      description: Any relevant network configuration, firewall rules, or connectivity constraints
+      placeholder: |
+        - Are databases running on the same machine as the application?
+        - Any firewalls or network restrictions?
+        - Custom ports or SSL configurations?
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional Context
+      description: Any other relevant information about your setup or the connection issue
