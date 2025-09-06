@@ -1,0 +1,57 @@
+# MySQL Graph Visualizer - Sakila Sample Database Configuration
+# Issue #10 - Direct Database Connection Implementation
+# Perfect for testing and demonstrating the direct database connection functionality
+
+mysql:
+  host: "127.0.0.1"
+  port: 3308  # Sakila container port
+  username: "sakila_user"
+  password: "sakila123"
+  database: "sakila"
+  connection_mode: "existing"
+
+  # Sakila-specific filtering
+  data_filtering:
+    schema_discovery: true
+    table_blacklist: ["film_text"]  # Skip full-text search table
+    row_limit_per_table: 100  # Sample data for demo
+    query_timeout: 60
+
+  # Standard security for sample database
+  security:
+    read_only: true
+    connection_timeout: 30
+    query_timeout: 60
+    max_connections: 3
+
+  # Generate rules for film rental domain
+  auto_generated_rules:
+    enabled: true
+    strategy:
+      table_to_node: true
+      foreign_keys_to_relations: true
+      naming_convention:
+        node_type_format: "Pascal"      # actor -> Actor
+        relation_type_format: "UPPER_SNAKE"  # film_actor -> FILM_ACTOR
+    table_overrides:
+      film_actor:
+        # Junction table - will be detected as RELATIONSHIP automatically
+      film_category:
+        # Junction table - will be detected as RELATIONSHIP automatically
+
+neo4j:
+  uri: "bolt://localhost:7688"  # Sakila Neo4j container port
+  user: "neo4j"
+  password: "sakila123"
+  
+  batch_processing:
+    batch_size: 1000
+    commit_frequency: 5000
+    memory_limit_mb: 512
+
+# This configuration demonstrates:
+# - Direct connection to existing Sakila database
+# - Automatic junction table detection (film_actor, film_category)
+# - Graph pattern recognition (star schemas around film, customer, store)
+# - Security validation and connection testing
+# - Automatic generation of Neo4j transformation rules

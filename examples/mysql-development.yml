@@ -1,0 +1,49 @@
+# MySQL Graph Visualizer - Development Configuration
+# Issue #10 - Direct Database Connection Implementation
+
+mysql:
+  host: "localhost"
+  port: 3306
+  username: "dev_user"
+  password: "dev_password"
+  database: "myapp_development"
+  connection_mode: "existing"
+
+  # Relaxed filtering for development
+  data_filtering:
+    schema_discovery: true
+    table_blacklist: ["migrations", "schema_migrations", "ar_internal_metadata"]
+    row_limit_per_table: 1000  # Small limit for faster development
+    query_timeout: 60
+
+  # Development security settings
+  security:
+    read_only: true
+    connection_timeout: 15
+    query_timeout: 60
+    max_connections: 3
+    allow_root_user: true  # Allow root for development
+
+  # No SSL required for local development
+  ssl:
+    enabled: false
+
+  # Auto-generate rules for all tables
+  auto_generated_rules:
+    enabled: true
+    strategy:
+      table_to_node: true
+      foreign_keys_to_relations: true
+      naming_convention:
+        node_type_format: "Pascal"
+        relation_type_format: "UPPER_SNAKE"
+
+neo4j:
+  uri: "bolt://localhost:7687"
+  user: "neo4j"
+  password: "dev_password"
+  
+  batch_processing:
+    batch_size: 1000
+    commit_frequency: 5000
+    memory_limit_mb: 512

@@ -1,0 +1,44 @@
+# MySQL Graph Visualizer - Testing Configuration
+# Issue #10 - Direct Database Connection Implementation
+
+mysql:
+  host: "test-db.internal"
+  port: 3306
+  username: "test_user"
+  password: "test_password"
+  database: "myapp_test"
+  connection_mode: "existing"
+
+  # Strict limits for testing
+  data_filtering:
+    schema_discovery: true
+    row_limit_per_table: 100  # Very small for fast tests
+    query_timeout: 30
+    where_conditions:
+      # Use recent test data only
+      users: "created_at >= CURDATE() - INTERVAL 30 DAY"
+      orders: "created_at >= CURDATE() - INTERVAL 7 DAY"
+
+  # Fast timeouts for testing
+  security:
+    read_only: true
+    connection_timeout: 10
+    query_timeout: 30
+    max_connections: 1
+
+  # Generate minimal rules for testing
+  auto_generated_rules:
+    enabled: true
+    strategy:
+      table_to_node: true
+      foreign_keys_to_relations: true
+
+neo4j:
+  uri: "bolt://test-neo4j:7687"
+  user: "neo4j"
+  password: "test_password"
+  
+  batch_processing:
+    batch_size: 100
+    commit_frequency: 500
+    memory_limit_mb: 256
