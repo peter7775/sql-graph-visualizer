@@ -37,9 +37,9 @@ import (
 	"sql-graph-visualizer/internal/domain/repositories/configrule"
 	"sql-graph-visualizer/internal/infrastructure/middleware"
 	mysqlrepo "sql-graph-visualizer/internal/infrastructure/persistence/mysql"
-	postgresqlrepo "sql-graph-visualizer/internal/infrastructure/persistence/postgresql"
 	"sql-graph-visualizer/internal/infrastructure/persistence/neo4j"
-	
+	postgresqlrepo "sql-graph-visualizer/internal/infrastructure/persistence/postgresql"
+
 	// Import database drivers
 	_ "github.com/go-sql-driver/mysql"
 	_ "github.com/lib/pq"
@@ -63,25 +63,25 @@ func main() {
 	// Check if we have new multi-database configuration or legacy MySQL
 	if cfg.Database != nil && cfg.Database.Type != "" {
 		logrus.Infof("Using new multi-database configuration: %s", cfg.Database.Type)
-		
+
 		// For now, PostgreSQL will use the existing MySQL port interface
 		// This is a temporary workaround until we have a unified database interface
 		switch cfg.Database.Type {
 		case models.DatabaseTypePostgreSQL:
 			pgConfig := cfg.Database.PostgreSQL
 			logrus.Infof("Connecting to PostgreSQL: %s@%s:%d/%s", pgConfig.GetUsername(), pgConfig.GetHost(), pgConfig.GetPort(), pgConfig.GetDatabase())
-			
+
 			// Create PostgreSQL repository
 			postgresRepo := postgresqlrepo.NewPostgreSQLRepository(nil)
 			db, err = postgresRepo.ConnectToExisting(ctx, pgConfig)
 			if err != nil {
 				logrus.Fatalf("Failed to connect to PostgreSQL: %v", err)
 			}
-			
+
 			// Use PostgreSQL repository as DatabasePort
 			dbPort = postgresqlrepo.NewPostgreSQLDatabasePort(db)
 			logrus.Infof("Successfully connected to PostgreSQL database")
-			
+
 		case models.DatabaseTypeMySQL:
 			mysqlConfig := cfg.Database.MySQL
 			dsn := fmt.Sprintf("%s:%s@tcp(%s:%d)/%s",
@@ -91,23 +91,23 @@ func main() {
 				mysqlConfig.GetPort(),
 				mysqlConfig.GetDatabase(),
 			)
-			
+
 			db, err = sql.Open("mysql", dsn)
 			if err != nil {
 				logrus.Fatalf("Failed to connect to MySQL: %v", err)
 			}
-			
+
 			dbPort = mysqlrepo.NewMySQLDatabasePort(db)
 			logrus.Infof("Successfully connected to MySQL database")
-			
+
 		default:
 			logrus.Fatalf("Unsupported database type: %s", cfg.Database.Type)
 		}
-		
+
 	} else {
 		// Legacy MySQL configuration
 		logrus.Infof("Using legacy MySQL configuration")
-		
+
 		dsn := fmt.Sprintf("%s:%s@tcp(%s:%d)/%s",
 			cfg.MySQL.User,
 			cfg.MySQL.Password,
@@ -115,17 +115,17 @@ func main() {
 			cfg.MySQL.Port,
 			cfg.MySQL.Database,
 		)
-		
+
 		logrus.Infof("DSN: %s", dsn)
 		db, err = sql.Open("mysql", dsn)
 		if err != nil {
 			logrus.Fatalf("Failed to connect to MySQL: %v", err)
 		}
-		
+
 		dbPort = mysqlrepo.NewMySQLDatabasePort(db)
 		logrus.Infof("MySQL connection successful")
 	}
-	
+
 	defer func() {
 		if err := db.Close(); err != nil {
 			logrus.Errorf("Error closing database connection: %v", err)

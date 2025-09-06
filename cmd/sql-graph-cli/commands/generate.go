@@ -98,7 +98,7 @@ func runGenerate(opts generateOptions) error {
 
 func generateProductionConfig(outputDir string, force bool) error {
 	filename := filepath.Join(outputDir, "mysql-production.yml")
-	
+
 	config := `# SQL Graph Visualizer - Production Configuration
 # Issue #10 - Direct Database Connection Implementation
 
@@ -173,7 +173,7 @@ neo4j:
 
 func generateDevelopmentConfig(outputDir string, force bool) error {
 	filename := filepath.Join(outputDir, "mysql-development.yml")
-	
+
 	config := `# SQL Graph Visualizer - Development Configuration
 # Issue #10 - Direct Database Connection Implementation
 
@@ -230,7 +230,7 @@ neo4j:
 
 func generateTestingConfig(outputDir string, force bool) error {
 	filename := filepath.Join(outputDir, "mysql-testing.yml")
-	
+
 	config := `# SQL Graph Visualizer - Testing Configuration
 # Issue #10 - Direct Database Connection Implementation
 
@@ -282,7 +282,7 @@ neo4j:
 
 func generateSakilaConfig(outputDir string, force bool) error {
 	filename := filepath.Join(outputDir, "mysql-sakila.yml")
-	
+
 	config := `# SQL Graph Visualizer - Sakila Sample Database Configuration
 # Issue #10 - Direct Database Connection Implementation
 # Perfect for testing and demonstrating the direct database connection functionality
@@ -347,7 +347,7 @@ neo4j:
 
 func generateMinimalConfig(outputDir string, force bool) error {
 	filename := filepath.Join(outputDir, "mysql-minimal.yml")
-	
+
 	config := `# SQL Graph Visualizer - Minimal Configuration Template
 # Issue #10 - Direct Database Connection Implementation
 

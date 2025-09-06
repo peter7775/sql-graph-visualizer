@@ -26,22 +26,22 @@ import (
 func NewTestCmd() *cobra.Command {
 	var (
 		// Common flags
-		dbType             string
-		host               string
-		port               int
-		username           string
-		password           string
-		database           string
-		connectionTimeout  int
-		detailed           bool
-		
+		dbType            string
+		host              string
+		port              int
+		username          string
+		password          string
+		database          string
+		connectionTimeout int
+		detailed          bool
+
 		// PostgreSQL specific flags
-		schema             string
-		sslMode            string
-		sslCertFile        string
-		sslKeyFile         string
-		sslCAFile          string
-		applicationName    string
+		schema          string
+		sslMode         string
+		sslCertFile     string
+		sslKeyFile      string
+		sslCAFile       string
+		applicationName string
 	)
 
 	cmd := &cobra.Command{
@@ -77,14 +77,14 @@ This command provides immediate feedback on:
 				Password:          password,
 				Database:          database,
 				ConnectionTimeout: connectionTimeout,
-				Detailed:         detailed,
+				Detailed:          detailed,
 				// PostgreSQL specific
-				Schema:            schema,
-				SSLMode:           sslMode,
-				SSLCertFile:       sslCertFile,
-				SSLKeyFile:        sslKeyFile,
-				SSLCAFile:         sslCAFile,
-				ApplicationName:   applicationName,
+				Schema:          schema,
+				SSLMode:         sslMode,
+				SSLCertFile:     sslCertFile,
+				SSLKeyFile:      sslKeyFile,
+				SSLCAFile:       sslCAFile,
+				ApplicationName: applicationName,
 			})
 		},
 	}
@@ -100,7 +100,7 @@ This command provides immediate feedback on:
 	// Test settings
 	cmd.Flags().IntVar(&connectionTimeout, "connection-timeout", 10, "Connection timeout in seconds")
 	cmd.Flags().BoolVar(&detailed, "detailed", false, "Perform detailed security validation")
-	
+
 	// PostgreSQL specific flags
 	cmd.Flags().StringVar(&schema, "schema", "public", "PostgreSQL schema name")
 	cmd.Flags().StringVar(&sslMode, "ssl-mode", "prefer", "PostgreSQL SSL mode: disable, allow, prefer, require, verify-ca, verify-full")
@@ -126,15 +126,15 @@ type testOptions struct {
 	Password          string
 	Database          string
 	ConnectionTimeout int
-	Detailed         bool
-	
+	Detailed          bool
+
 	// PostgreSQL specific options
-	Schema            string
-	SSLMode           string
-	SSLCertFile       string
-	SSLKeyFile        string
-	SSLCAFile         string
-	ApplicationName   string
+	Schema          string
+	SSLMode         string
+	SSLCertFile     string
+	SSLKeyFile      string
+	SSLCAFile       string
+	ApplicationName string
 }
 
 func runTest(opts testOptions) error {
@@ -162,13 +162,13 @@ func runTest(opts testOptions) error {
 			Password:       opts.Password,
 			Database:       opts.Database,
 			ConnectionMode: models.ConnectionModeExisting,
-			
+
 			// Minimal filtering for testing
 			DataFiltering: models.DataFilteringConfig{
 				SchemaDiscovery:  true,
 				RowLimitPerTable: 1, // Just check table access
 			},
-			
+
 			Security: models.SecurityConfig{
 				ReadOnly:          true,
 				ConnectionTimeout: opts.ConnectionTimeout,
@@ -176,7 +176,7 @@ func runTest(opts testOptions) error {
 				MaxConnections:    1,  // Single connection for testing
 			},
 		}
-		
+
 	case models.DatabaseTypePostgreSQL:
 		config = &models.PostgreSQLConfig{
 			Host:           opts.Host,
@@ -186,7 +186,7 @@ func runTest(opts testOptions) error {
 			Database:       opts.Database,
 			Schema:         opts.Schema,
 			ConnectionMode: models.ConnectionModeExisting,
-			
+
 			// PostgreSQL-specific settings
 			SSLConfig: models.PostgreSQLSSLConfig{
 				Mode:     opts.SSLMode,
@@ -195,13 +195,13 @@ func runTest(opts testOptions) error {
 				CAFile:   opts.SSLCAFile,
 			},
 			ApplicationName: opts.ApplicationName,
-			
+
 			// Minimal filtering for testing
 			DataFiltering: models.DataFilteringConfig{
 				SchemaDiscovery:  true,
 				RowLimitPerTable: 1, // Just check table access
 			},
-			
+
 			Security: models.SecurityConfig{
 				ReadOnly:          true,
 				ConnectionTimeout: opts.ConnectionTimeout,
@@ -209,7 +209,7 @@ func runTest(opts testOptions) error {
 				MaxConnections:    1,  // Single connection for testing
 			},
 		}
-		
+
 	default:
 		return fmt.Errorf("unsupported database type: %s", opts.DBType)
 	}
@@ -259,7 +259,7 @@ func runTest(opts testOptions) error {
 
 		// Display detailed results
 		fmt.Printf("Connection test passed in %v\n", duration)
-		
+
 		fmt.Println("\nConnection Details:")
 		if result.DatabaseInfo != nil {
 			fmt.Printf("   Database: %s\n", result.DatabaseInfo.Database)
@@ -272,7 +272,7 @@ func runTest(opts testOptions) error {
 
 		if result.Summary != nil {
 			fmt.Printf("   Tables Found: %d\n", result.Summary.TotalTables)
-			
+
 			if len(result.Summary.Warnings) > 0 {
 				fmt.Printf("   Warnings: %d\n", len(result.Summary.Warnings))
 				for _, warning := range result.Summary.Warnings {
@@ -319,7 +319,7 @@ func runTest(opts testOptions) error {
 
 		if !testResult.Success {
 			fmt.Printf("Connection failed: %s\n", testResult.ErrorMessage)
-			
+
 			if len(testResult.SecurityIssues) > 0 {
 				fmt.Println("\nSecurity Issues:")
 				for _, issue := range testResult.SecurityIssues {
@@ -331,7 +331,7 @@ func runTest(opts testOptions) error {
 
 		// Display quick test results
 		fmt.Printf("Connection test passed in %v\n", duration)
-		
+
 		fmt.Println("\nConnection Details:")
 		fmt.Printf("   Database: %s\n", testResult.DatabaseName)
 		fmt.Printf("   Server Version: %s\n", testResult.ServerVersion)

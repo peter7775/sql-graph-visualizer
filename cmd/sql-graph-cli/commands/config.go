@@ -14,6 +14,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v2"
@@ -149,7 +150,7 @@ func runConfigValidate(configFile string) error {
 
 	// Basic structure validation
 	validationErrors := validateConfigStructure(config)
-	
+
 	if len(validationErrors) > 0 {
 		fmt.Printf(" Configuration warnings:\n")
 		for _, err := range validationErrors {
@@ -169,7 +170,7 @@ func runConfigValidate(configFile string) error {
 	}
 
 	fmt.Println("\nDONE Configuration validation completed!")
-	
+
 	if len(validationErrors) == 0 {
 		fmt.Println("No issues found - configuration is ready for use")
 	} else {
@@ -205,7 +206,9 @@ func runConfigShow(configFile string, format string) error {
 	fmt.Printf("📁 File: %s\n", configFile)
 	fmt.Printf("📏 Size: %d bytes\n", len(data))
 	fmt.Printf("TARGET Format: %s\n", format)
-	fmt.Println(fmt.Sprintf("%s", string([]rune{0x2500}[0]))+string([]rune{0x2500}[:40])+fmt.Sprintf("%s", string([]rune{0x2500}[0])))
+	// Print separator line
+	separator := strings.Repeat("─", 40)
+	fmt.Println(separator)
 
 	switch format {
 	case "json":
@@ -244,7 +247,7 @@ func runConfigInit(outputFile string, template string, force bool) error {
 
 	// Generate config based on template
 	outputDir := filepath.Dir(outputFile)
-	
+
 	// Create output directory if needed
 	if outputDir != "." {
 		if err := os.MkdirAll(outputDir, 0755); err != nil {
@@ -323,7 +326,7 @@ func validateConfigStructure(config map[string]interface{}) []string {
 
 func validateMySQLConfig(mysqlConfig map[interface{}]interface{}) {
 	fmt.Println("\nDETAIL MySQL Configuration:")
-	
+
 	// Check required fields
 	requiredFields := []string{"host", "port", "username", "password", "database"}
 	for _, field := range requiredFields {
@@ -353,7 +356,7 @@ func validateMySQLConfig(mysqlConfig map[interface{}]interface{}) {
 
 func validateNeo4jConfig(neo4jConfig map[interface{}]interface{}) {
 	fmt.Println("\nDETAIL Neo4j Configuration:")
-	
+
 	// Check required fields
 	if _, ok := neo4jConfig["uri"]; !ok {
 		fmt.Println("   WARN  Missing required field: uri")

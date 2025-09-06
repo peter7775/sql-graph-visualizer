@@ -38,7 +38,7 @@ func main() {
 
 		// SSL configuration
 		SSLConfig: models.PostgreSQLSSLConfig{
-			Mode: "prefer",
+			Mode:               "prefer",
 			InsecureSkipVerify: true,
 		},
 
@@ -62,12 +62,12 @@ func main() {
 		},
 	}
 
-	logrus.Infof("📡 Testing PostgreSQL connection to %s@%s:%d/%s", 
+	logrus.Infof("📡 Testing PostgreSQL connection to %s@%s:%d/%s",
 		config.GetUsername(), config.GetHost(), config.GetPort(), config.GetDatabase())
 
 	// Create repository factory
 	factory := factories.NewDatabaseRepositoryFactory()
-	
+
 	// Test supported database types
 	supportedTypes := factory.GetSupportedDatabaseTypes()
 	logrus.Infof("✅ Supported database types: %v", supportedTypes)
@@ -103,16 +103,16 @@ func testBasicOperations(ctx context.Context, repo interface{}) {
 
 	// Cast to the specific repository type to access methods
 	// Note: In real implementation, you'd use the DatabaseRepository interface methods
-	
+
 	logrus.Info("📊 Testing database metadata retrieval...")
-	
+
 	// Test would include:
 	// - repo.GetDatabaseName()
-	// - repo.GetDatabaseVersion() 
+	// - repo.GetDatabaseVersion()
 	// - repo.GetTables()
 	// - repo.GetColumns()
 	// - repo.GetSchemaNames()
-	
+
 	logrus.Info("✅ Basic operations test completed")
 }
 
@@ -141,7 +141,7 @@ func demonstrateMultiDatabaseConfig() {
 		},
 	}
 
-	// Example 2: PostgreSQL configuration  
+	// Example 2: PostgreSQL configuration
 	postgresConfig := &models.Config{
 		Database: &models.DatabaseSelector{
 			Type: models.DatabaseTypePostgreSQL,
