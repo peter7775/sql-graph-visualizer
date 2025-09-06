@@ -16,12 +16,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"mysql-graph-visualizer/internal/application/ports"
-	"mysql-graph-visualizer/internal/domain/aggregates/graph"
-	"mysql-graph-visualizer/internal/domain/aggregates/serialization"
-	transform_agg "mysql-graph-visualizer/internal/domain/aggregates/transform"
-	"mysql-graph-visualizer/internal/domain/entities"
-	"mysql-graph-visualizer/internal/domain/valueobjects/transform"
+	"sql-graph-visualizer/internal/application/ports"
+	"sql-graph-visualizer/internal/domain/aggregates/graph"
+	"sql-graph-visualizer/internal/domain/aggregates/serialization"
+	transform_agg "sql-graph-visualizer/internal/domain/aggregates/transform"
+	"sql-graph-visualizer/internal/domain/entities"
+	"sql-graph-visualizer/internal/domain/valueobjects/transform"
 
 	"github.com/sirupsen/logrus"
 )

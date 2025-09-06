@@ -12,8 +12,8 @@
 package graphql
 
 import (
-	"mysql-graph-visualizer/internal/application/ports"
-	"mysql-graph-visualizer/internal/domain/models"
+	"sql-graph-visualizer/internal/application/ports"
+	"sql-graph-visualizer/internal/domain/models"
 )
 
 // This file will not be regenerated automatically.

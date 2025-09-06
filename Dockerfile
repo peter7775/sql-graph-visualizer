@@ -30,7 +30,7 @@ ARG BUILD_DATE=unknown
 # Build binary with optimization flags
 RUN CGO_ENABLED=0 GOOS=linux go build \
     -ldflags="-w -s -X main.Version=${VERSION} -X main.BuildDate=${BUILD_DATE}" \
-    -o mysql-graph-visualizer \
+    -o sql-graph-visualizer \
     ./cmd/main.go
 
 # Final stage
@@ -52,7 +52,7 @@ RUN addgroup -g 1000 appgroup && \
 WORKDIR /app
 
 # Copy built binary from builder stage
-COPY --from=builder /app/mysql-graph-visualizer .
+COPY --from=builder /app/sql-graph-visualizer .
 
 # Copy configuration files
 COPY --from=builder /app/config ./config
@@ -79,4 +79,4 @@ ENV GO_ENV=production
 ENV LOG_LEVEL=info
 
 # Default command
-CMD ["./mysql-graph-visualizer"]
+CMD ["./sql-graph-visualizer"]

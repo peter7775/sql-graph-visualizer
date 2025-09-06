@@ -1,10 +1,10 @@
-# MySQL Graph Visualizer
+# SQL Graph Visualizer
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![License: Dual](https://img.shields.io/badge/License-AGPL%2BCommercial-blue.svg)](LICENSE-DUAL.md)
 
 > **Status: Active Development** - This project is under active development. APIs may change.
 
-A powerful Go application that transforms MySQL database structures into Neo4j graph databases with interactive visualization capabilities. Built with Domain Driven Design architecture and featuring flexible, user-configurable transformation rules.
+A powerful Go application that transforms SQL database structures (MySQL, PostgreSQL) into Neo4j graph databases with interactive visualization capabilities. Built with Domain Driven Design architecture and featuring flexible, user-configurable transformation rules.
 
 ## Table of Contents
 
@@ -25,10 +25,11 @@ A powerful Go application that transforms MySQL database structures into Neo4j g
 ## Features
 
 ### **Database Transformation**
-- **Complete MySQL to Neo4j conversion** with flexible rule-based mapping
+- **Complete SQL to Neo4j conversion** with support for MySQL and PostgreSQL
+- **Flexible rule-based mapping** with custom transformation rules
 - **Custom SQL query support** - transform not just tables, but any SQL query result
 - **Relationship modeling** - define directional logical links between nodes
-- **Property mapping** - map MySQL columns to Neo4j node properties
+- **Property mapping** - map SQL columns to Neo4j node properties
 - **Aggregation support** - create analytical nodes from complex queries
 
 ### **Visualization & Analysis**
@@ -57,7 +58,7 @@ A powerful Go application that transforms MySQL database structures into Neo4j g
 This project follows **Domain Driven Design (DDD)** principles with a clean layered architecture:
 
 ```
-mysql-graph-visualizer/
+sql-graph-visualizer/
 ├── cmd/
 │   └── main.go                 # Application entry point
 ├── internal/
@@ -81,7 +82,7 @@ mysql-graph-visualizer/
 
 ### **Tech Stack**
 - **Language**: Go 1.24+
-- **Source Database**: MySQL 8.0+
+- **Source Databases**: MySQL 8.0+, PostgreSQL 13+ (planned)
 - **Graph Database**: Neo4j 4.4+
 - **API Layer**: GraphQL (gqlgen), REST (Gorilla Mux)
 - **Frontend**: HTML5, JavaScript, Neovis.js
@@ -100,8 +101,8 @@ mysql-graph-visualizer/
 
 ### 1. Clone and Setup
 ```bash
-git clone https://github.com/yourusername/mysql-graph-visualizer.git
-cd mysql-graph-visualizer
+git clone https://github.com/yourusername/sql-graph-visualizer.git
+cd sql-graph-visualizer
 go mod tidy
 ```
 
@@ -122,8 +123,8 @@ cp config/config.yml.example config/config.yml
 LOG_LEVEL=debug go run cmd/main.go
 
 # Or build and run
-go build -o mysql-graph-visualizer cmd/main.go
-./mysql-graph-visualizer
+go build -o sql-graph-visualizer cmd/main.go
+./sql-graph-visualizer
 ```
 
 ### 5. Access the Application
@@ -136,9 +137,9 @@ go build -o mysql-graph-visualizer cmd/main.go
 
 ### From Source
 ```bash
-git clone https://github.com/yourusername/mysql-graph-visualizer.git
-cd mysql-graph-visualizer
-go build -o mysql-graph-visualizer cmd/main.go
+git clone https://github.com/yourusername/sql-graph-visualizer.git
+cd sql-graph-visualizer
+go build -o sql-graph-visualizer cmd/main.go
 ```
 
 ### Using Docker
@@ -148,7 +149,7 @@ docker-compose up -d
 
 ### Using Go Install
 ```bash
-go install github.com/yourusername/mysql-graph-visualizer@latest
+go install github.com/yourusername/sql-graph-visualizer@latest
 ```
 
 ## Configuration
@@ -345,7 +346,7 @@ go test -tags=integration ./...
 docker-compose up -d
 
 # View logs
-docker-compose logs -f mysql-graph-visualizer
+docker-compose logs -f sql-graph-visualizer
 
 # Stop services
 docker-compose down
@@ -354,15 +355,15 @@ docker-compose down
 ### Production Deployment
 ```bash
 # Build production image
-docker build -t mysql-graph-visualizer:latest .
+docker build -t sql-graph-visualizer:latest .
 
 # Run with production configuration
 docker run -d \
-  --name mysql-graph-visualizer \
+  --name sql-graph-visualizer \
   -p 3000:3000 \
   -p 8080:8080 \
   -v $(pwd)/config:/app/config \
-  mysql-graph-visualizer:latest
+  sql-graph-visualizer:latest
 ```
 
 ### Health Checks
@@ -370,7 +371,7 @@ The Docker container includes health checks:
 
 ```bash
 docker ps  # Check health status
-docker inspect mysql-graph-visualizer  # Detailed health info
+docker inspect sql-graph-visualizer  # Detailed health info
 ```
 
 ## Contributing
@@ -517,4 +518,4 @@ See [LICENSE](LICENSE) for complete terms.
 
 ---
 
-<p align="center">Made with love by the MySQL Graph Visualizer Team</p>
+<p align="center">Made with love by the SQL Graph Visualizer Team</p>

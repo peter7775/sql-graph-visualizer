@@ -2,7 +2,7 @@
 
 ## Overview
 
-The MySQL Graph Visualizer now supports direct connections to existing MySQL databases, automatically analyzing their schema structure and generating Neo4j transformation rules. This feature eliminates the need for SQL dump files and enables real-time analysis of production databases.
+The SQL Graph Visualizer now supports direct connections to existing MySQL databases, automatically analyzing their schema structure and generating Neo4j transformation rules. This feature eliminates the need for SQL dump files and enables real-time analysis of production databases.
 
 ## Features
 
@@ -33,8 +33,8 @@ The MySQL Graph Visualizer now supports direct connections to existing MySQL dat
 
 ### Building the CLI
 ```bash
-cd mysql-graph-visualizer
-go build ./cmd/mysql-graph-cli
+cd sql-graph-visualizer
+go build ./cmd/sql-graph-cli
 ```
 
 ## CLI Commands
@@ -44,10 +44,10 @@ Test database connectivity quickly without full analysis:
 
 ```bash
 # Quick connection test
-mysql-graph-cli test --host localhost --username user --password pass --database mydb
+sql-graph-cli test --host localhost --username user --password pass --database mydb
 
 # Detailed test with security validation
-mysql-graph-cli test --host prod-db.com --username readonly_user --password secret --database production --detailed
+sql-graph-cli test --host prod-db.com --username readonly_user --password secret --database production --detailed
 ```
 
 **Options:**
@@ -64,10 +64,10 @@ Perform comprehensive schema analysis and rule generation:
 
 ```bash
 # Basic analysis
-mysql-graph-cli analyze --host localhost --username user --password pass --database mydb
+sql-graph-cli analyze --host localhost --username user --password pass --database mydb
 
 # Advanced analysis with filtering
-mysql-graph-cli analyze \
+sql-graph-cli analyze \
   --host prod-db.company.com \
   --username readonly_analytics \
   --password $DB_PASSWORD \
@@ -79,7 +79,7 @@ mysql-graph-cli analyze \
   --format json
 
 # Dry run without rule generation
-mysql-graph-cli analyze --host localhost --database mydb --dry-run
+sql-graph-cli analyze --host localhost --database mydb --dry-run
 ```
 
 **Options:**
@@ -98,19 +98,19 @@ Generate and manage configuration files:
 
 ```bash
 # Generate configuration templates
-mysql-graph-cli generate --template all --output-dir ./config-examples
+sql-graph-cli generate --template all --output-dir ./config-examples
 
 # Generate specific template
-mysql-graph-cli generate --template production --output-dir ./config
+sql-graph-cli generate --template production --output-dir ./config
 
 # Initialize new configuration
-mysql-graph-cli config init --template minimal --output config.yml
+sql-graph-cli config init --template minimal --output config.yml
 
 # Validate configuration
-mysql-graph-cli config validate --config production.yml
+sql-graph-cli config validate --config production.yml
 
 # Display configuration
-mysql-graph-cli config show --config production.yml --format json
+sql-graph-cli config show --config production.yml --format json
 ```
 
 **Available Templates:**
@@ -355,19 +355,19 @@ ERROR: Out of memory during batch processing
 ### Logging and Debugging
 Enable verbose logging:
 ```bash
-mysql-graph-cli analyze --verbose --config production.yml
+sql-graph-cli analyze --verbose --config production.yml
 ```
 
 Check configuration validity:
 ```bash
-mysql-graph-cli config validate --config production.yml
+sql-graph-cli config validate --config production.yml
 ```
 
 ## Integration Examples
 
 ### E-commerce Database Analysis
 ```bash
-mysql-graph-cli analyze \
+sql-graph-cli analyze \
   --host ecommerce-db.company.com \
   --username analytics_readonly \
   --password $DB_PASSWORD \
@@ -381,7 +381,7 @@ mysql-graph-cli analyze \
 
 ### Multi-tenant Application
 ```bash
-mysql-graph-cli analyze \
+sql-graph-cli analyze \
   --host saas-db.company.com \
   --username tenant_analyzer \
   --password $DB_PASSWORD \
@@ -393,7 +393,7 @@ mysql-graph-cli analyze \
 
 ### Legacy System Migration
 ```bash
-mysql-graph-cli analyze \
+sql-graph-cli analyze \
   --host legacy-system.company.com \
   --username migration_user \
   --password $LEGACY_PASSWORD \
@@ -468,13 +468,13 @@ mysqldump -u user -p database > dump.sql
 mysql -u user -p test_db < dump.sql
 
 # Run transformation
-mysql-graph-visualizer --config config.yml
+sql-graph-visualizer --config config.yml
 ```
 
 ### After (Direct Connection)
 ```bash
 # Direct analysis
-mysql-graph-cli analyze \
+sql-graph-cli analyze \
   --host production-db.com \
   --username readonly_user \
   --password $DB_PASSWORD \

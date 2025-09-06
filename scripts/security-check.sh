@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Security check script for mysql-graph-visualizer
+# Security check script for sql-graph-visualizer
 # This script runs gosec with appropriate exclusions for generated code
 
 echo "Running security analysis with gosec..."

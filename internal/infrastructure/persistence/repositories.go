@@ -13,10 +13,10 @@
 package infrastructure
 
 import (
-	"mysql-graph-visualizer/internal/domain/models"
-	"mysql-graph-visualizer/internal/domain/repositories"
-	mysqlClient "mysql-graph-visualizer/internal/domain/repositories/mysql"
-	neo4jClient "mysql-graph-visualizer/internal/domain/repositories/neo4j"
+	"sql-graph-visualizer/internal/domain/models"
+	"sql-graph-visualizer/internal/domain/repositories"
+	mysqlClient "sql-graph-visualizer/internal/domain/repositories/mysql"
+	neo4jClient "sql-graph-visualizer/internal/domain/repositories/neo4j"
 )
 
 func NewMySQLRepository(config models.Config) (repositories.MySQLRepository, error) {

@@ -1,5 +1,5 @@
 /*
- * MySQL Graph Visualizer - Direct Database Service Tests
+ * SQL Graph Visualizer - Direct Database Service Tests
  *
  * Copyright (c) 2024
  * Licensed under Dual License: AGPL-3.0 OR Commercial License
@@ -12,7 +12,7 @@ package services
 import (
 	"testing"
 
-	"mysql-graph-visualizer/internal/domain/models"
+	"sql-graph-visualizer/internal/domain/models"
 )
 
 // TestDirectDatabaseService_ValidateConfiguration tests configuration validation

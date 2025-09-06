@@ -42,7 +42,7 @@ docker-compose*.yml
 *.dll
 *.so
 *.dylib
-mysql-graph-visualizer
+sql-graph-visualizer
 
 # Temporary files
 *.tmp

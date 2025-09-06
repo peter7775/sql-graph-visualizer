@@ -17,8 +17,8 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
-	"mysql-graph-visualizer/internal/application/ports"
-	"mysql-graph-visualizer/internal/domain/models"
+	"sql-graph-visualizer/internal/application/ports"
+	"sql-graph-visualizer/internal/domain/models"
 	"strings"
 	"time"
 

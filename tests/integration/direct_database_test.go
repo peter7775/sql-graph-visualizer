@@ -1,5 +1,5 @@
 /*
- * MySQL Graph Visualizer - Integration Tests for Direct Database Connection
+ * SQL Graph Visualizer - Integration Tests for Direct Database Connection
  *
  * Copyright (c) 2024
  * Licensed under Dual License: AGPL-3.0 OR Commercial License
@@ -17,9 +17,9 @@ import (
 	"testing"
 	"time"
 
-	"mysql-graph-visualizer/internal/application/services"
-	"mysql-graph-visualizer/internal/domain/models"
-	"mysql-graph-visualizer/internal/infrastructure/persistence/mysql"
+	"sql-graph-visualizer/internal/application/services"
+	"sql-graph-visualizer/internal/domain/models"
+	"sql-graph-visualizer/internal/infrastructure/persistence/mysql"
 
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/stretchr/testify/assert"

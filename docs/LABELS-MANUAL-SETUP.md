@@ -107,7 +107,7 @@ gh auth login
 ```bash
 # Set your GitHub token
 export GITHUB_TOKEN="your_token_here"
-export REPO="username/mysql-graph-visualizer"
+export REPO="username/sql-graph-visualizer"
 
 # Create a label (example)
 curl -X POST \

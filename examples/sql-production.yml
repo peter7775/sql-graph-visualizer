@@ -1,0 +1,67 @@
+# SQL Graph Visualizer - Production Configuration
+# Issue #10 - Direct Database Connection Implementation
+
+mysql:
+  host: "prod-mysql.company.com"
+  port: 3306
+  username: "readonly_analytics"
+  password: "${MYSQL_ANALYTICS_PASSWORD}"  # Use environment variable
+  database: "production_app"
+  connection_mode: "existing"
+
+  # Data filtering for production safety
+  data_filtering:
+    schema_discovery: true
+    table_whitelist: ["users", "orders", "products", "categories", "payments"]  # Only analyze key tables
+    table_blacklist: ["logs", "sessions", "audit_trail", "temp_"]  # Skip system tables
+    row_limit_per_table: 10000  # Limit for large tables
+    query_timeout: 300  # 5 minutes for complex queries
+    where_conditions:
+      users: "created_at >= '2023-01-01' AND status = 'active'"
+      orders: "order_date >= CURDATE() - INTERVAL 1 YEAR"
+      payments: "processed_at >= CURDATE() - INTERVAL 6 MONTH"
+
+  # Strict security settings for production
+  security:
+    read_only: true
+    connection_timeout: 30
+    query_timeout: 300
+    max_connections: 2
+    allow_production_connections: true
+    allow_root_user: false
+    allowed_hosts: ["prod-mysql.company.com", "prod-replica.company.com"]
+    forbidden_patterns: [".*dev.*", ".*test.*"]
+
+  # SSL/TLS configuration for production
+  ssl:
+    enabled: true
+    cert_file: "/etc/ssl/mysql/client-cert.pem"
+    key_file: "/etc/ssl/mysql/client-key.pem"
+    ca_file: "/etc/ssl/mysql/ca-cert.pem"
+    insecure_skip_verify: false
+
+  # Automatic rule generation
+  auto_generated_rules:
+    enabled: true
+    strategy:
+      table_to_node: true
+      foreign_keys_to_relations: true
+      naming_convention:
+        node_type_format: "Pascal"      # users -> User
+        relation_type_format: "UPPER_SNAKE"  # user_orders -> USER_ORDERS
+    table_overrides:
+      user_sessions:
+        skip: true  # Skip session tables
+      audit_logs:
+        skip: true  # Skip audit tables
+
+neo4j:
+  uri: "bolt+s://prod-neo4j.company.com:7687"
+  user: "neo4j"
+  password: "${NEO4J_PASSWORD}"
+  
+  # Batch processing for large datasets
+  batch_processing:
+    batch_size: 500       # Smaller batches for production stability
+    commit_frequency: 2000
+    memory_limit_mb: 1024  # 1GB memory limit

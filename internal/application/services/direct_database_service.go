@@ -1,5 +1,5 @@
 /*
- * MySQL Graph Visualizer - Direct Database Connection Service
+ * SQL Graph Visualizer - Direct Database Connection Service
  *
  * Copyright (c) 2024
  * Licensed under Dual License: AGPL-3.0 OR Commercial License
@@ -14,8 +14,8 @@ import (
 	"fmt"
 	"time"
 
-	"mysql-graph-visualizer/internal/application/ports"
-	"mysql-graph-visualizer/internal/domain/models"
+	"sql-graph-visualizer/internal/application/ports"
+	"sql-graph-visualizer/internal/domain/models"
 
 	"github.com/sirupsen/logrus"
 )

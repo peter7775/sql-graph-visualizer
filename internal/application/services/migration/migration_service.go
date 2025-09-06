@@ -15,9 +15,9 @@ package migration
 import (
 	"context"
 	"fmt"
-	"mysql-graph-visualizer/internal/application/ports"
-	"mysql-graph-visualizer/internal/application/services/transform"
-	"mysql-graph-visualizer/internal/domain/valueobjects"
+	"sql-graph-visualizer/internal/application/ports"
+	"sql-graph-visualizer/internal/application/services/transform"
+	"sql-graph-visualizer/internal/domain/valueobjects"
 )
 
 type MigrationService struct {

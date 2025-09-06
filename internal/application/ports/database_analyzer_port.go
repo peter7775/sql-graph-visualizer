@@ -14,7 +14,7 @@ package ports
 import (
 	"context"
 	"database/sql"
-	"mysql-graph-visualizer/internal/domain/models"
+	"sql-graph-visualizer/internal/domain/models"
 )
 
 // DatabaseAnalyzerPort defines the interface for database analysis operations

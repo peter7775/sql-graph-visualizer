@@ -1,5 +1,5 @@
 /*
- * MySQL Graph Visualizer - Security Validation Service
+ * SQL Graph Visualizer - Security Validation Service
  *
  * Copyright (c) 2024
  * Licensed under Dual License: AGPL-3.0 OR Commercial License
@@ -19,7 +19,7 @@ import (
 	"strings"
 	"time"
 
-	"mysql-graph-visualizer/internal/domain/models"
+	"sql-graph-visualizer/internal/domain/models"
 )
 
 // SecurityValidationService provides comprehensive security validation

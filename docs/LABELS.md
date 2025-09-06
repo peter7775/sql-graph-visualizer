@@ -1,6 +1,6 @@
 # GitHub Labels Guide
 
-This document describes the labeling system for the mysql-graph-visualizer project.
+This document describes the labeling system for the sql-graph-visualizer project.
 
 ## Quick Setup
 

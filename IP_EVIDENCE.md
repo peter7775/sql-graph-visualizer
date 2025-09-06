@@ -1,8 +1,8 @@
-# Intellectual Property Evidence - MySQL Graph Visualizer
+# Intellectual Property Evidence - SQL Graph Visualizer
 
 **Created:** 2025-01-06 13:08 UTC  
 **Author:** Petr Miroslav Stepanek  
-**Repository:** github.com/peter7775/mysql-graph-visualizer  
+**Repository:** github.com/peter7775/sql-graph-visualizer  
 **Current Commit:** 94454f05b7fa1c50858a352b769a4bd3322efae6
 
 ## Original Innovative Concepts

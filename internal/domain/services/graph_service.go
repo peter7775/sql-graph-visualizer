@@ -13,8 +13,8 @@
 package services
 
 import (
-	"mysql-graph-visualizer/internal/domain/models"
-	"mysql-graph-visualizer/internal/domain/repositories"
+	"sql-graph-visualizer/internal/domain/models"
+	"sql-graph-visualizer/internal/domain/repositories"
 )
 
 type GraphService interface {

@@ -14,9 +14,9 @@ package repositories
 
 import (
 	"context"
-	"mysql-graph-visualizer/internal/domain/aggregates/graph"
-	"mysql-graph-visualizer/internal/domain/aggregates/transform"
-	"mysql-graph-visualizer/internal/domain/valueobjects"
+	"sql-graph-visualizer/internal/domain/aggregates/graph"
+	"sql-graph-visualizer/internal/domain/aggregates/transform"
+	"sql-graph-visualizer/internal/domain/valueobjects"
 )
 
 type Transaction interface {

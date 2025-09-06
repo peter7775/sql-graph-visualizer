@@ -14,7 +14,7 @@ package ports
 
 import (
 	"context"
-	"mysql-graph-visualizer/internal/domain/aggregates/transform"
+	"sql-graph-visualizer/internal/domain/aggregates/transform"
 )
 
 type TransformRuleRepository interface {

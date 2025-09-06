@@ -19,9 +19,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"mysql-graph-visualizer/internal/domain/aggregates/graph"
-	"mysql-graph-visualizer/internal/interfaces/graphql/generated"
-	"mysql-graph-visualizer/internal/interfaces/graphql/models"
+	"sql-graph-visualizer/internal/domain/aggregates/graph"
+	"sql-graph-visualizer/internal/interfaces/graphql/generated"
+	"sql-graph-visualizer/internal/interfaces/graphql/models"
 )
 
 // TransformData is the resolver for the transformData field.

@@ -15,8 +15,8 @@ package handlers
 import (
 	"encoding/json"
 	"log"
-	"mysql-graph-visualizer/internal/application/services/visualization"
-	"mysql-graph-visualizer/internal/domain/valueobjects"
+	"sql-graph-visualizer/internal/application/services/visualization"
+	"sql-graph-visualizer/internal/domain/valueobjects"
 	"net/http"
 )
 

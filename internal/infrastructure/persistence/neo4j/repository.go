@@ -15,7 +15,7 @@ package neo4j
 import (
 	"fmt"
 	"log"
-	"mysql-graph-visualizer/internal/domain/aggregates/graph"
+	"sql-graph-visualizer/internal/domain/aggregates/graph"
 
 	"github.com/neo4j/neo4j-go-driver/v4/neo4j"
 	"github.com/sirupsen/logrus"

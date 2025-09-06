@@ -1,11 +1,11 @@
-# Makefile for MySQL Graph Visualizer
+# Makefile for SQL Graph Visualizer
 # Requires Go 1.24+
 
 .PHONY: help install generate format test build run clean docker-up docker-down sec-scan ci-check dev quick
 
 # Default target
 help:
-	@echo "MySQL Graph Visualizer - Development Commands"
+	@echo "SQL Graph Visualizer - Development Commands"
 	@echo ""
 	@echo "Available targets:"
 	@echo "  install    - Install dependencies and tools"
@@ -61,7 +61,7 @@ test-integration:
 # Build the application
 build:
 	@echo "Building application..."
-	go build -o mysql-graph-visualizer cmd/main.go
+	go build -o sql-graph-visualizer cmd/main.go
 	@echo "Build completed"
 
 # Run the application
@@ -72,7 +72,7 @@ run:
 # Clean build artifacts
 clean:
 	@echo "Cleaning build artifacts..."
-	rm -f mysql-graph-visualizer
+	rm -f sql-graph-visualizer
 	rm -f coverage.out
 	rm -f integration-coverage.out
 	@echo "Clean completed"

@@ -20,10 +20,10 @@ import (
 	"github.com/99designs/gqlgen/graphql/playground"
 	"github.com/sirupsen/logrus"
 
-	"mysql-graph-visualizer/internal/application/ports"
-	"mysql-graph-visualizer/internal/domain/models"
-	"mysql-graph-visualizer/internal/interfaces/graphql"
-	"mysql-graph-visualizer/internal/interfaces/graphql/generated"
+	"sql-graph-visualizer/internal/application/ports"
+	"sql-graph-visualizer/internal/domain/models"
+	"sql-graph-visualizer/internal/interfaces/graphql"
+	"sql-graph-visualizer/internal/interfaces/graphql/generated"
 )
 
 // Server represents the GraphQL server

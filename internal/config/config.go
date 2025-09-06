@@ -14,7 +14,7 @@ package config
 
 import (
 	"fmt"
-	"mysql-graph-visualizer/internal/domain/models"
+	"sql-graph-visualizer/internal/domain/models"
 
 	"os"
 	"path/filepath"

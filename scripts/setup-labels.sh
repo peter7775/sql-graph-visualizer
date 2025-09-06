@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# GitHub Labels Setup Script for mysql-graph-visualizer
+# GitHub Labels Setup Script for sql-graph-visualizer
 # This script creates all the labels needed for the project using GitHub CLI
 
 set -e
@@ -12,7 +12,7 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
-echo -e "${BLUE}Setting up GitHub labels for mysql-graph-visualizer${NC}"
+echo -e "${BLUE}Setting up GitHub labels for sql-graph-visualizer${NC}"
 echo ""
 
 # Check if gh CLI is installed

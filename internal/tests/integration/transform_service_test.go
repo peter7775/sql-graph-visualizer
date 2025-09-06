@@ -30,22 +30,22 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 
-	graphqlServer "mysql-graph-visualizer/internal/application/services/graphql"
+	graphqlServer "sql-graph-visualizer/internal/application/services/graphql"
 
-	transformService "mysql-graph-visualizer/internal/application/services/transform"
-	"mysql-graph-visualizer/internal/domain/aggregates/graph"
-	transformAggregates "mysql-graph-visualizer/internal/domain/aggregates/transform"
-	"mysql-graph-visualizer/internal/domain/models"
-	transformObjects "mysql-graph-visualizer/internal/domain/valueobjects/transform"
-	"mysql-graph-visualizer/internal/infrastructure/middleware"
+	transformService "sql-graph-visualizer/internal/application/services/transform"
+	"sql-graph-visualizer/internal/domain/aggregates/graph"
+	transformAggregates "sql-graph-visualizer/internal/domain/aggregates/transform"
+	"sql-graph-visualizer/internal/domain/models"
+	transformObjects "sql-graph-visualizer/internal/domain/valueobjects/transform"
+	"sql-graph-visualizer/internal/infrastructure/middleware"
 
-	"mysql-graph-visualizer/internal/config"
+	"sql-graph-visualizer/internal/config"
 
-	"mysql-graph-visualizer/internal/domain/repositories/neo4j"
+	"sql-graph-visualizer/internal/domain/repositories/neo4j"
 
 	_ "github.com/go-sql-driver/mysql"
 
-	"mysql-graph-visualizer/internal/domain/aggregates/serialization"
+	"sql-graph-visualizer/internal/domain/aggregates/serialization"
 
 	neo4jDriver "github.com/neo4j/neo4j-go-driver/v4/neo4j"
 )

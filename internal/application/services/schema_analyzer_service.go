@@ -1,5 +1,5 @@
 /*
- * MySQL Graph Visualizer - Database Schema Analyzer Service
+ * SQL Graph Visualizer - Database Schema Analyzer Service
  *
  * Copyright (c) 2024
  * Licensed under Dual License: AGPL-3.0 OR Commercial License
@@ -16,8 +16,8 @@ import (
 	"regexp"
 	"strings"
 
-	"mysql-graph-visualizer/internal/application/ports"
-	"mysql-graph-visualizer/internal/domain/models"
+	"sql-graph-visualizer/internal/application/ports"
+	"sql-graph-visualizer/internal/domain/models"
 )
 
 // SchemaAnalyzerService provides advanced database schema analysis

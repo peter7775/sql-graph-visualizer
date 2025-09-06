@@ -1,5 +1,5 @@
 /*
- * MySQL Graph Visualizer - Sakila Database Direct Connection Test
+ * SQL Graph Visualizer - Sakila Database Direct Connection Test
  *
  * Copyright (c) 2024
  * Licensed under Dual License: AGPL-3.0 OR Commercial License
@@ -15,13 +15,13 @@ import (
 	"fmt"
 	"log"
 
-	"mysql-graph-visualizer/internal/application/services"
-	"mysql-graph-visualizer/internal/domain/models"
-	"mysql-graph-visualizer/internal/infrastructure/persistence/mysql"
+	"sql-graph-visualizer/internal/application/services"
+	"sql-graph-visualizer/internal/domain/models"
+	"sql-graph-visualizer/internal/infrastructure/persistence/mysql"
 )
 
 func main() {
-	fmt.Println("🎬 MySQL Graph Visualizer - Sakila Database Direct Connection Test")
+	fmt.Println("🎬 SQL Graph Visualizer - Sakila Database Direct Connection Test")
 	fmt.Println("================================================================")
 
 	// Test configuration for connecting to Sakila database
