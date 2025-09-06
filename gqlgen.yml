@@ -1,4 +1,4 @@
-# gqlgen configuration for MySQL Graph Visualizer
+# gqlgen configuration for SQL Graph Visualizer
 # This configuration avoids package conflicts by using separate directories
 
 # Schema definition

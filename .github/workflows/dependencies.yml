@@ -64,7 +64,7 @@ jobs:
           echo "Commit: ${{ github.sha }}" >> sbom.txt
           echo "" >> sbom.txt
           echo "## Direct Dependencies" >> sbom.txt
-          go list -m -f '{{.Path}}@{{.Version}}' all | grep -v '^mysql-graph-visualizer' >> sbom.txt
+          go list -m -f '{{.Path}}@{{.Version}}' all | grep -v '^sql-graph-visualizer' >> sbom.txt
           
           # Try to install syft, but don't fail if it doesn't work
           if go install github.com/anchore/syft/cmd/syft@latest 2>/dev/null; then

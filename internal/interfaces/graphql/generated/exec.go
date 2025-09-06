@@ -19,7 +19,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"mysql-graph-visualizer/internal/interfaces/graphql/models"
+	"sql-graph-visualizer/internal/interfaces/graphql/models"
 	"strconv"
 	"sync"
 	"sync/atomic"
@@ -427,7 +427,7 @@ func (ec *executionContext) introspectType(name string) (*introspection.Type, er
 }
 
 var sources = []*ast.Source{
-	{Name: "../../../../schema/schema.graphqls", Input: `# GraphQL schema for MySQL Graph Visualizer
+	{Name: "../../../../schema/schema.graphqls", Input: `# GraphQL schema for SQL Graph Visualizer
 
 # Node representation in the graph  
 type Node {

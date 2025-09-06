@@ -1,4 +1,4 @@
--- Complex database schema for mysql-graph-visualizer demonstration
+-- Complex database schema for sql-graph-visualizer demonstration
 -- This schema shows various relationship types, SQL views, and custom transformations
 
 -- Users table - core entity

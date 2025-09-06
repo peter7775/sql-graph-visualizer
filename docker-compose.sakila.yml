@@ -1,0 +1,57 @@
+---
+# Docker Compose for testing with Sakila sample database
+services:
+  
+  mysql-sakila:
+    image: mysql:8.0
+    container_name: mysql-sakila-test
+    environment:
+      MYSQL_ROOT_PASSWORD: sakila123
+      MYSQL_DATABASE: sakila
+      MYSQL_USER: sakila_user
+      MYSQL_PASSWORD: sakila123
+    ports:
+      - "3308:3306"
+    volumes:
+      # Download Sakila database from MySQL official samples
+      - ./testdata/sakila/sakila-schema.sql:/docker-entrypoint-initdb.d/01-sakila-schema.sql:ro
+      - ./testdata/sakila/sakila-data.sql:/docker-entrypoint-initdb.d/02-sakila-data.sql:ro
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-psakila123"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - sakila-network
+
+  neo4j-sakila:
+    image: neo4j:4.4
+    container_name: neo4j-sakila-test
+    environment:
+      NEO4J_AUTH: neo4j/sakila123
+      NEO4J_dbms_memory_pagecache_size: 1G
+      NEO4J_dbms_memory_heap_initial__size: 1G
+      NEO4J_dbms_memory_heap_max__size: 1G
+      NEO4J_dbms_security_http_access_control_allow_origin: "*"
+      NEO4J_dbms_default_listen_address: 0.0.0.0
+    ports:
+      - "7688:7687"  # Different port to avoid conflict
+      - "7475:7474"  # Different port to avoid conflict
+    volumes:
+      - neo4j-sakila-data:/data
+    healthcheck:
+      test: ["CMD", "cypher-shell", "-u", "neo4j", "-p", "sakila123", "RETURN 1;"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
+    networks:
+      - sakila-network
+
+volumes:
+  neo4j-sakila-data:
+
+networks:
+  sakila-network:
+    driver: bridge

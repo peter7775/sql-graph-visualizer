@@ -1,6 +1,6 @@
 # Troubleshooting Guide
 
-This document contains solutions to common issues you might encounter with the mysql-graph-visualizer project.
+This document contains solutions to common issues you might encounter with the sql-graph-visualizer project.
 
 ## GitHub Actions Issues
 

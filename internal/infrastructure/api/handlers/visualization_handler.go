@@ -14,7 +14,7 @@ package handlers
 
 import (
 	"encoding/json"
-	"mysql-graph-visualizer/internal/application/services/graph"
+	"sql-graph-visualizer/internal/application/services/graph"
 	"net/http"
 )
 

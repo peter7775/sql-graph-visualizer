@@ -5,7 +5,7 @@
 
 set -e
 
-REPO="peter7775/mysql-graph-visualizer"
+REPO="peter7775/sql-graph-visualizer"
 
 case "${1:-help}" in
     "list")

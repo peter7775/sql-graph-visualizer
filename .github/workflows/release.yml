@@ -117,7 +117,7 @@ jobs:
           GOOS: ${{ matrix.goos }}
           GOARCH: ${{ matrix.goarch }}
         run: |
-          BINARY_NAME="mysql-graph-visualizer-${{ matrix.os }}-${{ matrix.arch }}${{ matrix.ext }}"
+          BINARY_NAME="sql-graph-visualizer-${{ matrix.os }}-${{ matrix.arch }}${{ matrix.ext }}"
           
           echo " Building $BINARY_NAME..."
           go build \
@@ -128,8 +128,8 @@ jobs:
       - name:  Create archive
         run: |
           cd dist
-          BINARY_NAME="mysql-graph-visualizer-${{ matrix.os }}-${{ matrix.arch }}${{ matrix.ext }}"
-          ARCHIVE_NAME="mysql-graph-visualizer-${{ needs.validate.outputs.version }}-${{ matrix.os }}-${{ matrix.arch }}"
+          BINARY_NAME="sql-graph-visualizer-${{ matrix.os }}-${{ matrix.arch }}${{ matrix.ext }}"
+          ARCHIVE_NAME="sql-graph-visualizer-${{ needs.validate.outputs.version }}-${{ matrix.os }}-${{ matrix.arch }}"
           
           if [ "${{ matrix.os }}" = "windows" ]; then
             zip "$ARCHIVE_NAME.zip" "$BINARY_NAME"
@@ -370,10 +370,10 @@ jobs:
           echo " Updating version references in documentation..."
           
           # Update version badges and references
-          sed -i "s|mysql-graph-visualizer@latest|mysql-graph-visualizer@${{ needs.validate.outputs.tag }}|g" README.md
+          sed -i "s|sql-graph-visualizer@latest|sql-graph-visualizer@${{ needs.validate.outputs.tag }}|g" README.md
           
           # Update Docker image references
-          sed -i "s|mysql-graph-visualizer:latest|mysql-graph-visualizer:${{ needs.validate.outputs.version }}|g" README.md
+          sed -i "s|sql-graph-visualizer:latest|sql-graph-visualizer:${{ needs.validate.outputs.version }}|g" README.md
 
       - name:  Commit documentation updates
         run: |

@@ -1,4 +1,4 @@
-# GraphQL schema for MySQL Graph Visualizer
+# GraphQL schema for SQL Graph Visualizer
 
 # Node representation in the graph  
 type Node {

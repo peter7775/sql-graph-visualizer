@@ -1,11 +1,11 @@
 # 📢 LICENSE TRANSITION ANNOUNCEMENT
 
 **Date:** January 6, 2025  
-**Project:** MySQL Graph Visualizer
+**Project:** SQL Graph Visualizer
 
 ## To All Users and Contributors
 
-We are announcing an **important license change** for the MySQL Graph Visualizer project.
+We are announcing an **important license change** for the SQL Graph Visualizer project.
 
 ### What Changed
 - **From:** MIT License (permissive)
@@ -70,7 +70,7 @@ For enterprises, our commercial license provides:
 
 **Questions about licensing:**  
 📧 petrstepanek99@gmail.com  
-📋 Subject: "MySQL Graph Visualizer - License Question"
+📋 Subject: "SQL Graph Visualizer - License Question"
 
 **Need clarification:**
 - Specify your use case
@@ -108,5 +108,5 @@ The community benefits through:
 
 This license transition ensures the long-term sustainability and growth of this innovative database analysis platform while respecting the rights of all existing users.
 
-**The MySQL Graph Visualizer Team**  
+**The SQL Graph Visualizer Team**  
 January 6, 2025

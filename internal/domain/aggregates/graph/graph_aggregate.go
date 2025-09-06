@@ -14,9 +14,9 @@ package graph
 
 import (
 	"fmt"
-	"mysql-graph-visualizer/internal/domain/entities"
-	"mysql-graph-visualizer/internal/domain/events"
-	"mysql-graph-visualizer/internal/domain/valueobjects/transform"
+	"sql-graph-visualizer/internal/domain/entities"
+	"sql-graph-visualizer/internal/domain/events"
+	"sql-graph-visualizer/internal/domain/valueobjects/transform"
 
 	"github.com/sirupsen/logrus"
 )

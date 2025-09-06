@@ -1,4 +1,4 @@
-# MySQL Graph Visualizer - Dual License
+# SQL Graph Visualizer - Dual License
 
 ## License Options
 
@@ -74,7 +74,7 @@ The following breakthrough innovations are protected and require commercial lice
 ## Contact for Commercial License
 
 **Email:** petrstepanek99@gmail.com  
-**Subject:** MySQL Graph Visualizer - Commercial License Inquiry
+**Subject:** SQL Graph Visualizer - Commercial License Inquiry
 
 Please include:
 - Company information

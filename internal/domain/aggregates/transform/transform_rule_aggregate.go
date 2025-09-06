@@ -14,8 +14,8 @@ package transform
 
 import (
 	"fmt"
-	"mysql-graph-visualizer/internal/domain/entities"
-	"mysql-graph-visualizer/internal/domain/valueobjects/transform"
+	"sql-graph-visualizer/internal/domain/entities"
+	"sql-graph-visualizer/internal/domain/valueobjects/transform"
 
 	"github.com/sirupsen/logrus"
 )

@@ -12,7 +12,7 @@
 
 package ports
 
-import "mysql-graph-visualizer/internal/domain/aggregates/graph"
+import "sql-graph-visualizer/internal/domain/aggregates/graph"
 
 type Neo4jPort interface {
 	StoreGraph(graph *graph.GraphAggregate) error

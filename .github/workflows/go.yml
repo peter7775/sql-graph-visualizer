@@ -343,7 +343,7 @@ jobs:
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     environment:
       name: staging
-      url: https://mysql-graph-visualizer-staging.example.com
+      url: https://sql-graph-visualizer-staging.example.com
     steps:
       - name:  Checkout code
         uses: actions/checkout@v4
@@ -359,4 +359,4 @@ jobs:
       - name:  Notify deployment
         run: |
           echo "Deployment to staging completed successfully!"
-          echo "Application available at: https://mysql-graph-visualizer-staging.example.com"
+          echo "Application available at: https://sql-graph-visualizer-staging.example.com"

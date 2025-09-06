@@ -68,7 +68,7 @@ services:
       NEO4J_USER: neo4j
       NEO4J_PASSWORD: testpass
     volumes:
-      - .:/go/src/mysql-graph-visualizer
+      - .:/go/src/sql-graph-visualizer
     logging:
       driver: "json-file"
       options:

@@ -14,9 +14,9 @@ package visualization
 
 import (
 	"context"
-	"mysql-graph-visualizer/internal/application/ports"
-	"mysql-graph-visualizer/internal/domain/aggregates/graph"
-	"mysql-graph-visualizer/internal/domain/valueobjects"
+	"sql-graph-visualizer/internal/application/ports"
+	"sql-graph-visualizer/internal/domain/aggregates/graph"
+	"sql-graph-visualizer/internal/domain/valueobjects"
 )
 
 type VisualizationService struct {

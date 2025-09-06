@@ -164,7 +164,7 @@ jobs:
       needs.prepare.outputs.environment == 'staging'
     environment:
       name: staging
-      url: https://mysql-graph-visualizer-staging.example.com
+      url: https://sql-graph-visualizer-staging.example.com
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -196,15 +196,15 @@ jobs:
           deployment_type: binary
           
           application:
-            name: mysql-graph-visualizer
+            name: sql-graph-visualizer
             ports:
               api: 8080
               web: 3000
             environment_vars:
               LOG_LEVEL: info
               GO_ENV: staging
-            binary_path: ./mysql-graph-visualizer
-            service_file: mysql-graph-visualizer.service
+            binary_path: ./sql-graph-visualizer
+            service_file: sql-graph-visualizer.service
           
           dependencies:
             mysql:
@@ -245,7 +245,7 @@ jobs:
           sleep 60
           
           # Test staging endpoints
-          STAGING_URL="https://mysql-graph-visualizer-staging.example.com"
+          STAGING_URL="https://sql-graph-visualizer-staging.example.com"
           
           # Basic connectivity test
           if curl -f "$STAGING_URL/api/health" > /dev/null 2>&1; then
@@ -266,7 +266,7 @@ jobs:
       needs.prepare.outputs.environment == 'production'
     environment:
       name: production
-      url: https://mysql-graph-visualizer.example.com
+      url: https://sql-graph-visualizer.example.com
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -308,7 +308,7 @@ jobs:
           deployment_type: binary
           
           application:
-            name: mysql-graph-visualizer
+            name: sql-graph-visualizer
             instances: 2
             ports:
               api: 8080
@@ -316,8 +316,8 @@ jobs:
             environment_vars:
               LOG_LEVEL: warn
               GO_ENV: production
-            binary_path: ./mysql-graph-visualizer
-            service_file: mysql-graph-visualizer.service
+            binary_path: ./sql-graph-visualizer
+            service_file: sql-graph-visualizer.service
             
           deployment_strategy:
             type: rolling
@@ -345,7 +345,7 @@ jobs:
               memory_heap_max: 2G
           
           monitoring:
-            health_check_url: https://mysql-graph-visualizer.example.com/api/health
+            health_check_url: https://sql-graph-visualizer.example.com/api/health
             timeout: 10s
             retries: 5
             alerts_enabled: true
@@ -375,7 +375,7 @@ jobs:
           echo "Waiting for production application to be ready..."
           sleep 120
           
-          PRODUCTION_URL="https://mysql-graph-visualizer.example.com"
+          PRODUCTION_URL="https://sql-graph-visualizer.example.com"
           
           # Comprehensive health checks
           echo "Running comprehensive health checks..."
@@ -421,8 +421,8 @@ jobs:
           echo "Rolling back to previous version..."
           
           # Example rollback commands
-          # docker service rollback mysql-graph-visualizer_mysql-graph-visualizer
-          # kubectl rollout undo deployment/mysql-graph-visualizer
+          # docker service rollback sql-graph-visualizer_sql-graph-visualizer
+          # kubectl rollout undo deployment/sql-graph-visualizer
           
           echo "Rollback completed"
 

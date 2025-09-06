@@ -1,6 +1,6 @@
-## Contributing to MySQL Graph Visualizer
+## Contributing to SQL Graph Visualizer
 
-Thank you for your interest in contributing to MySQL Graph Visualizer! This document provides guidelines and information for contributors.
+Thank you for your interest in contributing to SQL Graph Visualizer! This document provides guidelines and information for contributors.
 
 ##  Quick Start
 
@@ -38,8 +38,8 @@ Feature requests are welcome! Please:
 1. **Fork and Clone**
 
    ```bash
-   git clone https://github.com/YOUR_USERNAME/mysql-graph-visualizer.git
-   cd mysql-graph-visualizer
+   git clone https://github.com/YOUR_USERNAME/sql-graph-visualizer.git
+   cd sql-graph-visualizer
    ```
 
 2. **Create a Branch**
@@ -90,8 +90,8 @@ Feature requests are welcome! Please:
 
    ```bash
    # Clone the project
-   git clone https://github.com/YOUR_USERNAME/mysql-graph-visualizer.git
-   cd mysql-graph-visualizer
+   git clone https://github.com/YOUR_USERNAME/sql-graph-visualizer.git
+   cd sql-graph-visualizer
 
    # Install dependencies
    go mod tidy
@@ -111,8 +111,8 @@ Feature requests are welcome! Please:
    LOG_LEVEL=debug go run cmd/main.go
 
    # Production build
-   go build -o mysql-graph-visualizer cmd/main.go
-   ./mysql-graph-visualizer
+   go build -o sql-graph-visualizer cmd/main.go
+   ./sql-graph-visualizer
    ```
 
 3. **Running Tests**

@@ -5,7 +5,7 @@
 
 set -e
 
-REPO="peter7775/mysql-graph-visualizer"
+REPO="peter7775/sql-graph-visualizer"
 
 echo "🚀 Creating GitHub issues for contributors..."
 

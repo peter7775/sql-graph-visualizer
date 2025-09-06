@@ -1,8 +1,8 @@
 # LEGAL NOTICE - License Change and Prior Clones
 
 **Date:** January 6, 2025  
-**Project:** MySQL Graph Visualizer  
-**Repository:** github.com/peter7775/mysql-graph-visualizer
+**Project:** SQL Graph Visualizer  
+**Repository:** github.com/peter7775/sql-graph-visualizer
 
 ## License Change Notification
 
@@ -108,7 +108,7 @@ This license change:
 
 **For licensing questions:**  
 Email: petrstepanek99@gmail.com  
-Subject: "MySQL Graph Visualizer - License Inquiry"
+Subject: "SQL Graph Visualizer - License Inquiry"
 
 **For legal clarification:**  
 Include your:

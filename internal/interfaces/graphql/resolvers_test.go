@@ -20,8 +20,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
-	"mysql-graph-visualizer/internal/domain/aggregates/graph"
-	"mysql-graph-visualizer/internal/domain/models"
+	"sql-graph-visualizer/internal/domain/aggregates/graph"
+	"sql-graph-visualizer/internal/domain/models"
 )
 
 // MockNeo4jPort is a mock implementation of the Neo4jPort
