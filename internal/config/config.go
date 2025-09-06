@@ -8,10 +8,12 @@
 package config
 
 import (
+	"fmt"
 	"mysql-graph-visualizer/internal/domain/models"
 
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/sirupsen/logrus"
 	yaml "gopkg.in/yaml.v2"
@@ -39,13 +41,19 @@ type Config struct {
 func LoadConfig(filePath string) (*Config, error) {
 	logrus.Debugf("Attempting to load config from: %s", filePath)
 
+	// Validate path to prevent directory traversal
+	cleanPath := filepath.Clean(filePath)
+	if strings.Contains(cleanPath, "..") {
+		return nil, fmt.Errorf("invalid config path: %s", filePath)
+	}
+
 	// Check if file exists
-	if _, err := os.Stat(filePath); os.IsNotExist(err) {
-		logrus.Errorf("Config file does not exist: %s", filePath)
+	if _, err := os.Stat(cleanPath); os.IsNotExist(err) {
+		logrus.Errorf("Config file does not exist: %s", cleanPath)
 		return nil, err
 	}
 
-	data, err := os.ReadFile(filePath)
+	data, err := os.ReadFile(cleanPath)
 	if err != nil {
 		logrus.Errorf("Error reading config file %s: %v", filePath, err)
 		return nil, err

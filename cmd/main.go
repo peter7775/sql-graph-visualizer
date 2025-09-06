@@ -136,8 +136,12 @@ func main() {
 	handler := corsHandler(router)
 
 	server := &http.Server{
-		Handler: handler,
-		Addr:    "localhost:8080",
+		Handler:           handler,
+		Addr:              "localhost:8080",
+		ReadTimeout:       15 * time.Second,
+		ReadHeaderTimeout: 5 * time.Second,
+		WriteTimeout:      15 * time.Second,
+		IdleTimeout:       60 * time.Second,
 	}
 
 	logrus.Infof("Starting server on %s", addr)
@@ -254,7 +258,11 @@ func startVisualizationServer(neo4jRepo ports.Neo4jPort, cfg *models.Config) *ht
 	logrus.Infof("Listener created on %s", addr)
 
 	server := &http.Server{
-		Handler: mux,
+		Handler:           mux,
+		ReadTimeout:       15 * time.Second,
+		ReadHeaderTimeout: 5 * time.Second,
+		WriteTimeout:      15 * time.Second,
+		IdleTimeout:       60 * time.Second,
 	}
 
 	go func() {

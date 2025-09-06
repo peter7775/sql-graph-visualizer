@@ -13,6 +13,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"time"
 
 	"mysql-graph-visualizer/internal/application/ports"
 	graphql "mysql-graph-visualizer/internal/application/services/graphql/generated"
@@ -68,7 +69,15 @@ func StartGraphQLServer(neo4jPort ports.Neo4jPort) {
 	http.Handle("/config", middleware.NewCORSHandler(corsOptions)(http.HandlerFunc(GetConfig)))
 
 	log.Println("Starting GraphQL server on http://localhost:8080/")
-	if err := http.ListenAndServe(":8080", nil); err != nil {
+	server := &http.Server{
+		Addr:              ":8080",
+		Handler:           nil,
+		ReadTimeout:       15 * time.Second,
+		ReadHeaderTimeout: 5 * time.Second,
+		WriteTimeout:      15 * time.Second,
+		IdleTimeout:       60 * time.Second,
+	}
+	if err := server.ListenAndServe(); err != nil {
 		log.Fatalf("Error starting server: %v", err)
 	}
 }

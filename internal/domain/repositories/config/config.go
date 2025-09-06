@@ -8,9 +8,11 @@
 package config
 
 import (
+	"fmt"
 	"mysql-graph-visualizer/internal/domain/models"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/sirupsen/logrus"
 	yaml "gopkg.in/yaml.v3"
@@ -20,7 +22,13 @@ func Load() (*models.Config, error) {
 	configPath := findProjectRoot() + "/config/config.yml"
 	logrus.Infof("Loading configuration from YAML file: %s", configPath)
 
-	data, err := os.ReadFile(configPath)
+	// Validate path to prevent directory traversal
+	cleanPath := filepath.Clean(configPath)
+	if strings.Contains(cleanPath, "..") {
+		return nil, fmt.Errorf("invalid config path: %s", configPath)
+	}
+
+	data, err := os.ReadFile(cleanPath)
 	if err != nil {
 		logrus.Errorf("Error reading file: %v", err)
 		return nil, err
