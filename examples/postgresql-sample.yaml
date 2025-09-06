@@ -1,0 +1,119 @@
+# SQL Graph Visualizer - PostgreSQL Configuration Example
+# This example demonstrates how to configure PostgreSQL database support (Issue #7)
+
+database:
+  type: "postgresql"
+  postgresql:
+    host: "localhost"
+    port: 5432
+    user: "postgres"
+    password: "password"
+    database: "sample_db"
+    schema: "public"  # PostgreSQL-specific schema support
+    
+    # PostgreSQL-specific SSL configuration
+    ssl:
+      mode: "prefer"  # disable, allow, prefer, require, verify-ca, verify-full
+      # cert_file: "/path/to/client-cert.pem"
+      # key_file: "/path/to/client-key.pem"
+      # ca_file: "/path/to/ca-cert.pem"
+    
+    # PostgreSQL-specific connection settings
+    application_name: "sql-graph-visualizer"
+    statement_timeout: 30  # seconds
+    search_path: ["public", "analytics"]
+    
+    connection_mode: existing
+    
+    # Data filtering and processing options
+    data_filtering:
+      schema_discovery: true
+      table_whitelist: []
+      table_blacklist: ["logs", "temp_data", "audit_trail"]
+      row_limit_per_table: 10000
+      where_conditions:
+        users: "created_at >= '2023-01-01'"
+        orders: "status != 'cancelled'"
+      query_timeout: 30
+    
+    # Security configuration
+    security:
+      read_only: true
+      connection_timeout: 30
+      query_timeout: 30
+      max_connections: 10
+      allow_production_connections: false
+      allowed_hosts: ["localhost", "127.0.0.1"]
+      forbidden_patterns: ["DROP", "DELETE", "UPDATE", "INSERT", "TRUNCATE"]
+    
+    # Automatic rule generation
+    auto_generated_rules:
+      enabled: true
+      strategy:
+        table_to_node: true
+        foreign_keys_to_relations: true
+        naming_convention:
+          node_type_format: "PascalCase"
+          relation_type_format: "UPPER_SNAKE"
+      table_overrides:
+        user_roles:
+          relationship_type: "HAS_ROLE"
+        audit_logs:
+          skip: true
+
+# Neo4j configuration (unchanged)
+neo4j:
+  uri: "bolt://localhost:7687"
+  user: "neo4j"
+  password: "password"
+  batch_processing:
+    batch_size: 1000
+    commit_frequency: 5000
+    memory_limit_mb: 512
+
+# Transform rules (can work with any database type)
+transform_rules:
+  - name: "users_to_nodes"
+    rule_type: "node_creation"
+    source:
+      type: "table"
+      value: "users"
+    nodes:
+      - label: "Person"
+        properties:
+          - source: "id"
+            target: "user_id"
+          - source: "name"
+            target: "full_name"
+          - source: "email"
+            target: "email"
+    priority: 1
+  
+  - name: "user_orders_relationship"
+    rule_type: "relationship_creation"
+    source:
+      type: "table"
+      value: "orders"
+    relationship_type: "PLACED"
+    source_node:
+      type: "Person"
+      key: "user_id"
+      target_field: "user_id"
+    target_node:
+      type: "Order"
+      key: "id"
+      target_field: "id"
+    properties:
+      order_date: "created_at"
+      status: "status"
+    priority: 2
+
+# Global auto-generated rules configuration
+auto_generated_rules:
+  enabled: true
+  strategy:
+    table_to_node: true
+    foreign_keys_to_relations: true
+    naming_convention:
+      node_type_format: "PascalCase"
+      relation_type_format: "UPPER_SNAKE"

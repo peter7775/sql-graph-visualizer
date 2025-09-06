@@ -1,0 +1,330 @@
+# SQL Graph Visualizer - PostgreSQL Test with Chinook Sample Database
+# Chinook is a comprehensive sample database representing a digital music store
+# Download: https://github.com/lerocha/chinook-database/blob/master/ChinookDatabase/DataSources/Chinook_PostgreSql.sql
+
+database:
+  type: "postgresql"
+  postgresql:
+    # Local PostgreSQL with Chinook database
+    # To setup: 
+    # 1. Install PostgreSQL
+    # 2. Create database: createdb chinook
+    # 3. Import: psql -d chinook -f Chinook_PostgreSql.sql
+    
+    host: "localhost"
+    port: 5432
+    user: "postgres"
+    password: "password"
+    database: "chinook"
+    schema: "public"
+    
+    # Alternative: Cloud PostgreSQL with Chinook
+    # host: "your-cloud-host.com"
+    # ssl:
+    #   mode: "require"
+    
+    ssl:
+      mode: "prefer"
+      insecure_skip_verify: true
+    
+    application_name: "sql-graph-visualizer-chinook"
+    statement_timeout: 60
+    
+    connection_mode: existing
+    
+    # Chinook database has rich relational structure perfect for graph visualization
+    data_filtering:
+      schema_discovery: true
+      
+      # Chinook database tables (all included for comprehensive test)
+      table_whitelist: [
+        "album", "artist", "customer", "employee", "genre", 
+        "invoice", "invoiceline", "mediatype", "playlist", 
+        "playlisttrack", "track"
+      ]
+      
+      table_blacklist: []  # Include all tables
+      
+      # Reasonable limits for testing - Chinook has moderate data size
+      row_limit_per_table: 0  # No limit - Chinook is reasonably sized
+      
+      # No WHERE conditions needed - clean sample data
+      where_conditions: {}
+        
+      query_timeout: 60
+    
+    security:
+      read_only: true
+      connection_timeout: 30
+      query_timeout: 60
+      max_connections: 10
+      allow_production_connections: false  # Local testing
+      allowed_hosts: ["localhost", "127.0.0.1"]
+      forbidden_patterns: [
+        "DROP", "DELETE", "UPDATE", "INSERT", "TRUNCATE", 
+        "ALTER", "CREATE"
+      ]
+    
+    # Perfect setup for rule generation testing
+    auto_generated_rules:
+      enabled: true
+      strategy:
+        table_to_node: true
+        foreign_keys_to_relations: true
+        naming_convention:
+          node_type_format: "PascalCase"
+          relation_type_format: "UPPER_SNAKE"
+      
+      # Chinook-specific table overrides for meaningful relationships
+      table_overrides:
+        invoiceline:
+          skip: true  # Junction table - create relationship instead
+        playlisttrack:
+          skip: true  # Junction table - create relationship instead
+        # All other tables become nodes
+
+# Neo4j configuration
+neo4j:
+  uri: "bolt://localhost:7687"
+  user: "neo4j"
+  password: "password"
+  batch_processing:
+    batch_size: 1000   # Chinook has moderate size, can handle larger batches
+    commit_frequency: 5000
+    memory_limit_mb: 512
+
+# Comprehensive transform rules for Chinook database structure
+transform_rules:
+  - name: "artists_to_nodes"
+    rule_type: "node_creation"
+    source:
+      type: "table"
+      value: "artist"
+    nodes:
+      - label: "Artist"
+        properties:
+          - source: "artistid"
+            target: "id"
+          - source: "name"
+            target: "name"
+    priority: 1
+  
+  - name: "albums_to_nodes"
+    rule_type: "node_creation"
+    source:
+      type: "table"
+      value: "album"
+    nodes:
+      - label: "Album"
+        properties:
+          - source: "albumid"
+            target: "id"
+          - source: "title"
+            target: "title"
+    priority: 1
+  
+  - name: "tracks_to_nodes"
+    rule_type: "node_creation"
+    source:
+      type: "table"
+      value: "track"
+    nodes:
+      - label: "Track"
+        properties:
+          - source: "trackid"
+            target: "id"
+          - source: "name"
+            target: "name"
+          - source: "composer"
+            target: "composer"
+          - source: "milliseconds"
+            target: "duration_ms"
+          - source: "bytes"
+            target: "file_size"
+          - source: "unitprice"
+            target: "price"
+    priority: 1
+  
+  - name: "genres_to_nodes"
+    rule_type: "node_creation"
+    source:
+      type: "table"
+      value: "genre"
+    nodes:
+      - label: "Genre"
+        properties:
+          - source: "genreid"
+            target: "id"
+          - source: "name"
+            target: "name"
+    priority: 1
+  
+  - name: "customers_to_nodes"
+    rule_type: "node_creation"
+    source:
+      type: "table"
+      value: "customer"
+    nodes:
+      - label: "Customer"
+        properties:
+          - source: "customerid"
+            target: "id"
+          - source: "firstname"
+            target: "first_name"
+          - source: "lastname"
+            target: "last_name"
+          - source: "email"
+            target: "email"
+          - source: "country"
+            target: "country"
+          - source: "city"
+            target: "city"
+          - source: "company"
+            target: "company"
+    priority: 1
+  
+  - name: "employees_to_nodes"
+    rule_type: "node_creation"
+    source:
+      type: "table"
+      value: "employee"
+    nodes:
+      - label: "Employee"
+        properties:
+          - source: "employeeid"
+            target: "id"
+          - source: "firstname"
+            target: "first_name"
+          - source: "lastname"
+            target: "last_name"
+          - source: "title"
+            target: "job_title"
+          - source: "email"
+            target: "email"
+          - source: "hiredate"
+            target: "hire_date"
+    priority: 1
+  
+  - name: "playlists_to_nodes"
+    rule_type: "node_creation"
+    source:
+      type: "table"
+      value: "playlist"
+    nodes:
+      - label: "Playlist"
+        properties:
+          - source: "playlistid"
+            target: "id"
+          - source: "name"
+            target: "name"
+    priority: 1
+  
+  # Relationship rules for complex joins
+  - name: "album_artist_relationship"
+    rule_type: "relationship_creation"
+    source:
+      type: "table"
+      value: "album"
+    relationship_type: "CREATED_BY"
+    source_node:
+      type: "Album"
+      key: "id"
+      target_field: "albumid"
+    target_node:
+      type: "Artist"
+      key: "id"
+      target_field: "artistid"
+    priority: 2
+  
+  - name: "track_album_relationship"
+    rule_type: "relationship_creation"
+    source:
+      type: "table"
+      value: "track"
+    relationship_type: "BELONGS_TO_ALBUM"
+    source_node:
+      type: "Track"
+      key: "id"
+      target_field: "trackid"
+    target_node:
+      type: "Album"
+      key: "id"
+      target_field: "albumid"
+    priority: 2
+  
+  - name: "track_genre_relationship"
+    rule_type: "relationship_creation"
+    source:
+      type: "table"
+      value: "track"
+    relationship_type: "HAS_GENRE"
+    source_node:
+      type: "Track"
+      key: "id"
+      target_field: "trackid"
+    target_node:
+      type: "Genre"
+      key: "id"
+      target_field: "genreid"
+    priority: 2
+  
+  - name: "playlist_track_relationship"
+    rule_type: "relationship_creation"
+    source:
+      type: "table"
+      value: "playlisttrack"
+    relationship_type: "CONTAINS_TRACK"
+    source_node:
+      type: "Playlist"
+      key: "id"
+      target_field: "playlistid"
+    target_node:
+      type: "Track"
+      key: "id"
+      target_field: "trackid"
+    priority: 3
+  
+  - name: "customer_purchase_relationship"
+    rule_type: "relationship_creation"
+    source:
+      type: "table"
+      value: "invoiceline"
+    relationship_type: "PURCHASED"
+    source_node:
+      type: "Customer"
+      key: "id"
+      target_field: "customerid"  # Through invoice table join
+    target_node:
+      type: "Track"
+      key: "id" 
+      target_field: "trackid"
+    properties:
+      quantity: "quantity"
+      unit_price: "unitprice"
+    priority: 4
+  
+  - name: "employee_manager_relationship"
+    rule_type: "relationship_creation"
+    source:
+      type: "table"
+      value: "employee"
+    relationship_type: "REPORTS_TO"
+    source_node:
+      type: "Employee"
+      key: "id"
+      target_field: "employeeid"
+    target_node:
+      type: "Employee"
+      key: "id"
+      target_field: "reportsto"
+    priority: 2
+
+# Global auto-generated rules
+auto_generated_rules:
+  enabled: true
+  strategy:
+    table_to_node: true
+    foreign_keys_to_relations: true
+    naming_convention:
+      node_type_format: "PascalCase"
+      relation_type_format: "UPPER_SNAKE"

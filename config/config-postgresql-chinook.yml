@@ -1,0 +1,154 @@
+database:
+  type: "postgresql"
+  postgresql:
+    host: "localhost"
+    port: 5432
+    user: "postgres"
+    password: "password"
+    database: "chinook"
+    schema: "public"
+    
+    ssl:
+      mode: "disable"
+    
+    application_name: "sql-graph-visualizer"
+    statement_timeout: 30
+    
+    connection_mode: existing
+    
+    data_filtering:
+      schema_discovery: true
+      table_whitelist: ["album", "artist", "customer", "employee", "genre", "track", "playlist", "invoice", "invoiceline"]
+      table_blacklist: []
+      row_limit_per_table: 0
+      query_timeout: 30
+    
+    security:
+      read_only: true
+      connection_timeout: 30
+      query_timeout: 30
+      max_connections: 10
+      allow_production_connections: false
+      allowed_hosts: ["localhost", "127.0.0.1"]
+
+neo4j:
+  uri: "bolt://127.0.0.1:7687"
+  user: "neo4j"
+  password: "testpass"
+
+transform_rules:
+  - name: "artists_to_nodes"
+    rule_type: "node"
+    source:
+      type: "query"
+      value: "SELECT artistid as id, name FROM artist"
+    target_type: "Artist"
+    field_mappings:
+      id: "id"
+      name: "name"
+
+  - name: "albums_to_nodes"
+    rule_type: "node"
+    source:
+      type: "query"
+      value: "SELECT albumid as id, title, artistid FROM album"
+    target_type: "Album"
+    field_mappings:
+      id: "id"
+      title: "title"
+      artistid: "artistid"
+
+  - name: "tracks_to_nodes"
+    rule_type: "node"
+    source:
+      type: "query"
+      value: "SELECT trackid as id, name, albumid, genreid, composer, milliseconds, bytes, unitprice FROM track"
+    target_type: "Track"
+    field_mappings:
+      id: "id"
+      name: "name"
+      albumid: "albumid"
+      genreid: "genreid"
+      composer: "composer"
+      milliseconds: "duration_ms"
+      bytes: "file_size"
+      unitprice: "price"
+
+  - name: "genres_to_nodes"
+    rule_type: "node"
+    source:
+      type: "query"
+      value: "SELECT genreid as id, name FROM genre"
+    target_type: "Genre"
+    field_mappings:
+      id: "id"
+      name: "name"
+
+  - name: "customers_to_nodes"
+    rule_type: "node"
+    source:
+      type: "query"
+      value: "SELECT customerid as id, firstname, lastname, email, country, city FROM customer"
+    target_type: "Customer"
+    field_mappings:
+      id: "id"
+      firstname: "first_name"
+      lastname: "last_name"
+      email: "email"
+      country: "country"
+      city: "city"
+
+  # Relationships
+  - name: "album_artist_relationship"
+    rule_type: "relationship"
+    relationship_type: "CREATED_BY"
+    direction: "outgoing"
+    source:
+      type: "query"
+      value: "SELECT albumid, artistid FROM album"
+    source_node:
+      type: "Album"
+      key: "albumid"
+      target_field: "id"
+    target_node:
+      type: "Artist"
+      key: "artistid"
+      target_field: "id"
+    field_mappings:
+      albumid: "id"
+
+  - name: "track_album_relationship"
+    rule_type: "relationship"
+    relationship_type: "BELONGS_TO"
+    direction: "outgoing"
+    source:
+      type: "query"
+      value: "SELECT trackid, albumid FROM track"
+    source_node:
+      type: "Track"
+      key: "trackid"
+      target_field: "id"
+    target_node:
+      type: "Album"
+      key: "albumid"
+      target_field: "id"
+    field_mappings:
+      trackid: "id"
+
+  - name: "track_genre_relationship"
+    rule_type: "relationship"
+    relationship_type: "HAS_GENRE"
+    direction: "outgoing"
+    source:
+      type: "query"
+      value: "SELECT trackid, genreid FROM track WHERE genreid IS NOT NULL"
+    source_node:
+      type: "Track"
+      key: "trackid"
+      target_field: "id"
+    target_node:
+      type: "Genre"
+      key: "genreid"
+      target_field: "id"
+    field_mappings:
+      trackid: "id"

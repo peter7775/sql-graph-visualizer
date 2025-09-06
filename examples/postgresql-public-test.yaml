@@ -1,0 +1,228 @@
+# SQL Graph Visualizer - PostgreSQL Public Database Test
+# Using publicly available PostgreSQL databases for testing Issue #7
+
+# Example 1: Using a public PostgreSQL sample database
+# Note: Replace with actual public database credentials when available
+database:
+  type: "postgresql"
+  postgresql:
+    # Public PostgreSQL database options:
+    # 1. ElephantSQL (free tier): https://www.elephantsql.com/
+    # 2. Supabase (free tier): https://supabase.com/
+    # 3. Neon (free tier): https://neon.tech/
+    # 4. Local PostgreSQL with sample data
+    
+    host: "localhost"  # Replace with public host
+    port: 5432
+    user: "postgres"
+    password: "password"  # Use environment variable in production
+    database: "dvdrental"  # Popular PostgreSQL sample database
+    schema: "public"
+    
+    # PostgreSQL-specific SSL configuration for public databases
+    ssl:
+      mode: "require"  # Use "require" for production/public databases
+      insecure_skip_verify: false
+    
+    # Connection settings optimized for public databases
+    application_name: "sql-graph-visualizer-test"
+    statement_timeout: 60  # Longer timeout for remote databases
+    
+    connection_mode: existing
+    
+    # Data filtering - optimized for large public databases
+    data_filtering:
+      schema_discovery: true
+      
+      # Focus on main tables in dvdrental database
+      table_whitelist: [
+        "customer", "film", "actor", "category", 
+        "film_actor", "film_category", "rental", 
+        "inventory", "store", "staff", "address", "city", "country"
+      ]
+      
+      table_blacklist: [
+        "payment",  # Often very large table
+        "rental_backup", "customer_backup"  # Backup tables if they exist
+      ]
+      
+      row_limit_per_table: 10000  # Reasonable limit for testing
+      
+      where_conditions:
+        rental: "rental_date >= '2005-01-01' AND rental_date < '2006-01-01'"  # Limit to specific year
+        payment: "payment_date >= '2005-01-01' AND payment_date < '2006-01-01'"
+        customer: "active = 1"  # Only active customers
+        film: "length IS NOT NULL AND length > 0"  # Valid films only
+        
+      query_timeout: 60  # Longer timeout for remote connections
+    
+    # Enhanced security for public database connections
+    security:
+      read_only: true
+      connection_timeout: 30
+      query_timeout: 60
+      max_connections: 5  # Conservative for public databases
+      allow_production_connections: true  # Allow connecting to public databases
+      allowed_hosts: ["*"]  # Allow any host for public databases
+      forbidden_patterns: [
+        "DROP", "DELETE", "UPDATE", "INSERT", "TRUNCATE", 
+        "ALTER", "CREATE", "GRANT", "REVOKE"
+      ]
+    
+    # PostgreSQL-specific rule generation
+    auto_generated_rules:
+      enabled: true
+      strategy:
+        table_to_node: true
+        foreign_keys_to_relations: true
+        naming_convention:
+          node_type_format: "PascalCase"
+          relation_type_format: "UPPER_SNAKE"
+      
+      # DVD Rental specific table overrides
+      table_overrides:
+        film_actor:
+          relationship_type: "ACTED_IN"
+        film_category:
+          relationship_type: "BELONGS_TO_CATEGORY"
+        inventory:
+          relationship_type: "AVAILABLE_AT"
+        rental:
+          relationship_type: "RENTED"
+        customer_address:
+          skip: true  # Skip junction tables that aren't meaningful as nodes
+        staff_address:
+          skip: true
+
+# Neo4j configuration
+neo4j:
+  uri: "bolt://localhost:7687"
+  user: "neo4j"
+  password: "password"
+  batch_processing:
+    batch_size: 500   # Smaller batches for testing
+    commit_frequency: 2500
+    memory_limit_mb: 256
+
+# PostgreSQL-specific transform rules for DVD Rental database
+transform_rules:
+  - name: "customers_to_person_nodes"
+    rule_type: "node_creation"
+    source:
+      type: "table"
+      value: "customer"
+    nodes:
+      - label: "Customer"
+        properties:
+          - source: "customer_id"
+            target: "id"
+          - source: "first_name"
+            target: "first_name"
+          - source: "last_name"
+            target: "last_name"
+          - source: "email"
+            target: "email"
+          - source: "active"
+            target: "is_active"
+          - source: "create_date"
+            target: "created_at"
+    priority: 1
+  
+  - name: "films_to_movie_nodes"
+    rule_type: "node_creation"
+    source:
+      type: "table"
+      value: "film"
+    nodes:
+      - label: "Film"
+        properties:
+          - source: "film_id"
+            target: "id"
+          - source: "title"
+            target: "title"
+          - source: "description"
+            target: "description"
+          - source: "release_year"
+            target: "release_year"
+          - source: "length"
+            target: "duration_minutes"
+          - source: "rating"
+            target: "mpaa_rating"
+          - source: "special_features"
+            target: "features"
+    priority: 1
+  
+  - name: "actors_to_person_nodes"
+    rule_type: "node_creation"
+    source:
+      type: "table"
+      value: "actor"
+    nodes:
+      - label: "Actor"
+        properties:
+          - source: "actor_id"
+            target: "id"
+          - source: "first_name"
+            target: "first_name"
+          - source: "last_name"
+            target: "last_name"
+    priority: 1
+  
+  - name: "categories_to_genre_nodes"
+    rule_type: "node_creation"
+    source:
+      type: "table"
+      value: "category"
+    nodes:
+      - label: "Genre"
+        properties:
+          - source: "category_id"
+            target: "id"
+          - source: "name"
+            target: "genre_name"
+    priority: 1
+  
+  - name: "film_actor_relationships"
+    rule_type: "relationship_creation"
+    source:
+      type: "table"
+      value: "film_actor"
+    relationship_type: "ACTED_IN"
+    source_node:
+      type: "Actor"
+      key: "id"
+      target_field: "actor_id"
+    target_node:
+      type: "Film"
+      key: "id"
+      target_field: "film_id"
+    priority: 2
+  
+  - name: "customer_rental_relationships"
+    rule_type: "relationship_creation"
+    source:
+      type: "table"
+      value: "rental"
+    relationship_type: "RENTED"
+    source_node:
+      type: "Customer"
+      key: "id"
+      target_field: "customer_id"
+    target_node:
+      type: "Film"
+      key: "id"
+      target_field: "film_id"  # Through inventory table
+    properties:
+      rental_date: "rental_date"
+      return_date: "return_date"
+    priority: 3
+
+# Global auto-generated rules
+auto_generated_rules:
+  enabled: true
+  strategy:
+    table_to_node: true
+    foreign_keys_to_relations: true
+    naming_convention:
+      node_type_format: "PascalCase"
+      relation_type_format: "UPPER_SNAKE"

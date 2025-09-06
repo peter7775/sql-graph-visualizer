@@ -19,7 +19,7 @@ import (
 
 	"sql-graph-visualizer/internal/application/services"
 	"sql-graph-visualizer/internal/domain/models"
-	"sql-graph-visualizer/internal/infrastructure/persistence/mysql"
+	"sql-graph-visualizer/internal/infrastructure/factories"
 
 	"github.com/spf13/cobra"
 )
@@ -27,6 +27,8 @@ import (
 // NewAnalyzeCmd creates the analyze command
 func NewAnalyzeCmd() *cobra.Command {
 	var (
+		// Common flags
+		dbType             string
 		host               string
 		port               int
 		username           string
@@ -41,28 +43,41 @@ func NewAnalyzeCmd() *cobra.Command {
 		connectionTimeout  int
 		queryTimeout       int
 		maxConnections     int
+		
+		// PostgreSQL specific flags
+		schema             string
+		sslMode            string
+		sslCertFile        string
+		sslKeyFile         string
+		sslCAFile          string
+		applicationName    string
+		statementTimeout   int
 	)
 
 	cmd := &cobra.Command{
 		Use:   "analyze",
-		Short: "Analyze existing MySQL database schema and generate transformation rules",
-		Long: `Connects to an existing MySQL database, analyzes its schema structure,
+		Short: "Analyze existing database schema and generate transformation rules",
+		Long: `Connects to an existing database (MySQL or PostgreSQL), analyzes its schema structure,
 identifies relationships and graph patterns, and generates Neo4j transformation rules automatically.
 
-This command demonstrates the core functionality of Issue #10 - Direct Database Connection Implementation.`,
-		Example: `  # Analyze local database
-  sql-graph-cli analyze --host localhost --port 3306 --username user --password pass --database mydb
+Supports both MySQL and PostgreSQL databases with database-specific optimizations.`,
+		Example: `  # Analyze MySQL database
+  sql-graph-cli analyze --db-type mysql --host localhost --port 3306 --username user --password pass --database mydb
+
+  # Analyze PostgreSQL database
+  sql-graph-cli analyze --db-type postgresql --host localhost --port 5432 --username postgres --password pass --database chinook
+
+  # PostgreSQL with SSL and schema
+  sql-graph-cli analyze --db-type postgresql --host remote.com --database mydb --schema public --ssl-mode require
 
   # Analyze with table filtering
-  sql-graph-cli analyze --host localhost --database mydb --whitelist "users,orders,products"
+  sql-graph-cli analyze --db-type mysql --host localhost --database mydb --whitelist "users,orders,products"
 
   # Save analysis to JSON file
-  sql-graph-cli analyze --host localhost --database mydb --output analysis.json
-
-  # Dry run without generating rules
-  sql-graph-cli analyze --host localhost --database mydb --dry-run`,
+  sql-graph-cli analyze --db-type postgresql --host localhost --database chinook --output analysis.json`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return runAnalyze(cmd, analyzeOptions{
+				DBType:            models.DatabaseType(dbType),
 				Host:              host,
 				Port:              port,
 				Username:          username,
@@ -77,16 +92,25 @@ This command demonstrates the core functionality of Issue #10 - Direct Database 
 				ConnectionTimeout: connectionTimeout,
 				QueryTimeout:      queryTimeout,
 				MaxConnections:    maxConnections,
+				// PostgreSQL specific
+				Schema:            schema,
+				SSLMode:           sslMode,
+				SSLCertFile:       sslCertFile,
+				SSLKeyFile:        sslKeyFile,
+				SSLCAFile:         sslCAFile,
+				ApplicationName:   applicationName,
+				StatementTimeout:  statementTimeout,
 			})
 		},
 	}
 
-	// Database connection flags
-	cmd.Flags().StringVar(&host, "host", "localhost", "MySQL database host")
-	cmd.Flags().IntVar(&port, "port", 3306, "MySQL database port")
-	cmd.Flags().StringVar(&username, "username", "", "MySQL username")
-	cmd.Flags().StringVar(&password, "password", "", "MySQL password")
-	cmd.Flags().StringVar(&database, "database", "", "MySQL database name")
+	// Database type and connection flags
+	cmd.Flags().StringVar(&dbType, "db-type", "mysql", "Database type: mysql, postgresql")
+	cmd.Flags().StringVar(&host, "host", "localhost", "Database host")
+	cmd.Flags().IntVar(&port, "port", 0, "Database port (0 = auto-detect: MySQL=3306, PostgreSQL=5432)")
+	cmd.Flags().StringVar(&username, "username", "", "Database username")
+	cmd.Flags().StringVar(&password, "password", "", "Database password")
+	cmd.Flags().StringVar(&database, "database", "", "Database name")
 
 	// Data filtering flags
 	cmd.Flags().StringSliceVar(&tableWhitelist, "whitelist", []string{}, "Comma-separated list of tables to analyze (empty = all)")
@@ -104,6 +128,15 @@ This command demonstrates the core functionality of Issue #10 - Direct Database 
 	cmd.Flags().IntVar(&connectionTimeout, "connection-timeout", 30, "Connection timeout in seconds")
 	cmd.Flags().IntVar(&queryTimeout, "query-timeout", 300, "Query timeout in seconds")
 	cmd.Flags().IntVar(&maxConnections, "max-connections", 3, "Maximum number of database connections")
+	
+	// PostgreSQL specific flags
+	cmd.Flags().StringVar(&schema, "schema", "public", "PostgreSQL schema name")
+	cmd.Flags().StringVar(&sslMode, "ssl-mode", "prefer", "PostgreSQL SSL mode: disable, allow, prefer, require, verify-ca, verify-full")
+	cmd.Flags().StringVar(&sslCertFile, "ssl-cert", "", "PostgreSQL SSL certificate file")
+	cmd.Flags().StringVar(&sslKeyFile, "ssl-key", "", "PostgreSQL SSL key file")
+	cmd.Flags().StringVar(&sslCAFile, "ssl-ca", "", "PostgreSQL SSL CA file")
+	cmd.Flags().StringVar(&applicationName, "app-name", "sql-graph-visualizer", "PostgreSQL application name")
+	cmd.Flags().IntVar(&statementTimeout, "stmt-timeout", 30, "PostgreSQL statement timeout in seconds")
 
 	// Required flags
 	cmd.MarkFlagRequired("username")
@@ -114,6 +147,8 @@ This command demonstrates the core functionality of Issue #10 - Direct Database 
 }
 
 type analyzeOptions struct {
+	// Common options
+	DBType            models.DatabaseType
 	Host              string
 	Port              int
 	Username          string
@@ -128,62 +163,147 @@ type analyzeOptions struct {
 	ConnectionTimeout int
 	QueryTimeout      int
 	MaxConnections    int
+	
+	// PostgreSQL specific options
+	Schema            string
+	SSLMode           string
+	SSLCertFile       string
+	SSLKeyFile        string
+	SSLCAFile         string
+	ApplicationName   string
+	StatementTimeout  int
 }
 
 func runAnalyze(cmd *cobra.Command, opts analyzeOptions) error {
 	fmt.Println("SQL Graph Visualizer - Database Analysis")
 	fmt.Println("=============================================")
 
-	// Build configuration
-	config := &models.MySQLConfig{
-		Host:     opts.Host,
-		Port:     opts.Port,
-		Username: opts.Username,
-		Password: opts.Password,
-		Database: opts.Database,
-		ConnectionMode: models.ConnectionModeExisting,
-		
-		DataFiltering: models.DataFilteringConfig{
-			SchemaDiscovery:  true,
-			TableWhitelist:   opts.TableWhitelist,
-			TableBlacklist:   opts.TableBlacklist,
-			RowLimitPerTable: opts.RowLimit,
-		},
-		
-		Security: models.SecurityConfig{
-			ReadOnly:          true,
-			ConnectionTimeout: opts.ConnectionTimeout,
-			QueryTimeout:      opts.QueryTimeout,
-			MaxConnections:    opts.MaxConnections,
-		},
-		
-		AutoGeneratedRules: models.AutoGeneratedRulesConfig{
-			Enabled: !opts.DryRun,
-			Strategy: &models.RuleGenerationStrategy{
-				TableToNode:            true,
-				ForeignKeysToRelations: true,
-				NamingConvention: &models.NamingConvention{
-					NodeTypeFormat:     "Pascal",
-					RelationTypeFormat: "UPPER_SNAKE",
-				},
-			},
-		},
+	// Auto-detect port if not specified
+	if opts.Port == 0 {
+		switch opts.DBType {
+		case models.DatabaseTypeMySQL:
+			opts.Port = 3306
+		case models.DatabaseTypePostgreSQL:
+			opts.Port = 5432
+		}
 	}
 
-	// Initialize services
-	mysqlRepo := mysql.NewMySQLRepository(nil)
-	directDBService := services.NewDirectDatabaseService(mysqlRepo, config)
+	// Build database-specific configuration
+	var config models.DatabaseConfig
+	switch opts.DBType {
+	case models.DatabaseTypeMySQL:
+		config = &models.MySQLConfig{
+			Host:           opts.Host,
+			Port:           opts.Port,
+			Username:       opts.Username,
+			Password:       opts.Password,
+			Database:       opts.Database,
+			ConnectionMode: models.ConnectionModeExisting,
+			
+			DataFiltering: models.DataFilteringConfig{
+				SchemaDiscovery:  true,
+				TableWhitelist:   opts.TableWhitelist,
+				TableBlacklist:   opts.TableBlacklist,
+				RowLimitPerTable: opts.RowLimit,
+			},
+			
+			Security: models.SecurityConfig{
+				ReadOnly:          true,
+				ConnectionTimeout: opts.ConnectionTimeout,
+				QueryTimeout:      opts.QueryTimeout,
+				MaxConnections:    opts.MaxConnections,
+			},
+			
+			AutoGeneratedRules: models.AutoGeneratedRulesConfig{
+				Enabled: !opts.DryRun,
+				Strategy: &models.RuleGenerationStrategy{
+					TableToNode:            true,
+					ForeignKeysToRelations: true,
+					NamingConvention: &models.NamingConvention{
+						NodeTypeFormat:     "Pascal",
+						RelationTypeFormat: "UPPER_SNAKE",
+					},
+				},
+			},
+		}
+		
+	case models.DatabaseTypePostgreSQL:
+		config = &models.PostgreSQLConfig{
+			Host:           opts.Host,
+			Port:           opts.Port,
+			Username:       opts.Username,
+			Password:       opts.Password,
+			Database:       opts.Database,
+			Schema:         opts.Schema,
+			ConnectionMode: models.ConnectionModeExisting,
+			
+			// PostgreSQL-specific settings
+			SSLConfig: models.PostgreSQLSSLConfig{
+				Mode:     opts.SSLMode,
+				CertFile: opts.SSLCertFile,
+				KeyFile:  opts.SSLKeyFile,
+				CAFile:   opts.SSLCAFile,
+			},
+			ApplicationName:   opts.ApplicationName,
+			StatementTimeout: opts.StatementTimeout,
+			
+			DataFiltering: models.DataFilteringConfig{
+				SchemaDiscovery:  true,
+				TableWhitelist:   opts.TableWhitelist,
+				TableBlacklist:   opts.TableBlacklist,
+				RowLimitPerTable: opts.RowLimit,
+			},
+			
+			Security: models.SecurityConfig{
+				ReadOnly:          true,
+				ConnectionTimeout: opts.ConnectionTimeout,
+				QueryTimeout:      opts.QueryTimeout,
+				MaxConnections:    opts.MaxConnections,
+			},
+			
+			AutoGeneratedRules: models.AutoGeneratedRulesConfig{
+				Enabled: !opts.DryRun,
+				Strategy: &models.RuleGenerationStrategy{
+					TableToNode:            true,
+					ForeignKeysToRelations: true,
+					NamingConvention: &models.NamingConvention{
+						NodeTypeFormat:     "Pascal",
+						RelationTypeFormat: "UPPER_SNAKE",
+					},
+				},
+			},
+		}
+		
+	default:
+		return fmt.Errorf("unsupported database type: %s", opts.DBType)
+	}
+
+	// Create database repository based on type
+	factory := factories.NewDatabaseRepositoryFactory()
+	repo, err := factory.CreateRepository(opts.DBType)
+	if err != nil {
+		return fmt.Errorf("failed to create database repository: %w", err)
+	}
+
+	// Create universal database service
+	dbService := services.NewUniversalDatabaseService(repo, config)
 
 	// Validate configuration
-	fmt.Printf("TOOL Validating configuration...\n")
-	if err := directDBService.ValidateConfiguration(); err != nil {
+	fmt.Printf("🔧 Validating configuration...\n")
+	if err := dbService.ValidateConfiguration(); err != nil {
 		return fmt.Errorf("configuration validation failed: %w", err)
 	}
 
 	ctx := context.Background()
 
 	// Show connection info
-	fmt.Printf("📡 Connecting to %s@%s:%d/%s\n", opts.Username, opts.Host, opts.Port, opts.Database)
+	fmt.Printf("📡 Connecting to %s database: %s@%s:%d/%s\n", strings.ToUpper(string(opts.DBType)), opts.Username, opts.Host, opts.Port, opts.Database)
+	if opts.DBType == models.DatabaseTypePostgreSQL && opts.Schema != "" {
+		fmt.Printf("   Schema: %s\n", opts.Schema)
+	}
+	if opts.DBType == models.DatabaseTypePostgreSQL && opts.SSLMode != "" {
+		fmt.Printf("   SSL Mode: %s\n", opts.SSLMode)
+	}
 	if len(opts.TableWhitelist) > 0 {
 		fmt.Printf("TARGET Table whitelist: %s\n", strings.Join(opts.TableWhitelist, ", "))
 	}
@@ -198,10 +318,10 @@ func runAnalyze(cmd *cobra.Command, opts analyzeOptions) error {
 	}
 
 	// Start analysis
-	fmt.Printf("\nDETAIL Starting database analysis...\n")
+	fmt.Printf("\n🔍 Starting database analysis...\n")
 	startTime := time.Now()
 	
-	result, err := directDBService.ConnectAndAnalyze(ctx)
+	result, err := dbService.ConnectAndAnalyze(ctx)
 	if err != nil {
 		return fmt.Errorf("database analysis failed: %w", err)
 	}
@@ -224,7 +344,7 @@ func runAnalyze(cmd *cobra.Command, opts analyzeOptions) error {
 	}
 }
 
-func outputSummary(result *models.DirectDatabaseAnalysisResult, outputFile string) error {
+func outputSummary(result *models.UniversalDatabaseAnalysisResult, outputFile string) error {
 	var output strings.Builder
 	
 	// Header
@@ -234,21 +354,23 @@ func outputSummary(result *models.DirectDatabaseAnalysisResult, outputFile strin
 
 	// Connection info
 	output.WriteString("🔗 CONNECTION INFORMATION:\n")
-	output.WriteString(fmt.Sprintf("   Database: %s@%s:%d/%s\n", 
-		result.DatabaseInfo.User, result.DatabaseInfo.Host, 
-		result.DatabaseInfo.Port, result.DatabaseInfo.Database))
-	output.WriteString(fmt.Sprintf("   Server Version: %s\n", result.DatabaseInfo.Version))
+	if result.DatabaseInfo != nil {
+		output.WriteString(fmt.Sprintf("   Database Type: %s\n", strings.ToUpper(string(result.DatabaseType))))
+		output.WriteString(fmt.Sprintf("   Database: %s@%s:%d/%s\n", 
+			result.DatabaseInfo.User, result.DatabaseInfo.Host, 
+			result.DatabaseInfo.Port, result.DatabaseInfo.Database))
+		output.WriteString(fmt.Sprintf("   Server Version: %s\n", result.DatabaseInfo.Version))
+	}
 	output.WriteString(fmt.Sprintf("   Processing Time: %v\n", result.ProcessingDuration))
-	output.WriteString(fmt.Sprintf("   Security Level: %s\n", result.SecurityValidation.SecurityLevel))
+	if result.SecurityValidation != nil {
+		output.WriteString(fmt.Sprintf("   Security Level: %s\n", result.SecurityValidation.SecurityLevel))
+	}
 
 	// Summary statistics
 	if result.Summary != nil {
 		summary := result.Summary
 		output.WriteString("\nSTATS ANALYSIS SUMMARY:\n")
 		output.WriteString(fmt.Sprintf("   Tables Analyzed: %d\n", summary.TotalTables))
-		output.WriteString(fmt.Sprintf("   Generated Rules: %d (%d nodes, %d relationships)\n", 
-			summary.TotalRules, summary.NodeRules, summary.RelationshipRules))
-		output.WriteString(fmt.Sprintf("   Graph Patterns: %d\n", summary.TotalPatterns))
 
 		if len(summary.Warnings) > 0 {
 			output.WriteString(fmt.Sprintf("   WARN  Warnings: %d\n", len(summary.Warnings)))
@@ -259,67 +381,31 @@ func outputSummary(result *models.DirectDatabaseAnalysisResult, outputFile strin
 		}
 	}
 
-	// Dataset information
-	if result.SchemaAnalysis != nil && result.SchemaAnalysis.DatasetInfo != nil {
-		dataset := result.SchemaAnalysis.DatasetInfo
-		output.WriteString("\nDATA DATASET INFORMATION:\n")
-		output.WriteString(fmt.Sprintf("   Total Rows: %d\n", dataset.TotalRows))
-		output.WriteString(fmt.Sprintf("   Estimated Size: %.2f MB\n", dataset.EstimatedSizeMB))
-	}
-
-	// Tables with their types
+	// Tables with their information
 	if result.SchemaAnalysis != nil && len(result.SchemaAnalysis.Tables) > 0 {
 		output.WriteString("\nINFO DISCOVERED TABLES:\n")
 		for _, table := range result.SchemaAnalysis.Tables {
-			graphType := "NODE"
-			if table.GraphType == "RELATIONSHIP" {
-				graphType = "RELATIONSHIP"
+			schemaInfo := ""
+			if table.Schema != "" {
+				schemaInfo = fmt.Sprintf(" (%s)", table.Schema)
 			}
-			output.WriteString(fmt.Sprintf("   %-20s (%s) - %d rows, %d columns\n", 
-				table.Name, graphType, table.EstimatedRows, len(table.Columns)))
-		}
-	}
-
-	// Graph patterns
-	if result.SchemaAnalysis != nil && len(result.SchemaAnalysis.GraphPatterns) > 0 {
-		output.WriteString("\n🕸️  IDENTIFIED GRAPH PATTERNS:\n")
-		for _, pattern := range result.SchemaAnalysis.GraphPatterns {
-			output.WriteString(fmt.Sprintf("   %s: %s (%.1f%% confidence)\n", 
-				pattern.PatternType, pattern.Description, pattern.Confidence*100))
-		}
-	}
-
-	// Sample generated rules
-	if result.SchemaAnalysis != nil && len(result.SchemaAnalysis.GeneratedRules) > 0 {
-		output.WriteString("\nRUN GENERATED TRANSFORMATION RULES:\n")
-		nodeCount := 0
-		relCount := 0
-		
-		for _, rule := range result.SchemaAnalysis.GeneratedRules {
-			if rule.RuleType == "NODE_CREATION" {
-				nodeCount++
-			} else if rule.RuleType == "RELATIONSHIP_CREATION" {
-				relCount++
+			output.WriteString(fmt.Sprintf("   %-20s%s - %d rows, %d columns\n", 
+				table.Name, schemaInfo, table.EstimatedRows, len(table.Columns)))
+			
+			// Show column details for first few tables
+			if len(result.SchemaAnalysis.Tables) <= 3 && len(table.Columns) > 0 {
+				for i, col := range table.Columns {
+					if i >= 5 {
+						output.WriteString(fmt.Sprintf("     ... and %d more columns\n", len(table.Columns)-5))
+						break
+					}
+					primaryKey := ""
+					if col.IsKey && col.KeyType == "PRIMARY" {
+						primaryKey = " (PK)"
+					}
+					output.WriteString(fmt.Sprintf("     • %s %s%s\n", col.Name, col.DataType, primaryKey))
+				}
 			}
-		}
-		
-		output.WriteString(fmt.Sprintf("   Node Creation Rules: %d\n", nodeCount))
-		output.WriteString(fmt.Sprintf("   Relationship Rules: %d\n", relCount))
-		
-		// Show first few rules as examples
-		output.WriteString("\n   Sample Rules:\n")
-		count := 0
-		for _, rule := range result.SchemaAnalysis.GeneratedRules {
-			if count >= 3 {
-				break
-			}
-			output.WriteString(fmt.Sprintf("   • %s (%s): %s\n", 
-				rule.RuleID, rule.RuleType, rule.Description))
-			count++
-		}
-		if len(result.SchemaAnalysis.GeneratedRules) > 3 {
-			output.WriteString(fmt.Sprintf("   ... and %d more rules\n", 
-				len(result.SchemaAnalysis.GeneratedRules)-3))
 		}
 	}
 
@@ -340,12 +426,16 @@ func outputSummary(result *models.DirectDatabaseAnalysisResult, outputFile strin
 		}
 	}
 
+	if !result.Success {
+		output.WriteString(fmt.Sprintf("\nERROR: %s\n", result.ErrorMessage))
+	}
+
 	output.WriteString("\n" + strings.Repeat("=", 60) + "\n")
 
 	return writeOutput(output.String(), outputFile)
 }
 
-func outputJSON(result *models.DirectDatabaseAnalysisResult, outputFile string) error {
+func outputJSON(result *models.UniversalDatabaseAnalysisResult, outputFile string) error {
 	data, err := json.MarshalIndent(result, "", "  ")
 	if err != nil {
 		return fmt.Errorf("failed to marshal JSON: %w", err)
@@ -353,7 +443,7 @@ func outputJSON(result *models.DirectDatabaseAnalysisResult, outputFile string) 
 	return writeOutput(string(data), outputFile)
 }
 
-func outputYAML(result *models.DirectDatabaseAnalysisResult, outputFile string) error {
+func outputYAML(result *models.UniversalDatabaseAnalysisResult, outputFile string) error {
 	// For simplicity, we'll use JSON format for now
 	// In a real implementation, you'd use gopkg.in/yaml.v2
 	return outputJSON(result, outputFile)

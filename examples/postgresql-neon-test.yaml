@@ -1,0 +1,207 @@
+# SQL Graph Visualizer - PostgreSQL Test with Neon.tech (Free Public Database)
+# This example uses a real publicly accessible PostgreSQL database for testing
+
+database:
+  type: "postgresql"
+  postgresql:
+    # Neon.tech free tier PostgreSQL database
+    # Visit https://neon.tech/ to create a free account and get these credentials
+    # Example connection (replace with your own):
+    host: "ep-cool-darkness-123456.us-east-2.aws.neon.tech"
+    port: 5432
+    user: "neondb_owner"
+    password: "your_password_here"  # Use environment variable: ${NEON_DB_PASSWORD}
+    database: "neondb"
+    schema: "public"
+    
+    # Alternative: Use ElephantSQL free tier
+    # host: "cornelius.db.elephantsql.com"
+    # port: 5432
+    # user: "your_user"
+    # password: "your_password"
+    # database: "your_db"
+    
+    # SSL is required for cloud PostgreSQL databases
+    ssl:
+      mode: "require"
+      insecure_skip_verify: false
+    
+    application_name: "sql-graph-visualizer"
+    statement_timeout: 120  # 2 minutes for large queries
+    
+    connection_mode: existing
+    
+    # Configuration for testing with large datasets
+    data_filtering:
+      schema_discovery: true
+      
+      # No table whitelist - discover all tables
+      table_whitelist: []
+      
+      # Exclude system and potentially large log tables
+      table_blacklist: [
+        "pg_stat_statements", "pg_stat_activity",
+        "logs", "audit", "sessions", "temp_data",
+        "migration_history", "schema_migrations"
+      ]
+      
+      # Conservative limits for public database testing
+      row_limit_per_table: 5000
+      
+      # Sample WHERE conditions for common table patterns
+      where_conditions:
+        users: "created_at >= CURRENT_DATE - INTERVAL '1 year'"
+        orders: "created_at >= CURRENT_DATE - INTERVAL '6 months'"
+        events: "timestamp >= CURRENT_DATE - INTERVAL '30 days'"
+        transactions: "created_at >= CURRENT_DATE - INTERVAL '3 months'"
+        posts: "published_at IS NOT NULL"
+        comments: "deleted_at IS NULL"
+        
+      query_timeout: 120  # 2 minutes for complex queries
+    
+    # Security configuration for cloud databases
+    security:
+      read_only: true
+      connection_timeout: 60
+      query_timeout: 120
+      max_connections: 3  # Very conservative for free tiers
+      allow_production_connections: true
+      allowed_hosts: ["*.neon.tech", "*.elephantsql.com", "*.supabase.co"]
+      forbidden_patterns: [
+        "DROP", "DELETE", "UPDATE", "INSERT", "TRUNCATE",
+        "ALTER", "CREATE", "GRANT", "REVOKE", "VACUUM"
+      ]
+    
+    auto_generated_rules:
+      enabled: true
+      strategy:
+        table_to_node: true
+        foreign_keys_to_relations: true
+        naming_convention:
+          node_type_format: "PascalCase"
+          relation_type_format: "UPPER_SNAKE"
+      
+      # Common table patterns and overrides
+      table_overrides:
+        user_roles:
+          relationship_type: "HAS_ROLE"
+        user_permissions:
+          relationship_type: "HAS_PERMISSION"
+        order_items:
+          relationship_type: "CONTAINS"
+        post_tags:
+          relationship_type: "TAGGED_WITH"
+        user_follows:
+          relationship_type: "FOLLOWS"
+        likes:
+          relationship_type: "LIKES"
+        comments:
+          relationship_type: "COMMENTED_ON"
+        reviews:
+          relationship_type: "REVIEWED"
+        ratings:
+          relationship_type: "RATED"
+
+# Neo4j configuration - using local instance
+neo4j:
+  uri: "bolt://localhost:7687"
+  user: "neo4j"
+  password: "password"
+  batch_processing:
+    batch_size: 250   # Small batches for free tier databases
+    commit_frequency: 1000
+    memory_limit_mb: 128
+
+# Generic transform rules that work with common table patterns
+transform_rules:
+  - name: "users_to_person_nodes"
+    rule_type: "node_creation"
+    source:
+      type: "table"
+      value: "users"
+    nodes:
+      - label: "User"
+        properties:
+          - source: "id"
+            target: "user_id"
+          - source: "username"
+            target: "username"
+          - source: "email"
+            target: "email"
+          - source: "first_name"
+            target: "first_name"
+          - source: "last_name"
+            target: "last_name"
+          - source: "created_at"
+            target: "created_at"
+          - source: "is_active"
+            target: "active"
+    priority: 1
+  
+  - name: "posts_to_content_nodes"
+    rule_type: "node_creation"
+    source:
+      type: "table"
+      value: "posts"
+    nodes:
+      - label: "Post"
+        properties:
+          - source: "id"
+            target: "post_id"
+          - source: "title"
+            target: "title"
+          - source: "content"
+            target: "content"
+          - source: "published_at"
+            target: "published_at"
+          - source: "view_count"
+            target: "views"
+    priority: 1
+  
+  - name: "categories_to_taxonomy_nodes"
+    rule_type: "node_creation"
+    source:
+      type: "table"
+      value: "categories"
+    nodes:
+      - label: "Category"
+        properties:
+          - source: "id"
+            target: "category_id"
+          - source: "name"
+            target: "name"
+          - source: "description"
+            target: "description"
+          - source: "slug"
+            target: "slug"
+    priority: 1
+  
+  - name: "products_to_item_nodes"
+    rule_type: "node_creation"
+    source:
+      type: "table"
+      value: "products"
+    nodes:
+      - label: "Product"
+        properties:
+          - source: "id"
+            target: "product_id"
+          - source: "name"
+            target: "name"
+          - source: "description"
+            target: "description"
+          - source: "price"
+            target: "price"
+          - source: "sku"
+            target: "sku"
+    priority: 1
+
+# Auto-generated rules configuration
+auto_generated_rules:
+  enabled: true
+  strategy:
+    table_to_node: true
+    foreign_keys_to_relations: true
+    naming_convention:
+      node_type_format: "PascalCase"
+      relation_type_format: "UPPER_SNAKE"

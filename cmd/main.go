@@ -9,7 +9,6 @@
  * and graph visualization. Commercial use requires separate licensing.
  */
 
-
 package main
 
 import (
@@ -25,7 +24,6 @@ import (
 	"path/filepath"
 	"time"
 
-	_ "github.com/go-sql-driver/mysql"
 	"github.com/gorilla/mux"
 	neo4jDriver "github.com/neo4j/neo4j-go-driver/v4/neo4j"
 	"github.com/sirupsen/logrus"
@@ -39,7 +37,12 @@ import (
 	"sql-graph-visualizer/internal/domain/repositories/configrule"
 	"sql-graph-visualizer/internal/infrastructure/middleware"
 	mysqlrepo "sql-graph-visualizer/internal/infrastructure/persistence/mysql"
+	postgresqlrepo "sql-graph-visualizer/internal/infrastructure/persistence/postgresql"
 	"sql-graph-visualizer/internal/infrastructure/persistence/neo4j"
+	
+	// Import database drivers
+	_ "github.com/go-sql-driver/mysql"
+	_ "github.com/lib/pq"
 )
 
 var addr = "127.0.0.1:3000"
@@ -52,36 +55,84 @@ func main() {
 	if err != nil {
 		logrus.Fatalf("Failed to load configuration: %v", err)
 	}
-	logrus.Infof("Configuration loaded: %+v", cfg)
 
-	logrus.Infof("cfg.Neo4jURI type: %T, value: %s", cfg.Neo4j.URI, cfg.Neo4j.URI)
-	logrus.Infof("cfg.Neo4jUser type: %T, value: %s", cfg.Neo4j.User, cfg.Neo4j.User)
-	logrus.Infof("cfg.Neo4jPassword type: %T, value: %s", cfg.Neo4j.Password, cfg.Neo4j.Password)
+	// Initialize database connection based on configuration
+	var dbPort ports.DatabasePort
+	var db *sql.DB
 
-	logrus.Infof("Initializing MySQL connection...")
-	dsn := fmt.Sprintf("%s:%s@tcp(%s:%d)/%s",
-		cfg.MySQL.User,
-		cfg.MySQL.Password,
-		cfg.MySQL.Host,
-		cfg.MySQL.Port,
-		cfg.MySQL.Database,
-	)
-	logrus.Infof("DSN: %s", dsn)
-	db, err := sql.Open("mysql", dsn)
-	if err != nil {
-		logrus.Fatalf("Failed to connect to MySQL: %v", err)
+	// Check if we have new multi-database configuration or legacy MySQL
+	if cfg.Database != nil && cfg.Database.Type != "" {
+		logrus.Infof("Using new multi-database configuration: %s", cfg.Database.Type)
+		
+		// For now, PostgreSQL will use the existing MySQL port interface
+		// This is a temporary workaround until we have a unified database interface
+		switch cfg.Database.Type {
+		case models.DatabaseTypePostgreSQL:
+			pgConfig := cfg.Database.PostgreSQL
+			logrus.Infof("Connecting to PostgreSQL: %s@%s:%d/%s", pgConfig.GetUsername(), pgConfig.GetHost(), pgConfig.GetPort(), pgConfig.GetDatabase())
+			
+			// Create PostgreSQL repository
+			postgresRepo := postgresqlrepo.NewPostgreSQLRepository(nil)
+			db, err = postgresRepo.ConnectToExisting(ctx, pgConfig)
+			if err != nil {
+				logrus.Fatalf("Failed to connect to PostgreSQL: %v", err)
+			}
+			
+			// Use PostgreSQL repository as DatabasePort
+			dbPort = postgresqlrepo.NewPostgreSQLDatabasePort(db)
+			logrus.Infof("Successfully connected to PostgreSQL database")
+			
+		case models.DatabaseTypeMySQL:
+			mysqlConfig := cfg.Database.MySQL
+			dsn := fmt.Sprintf("%s:%s@tcp(%s:%d)/%s",
+				mysqlConfig.GetUsername(),
+				mysqlConfig.GetPassword(),
+				mysqlConfig.GetHost(),
+				mysqlConfig.GetPort(),
+				mysqlConfig.GetDatabase(),
+			)
+			
+			db, err = sql.Open("mysql", dsn)
+			if err != nil {
+				logrus.Fatalf("Failed to connect to MySQL: %v", err)
+			}
+			
+			dbPort = mysqlrepo.NewMySQLDatabasePort(db)
+			logrus.Infof("Successfully connected to MySQL database")
+			
+		default:
+			logrus.Fatalf("Unsupported database type: %s", cfg.Database.Type)
+		}
+		
+	} else {
+		// Legacy MySQL configuration
+		logrus.Infof("Using legacy MySQL configuration")
+		
+		dsn := fmt.Sprintf("%s:%s@tcp(%s:%d)/%s",
+			cfg.MySQL.User,
+			cfg.MySQL.Password,
+			cfg.MySQL.Host,
+			cfg.MySQL.Port,
+			cfg.MySQL.Database,
+		)
+		
+		logrus.Infof("DSN: %s", dsn)
+		db, err = sql.Open("mysql", dsn)
+		if err != nil {
+			logrus.Fatalf("Failed to connect to MySQL: %v", err)
+		}
+		
+		dbPort = mysqlrepo.NewMySQLDatabasePort(db)
+		logrus.Infof("MySQL connection successful")
 	}
-	logrus.Infof("MySQL connection successful")
-
-	mysqlRepo := mysqlrepo.NewMySQLRepository(db)
+	
 	defer func() {
-		if err := mysqlRepo.Close(); err != nil {
-			logrus.Errorf("Error closing MySQL repository: %v", err)
+		if err := db.Close(); err != nil {
+			logrus.Errorf("Error closing database connection: %v", err)
 		}
 	}()
 
 	logrus.Infof("Initializing Neo4j connection...")
-	logrus.Infof("cfg.Neo4jURI type: %T, value: %s", cfg.Neo4j.URI, cfg.Neo4j.URI)
 	neo4jRepo, err := neo4j.NewNeo4jRepository(cfg.Neo4j.URI, cfg.Neo4j.User, cfg.Neo4j.Password)
 	if err != nil {
 		logrus.Fatalf("Failed to create Neo4j repository: %v", err)
@@ -108,7 +159,7 @@ func main() {
 	logrus.Infof("All data in Neo4j deleted")
 
 	logrus.Infof("Initializing services...")
-	transformService := transform.NewTransformService(mysqlRepo, neo4jRepo, configrule.NewRuleRepository())
+	transformService := transform.NewTransformService(dbPort, neo4jRepo, configrule.NewRuleRepository())
 	logrus.Infof("Services initialized")
 
 	// Start GraphQL server

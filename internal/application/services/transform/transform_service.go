@@ -27,30 +27,30 @@ import (
 )
 
 type TransformService struct {
-	mysqlPort ports.MySQLPort
-	neo4jPort ports.Neo4jPort
-	ruleRepo  ports.TransformRuleRepository
+	databasePort ports.DatabasePort
+	neo4jPort    ports.Neo4jPort
+	ruleRepo     ports.TransformRuleRepository
 }
 
 func NewTransformService(
-	mysqlPort ports.MySQLPort,
+	databasePort ports.DatabasePort,
 	neo4jPort ports.Neo4jPort,
 	ruleRepo ports.TransformRuleRepository,
 ) *TransformService {
 	return &TransformService{
-		mysqlPort: mysqlPort,
-		neo4jPort: neo4jPort,
-		ruleRepo:  ruleRepo,
+		databasePort: databasePort,
+		neo4jPort:    neo4jPort,
+		ruleRepo:     ruleRepo,
 	}
 }
 
 func (s *TransformService) TransformAndStore(ctx context.Context) error {
-	data, err := s.mysqlPort.FetchData()
+	data, err := s.databasePort.FetchData()
 	if err != nil {
 		return err
 	}
 
-	logrus.Infof("Loaded %d records from MySQL", len(data))
+	logrus.Infof("Loaded %d records from database", len(data))
 
 	rules, err := s.ruleRepo.GetAllRules(ctx)
 	logrus.Infof("Rules: %+v", rules)
@@ -100,7 +100,7 @@ func (s *TransformService) TransformAndStore(ctx context.Context) error {
 		if rule.Rule.SourceSQL != "" {
 			// Rule has custom SQL query
 			logrus.Infof("Executing SQL query: %s", rule.Rule.SourceSQL)
-			items, err = s.mysqlPort.ExecuteQuery(rule.Rule.SourceSQL)
+			items, err = s.databasePort.ExecuteQuery(rule.Rule.SourceSQL)
 			if err != nil {
 				return fmt.Errorf("error executing SQL query for rule %s: %v", rule.Rule.Name, err)
 			}
@@ -151,7 +151,7 @@ func (s *TransformService) TransformAndStore(ctx context.Context) error {
 		if rule.Rule.SourceSQL != "" {
 			// Rule has custom SQL query - process like before
 			logrus.Infof("Executing SQL query for relationship: %s", rule.Rule.SourceSQL)
-			items, err := s.mysqlPort.ExecuteQuery(rule.Rule.SourceSQL)
+			items, err := s.databasePort.ExecuteQuery(rule.Rule.SourceSQL)
 			if err != nil {
 				logrus.Warnf("Error executing SQL query for relationship rule %s: %v (continuing)", rule.Rule.Name, err)
 				continue

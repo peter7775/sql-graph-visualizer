@@ -34,6 +34,11 @@ func NewMySQLRepository(db *sql.DB) ports.MySQLPort {
 	return &MySQLRepository{db: db}
 }
 
+// NewMySQLDatabasePort creates a MySQL repository that implements the generic DatabasePort interface
+func NewMySQLDatabasePort(db *sql.DB) ports.DatabasePort {
+	return &MySQLRepository{db: db}
+}
+
 func (r *MySQLRepository) FetchData() ([]map[string]any, error) {
 	logrus.Infof("💾 FetchData called - returning empty slice (data loading moved to transform service)")
 	return []map[string]any{}, nil
