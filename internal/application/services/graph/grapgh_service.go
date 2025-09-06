@@ -5,57 +5,57 @@
  * LICENSE file in the root directory of this source tree.
  */
 
- package services
+package graph
 
- import (
-	 "mysql-graph-visualizer/internal/domain/models"
-	 "mysql-graph-visualizer/internal/domain/repositories"
- )
- 
- type GraphService interface {
-	 SearchNodes(term string) ([]models.SearchResult, error)
-	 ExportImage() ([]byte, error)
-	 ExportJSON() (any, error)
- }
- 
- type Neo4jGraphService struct {
-	 repo repositories.Neo4jRepository
- }
- 
- func NewNeo4jGraphService(repo repositories.Neo4jRepository) GraphService {
-	 return &Neo4jGraphService{repo: repo}
- }
- 
- func (s *Neo4jGraphService) SearchNodes(term string) ([]models.SearchResult, error) {
-	 criteria := "(?i).*" + term + ".*"
-	 graphs, err := s.repo.SearchNodes(criteria)
-	 if err != nil {
-		 return nil, err
-	 }
-	 
-	 // Convert GraphAggregates to SearchResults (placeholder implementation)
-	 var results []models.SearchResult
-	 for _, graphAgg := range graphs {
-		 for _, node := range graphAgg.GetNodes() {
-			 result := models.SearchResult{
-				 ID:     node.ID,
-				 Name:   node.Type, // Using type as name for now
-				 Labels: []string{node.Type},
-			 }
-			 results = append(results, result)
-		 }
-	 }
-	 return results, nil
- }
- 
- func (s *Neo4jGraphService) ExportImage() ([]byte, error) {
-	 // Implementation of PNG export
-	 // You can use a library like "github.com/fogleman/gg" for graph rendering
-	 return nil, nil
- }
- 
- func (s *Neo4jGraphService) ExportJSON() (any, error) {
-	 query := `
+import (
+	"mysql-graph-visualizer/internal/domain/models"
+	"mysql-graph-visualizer/internal/domain/repositories"
+)
+
+type GraphService interface {
+	SearchNodes(term string) ([]models.SearchResult, error)
+	ExportImage() ([]byte, error)
+	ExportJSON() (any, error)
+}
+
+type Neo4jGraphService struct {
+	repo repositories.Neo4jRepository
+}
+
+func NewNeo4jGraphService(repo repositories.Neo4jRepository) GraphService {
+	return &Neo4jGraphService{repo: repo}
+}
+
+func (s *Neo4jGraphService) SearchNodes(term string) ([]models.SearchResult, error) {
+	criteria := "(?i).*" + term + ".*"
+	graphs, err := s.repo.SearchNodes(criteria)
+	if err != nil {
+		return nil, err
+	}
+
+	// Convert GraphAggregates to SearchResults (placeholder implementation)
+	var results []models.SearchResult
+	for _, graphAgg := range graphs {
+		for _, node := range graphAgg.GetNodes() {
+			result := models.SearchResult{
+				ID:     node.ID,
+				Name:   node.Type, // Using type as name for now
+				Labels: []string{node.Type},
+			}
+			results = append(results, result)
+		}
+	}
+	return results, nil
+}
+
+func (s *Neo4jGraphService) ExportImage() ([]byte, error) {
+	// Implementation of PNG export
+	// You can use a library like "github.com/fogleman/gg" for graph rendering
+	return nil, nil
+}
+
+func (s *Neo4jGraphService) ExportJSON() (any, error) {
+	query := `
 		 MATCH (n)-[r]->(m)
 		 RETURN {
 			 nodes: collect(distinct {
@@ -72,6 +72,5 @@
 			 })
 		 } as graph
 	 `
-	 return s.repo.ExportGraph(query)
- }
- 
+	return s.repo.ExportGraph(query)
+}

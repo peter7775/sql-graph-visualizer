@@ -87,12 +87,12 @@ func (s *TransformService) TransformAndStore(ctx context.Context) error {
 		if rule.Rule.RuleType != transform.NodeRule {
 			continue
 		}
-		
+
 		logrus.Infof("Processing node rule: %s", rule.Rule.Name)
-		
+
 		var items []map[string]any
 		var err error
-		
+
 		if rule.Rule.SourceSQL != "" {
 			// Rule has custom SQL query
 			logrus.Infof("Executing SQL query: %s", rule.Rule.SourceSQL)
@@ -112,7 +112,7 @@ func (s *TransformService) TransformAndStore(ctx context.Context) error {
 		}
 
 		logrus.Infof("Data returned for node rule %s: %d records", rule.Rule.Name, len(items))
-		
+
 		// Convert map properties to supported types before transformation
 		for i, item := range items {
 			items[i] = s.convertMapProperties(item)
@@ -141,9 +141,9 @@ func (s *TransformService) TransformAndStore(ctx context.Context) error {
 		if rule.Rule.RuleType != transform.RelationshipRule {
 			continue
 		}
-		
+
 		logrus.Infof("Processing relationship rule: %s", rule.Rule.Name)
-		
+
 		if rule.Rule.SourceSQL != "" {
 			// Rule has custom SQL query - process like before
 			logrus.Infof("Executing SQL query for relationship: %s", rule.Rule.SourceSQL)
@@ -152,7 +152,7 @@ func (s *TransformService) TransformAndStore(ctx context.Context) error {
 				logrus.Warnf("Error executing SQL query for relationship rule %s: %v (continuing)", rule.Rule.Name, err)
 				continue
 			}
-			
+
 			// Convert map properties to supported types before transformation
 			for i, item := range items {
 				items[i] = s.convertMapProperties(item)
@@ -260,7 +260,7 @@ func (s *TransformService) createRelationship(data map[string]any, graph *graph.
 	if !ok {
 		return fmt.Errorf("relationship missing _type field")
 	}
-	
+
 	direction, ok := data["_direction"].(transform.Direction)
 	if !ok {
 		return fmt.Errorf("relationship missing _direction field")
@@ -367,9 +367,9 @@ func (s *TransformService) createRelationshipsFromExistingNodes(rule *transform_
 	}
 
 	logrus.Infof("Creating relationships from existing nodes for rule: %s", rule.Rule.Name)
-	logrus.Infof("Source node type: %s, key: %s, target_field: %s", 
+	logrus.Infof("Source node type: %s, key: %s, target_field: %s",
 		rule.Rule.SourceNode.Type, rule.Rule.SourceNode.Key, rule.Rule.SourceNode.TargetField)
-	logrus.Infof("Target node type: %s, key: %s, target_field: %s", 
+	logrus.Infof("Target node type: %s, key: %s, target_field: %s",
 		rule.Rule.TargetNode.Type, rule.Rule.TargetNode.Key, rule.Rule.TargetNode.TargetField)
 
 	// Get all existing nodes
@@ -387,7 +387,7 @@ func (s *TransformService) createRelationshipsFromExistingNodes(rule *transform_
 		}
 	}
 
-	logrus.Infof("Found %d source nodes of type %s and %d target nodes of type %s", 
+	logrus.Infof("Found %d source nodes of type %s and %d target nodes of type %s",
 		len(sourceNodes), rule.Rule.SourceNode.Type, len(targetNodes), rule.Rule.TargetNode.Type)
 
 	// Create relationships based on matching fields
@@ -431,12 +431,12 @@ func (s *TransformService) createRelationshipsFromExistingNodes(rule *transform_
 					properties,
 				)
 				if err != nil {
-					logrus.Warnf("Failed to create relationship %s between %s and %s: %v", 
+					logrus.Warnf("Failed to create relationship %s between %s and %s: %v",
 						rule.Rule.RelationType, sourceNode.ID, targetNode.ID, err)
 					continue
 				}
 				relationshipCount++
-				logrus.Infof("Created relationship %s: %s(%s) -> %s(%s)", 
+				logrus.Infof("Created relationship %s: %s(%s) -> %s(%s)",
 					rule.Rule.RelationType, sourceNode.Type, sourceKeyStr, targetNode.Type, targetKeyStr)
 			}
 		}

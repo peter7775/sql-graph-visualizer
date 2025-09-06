@@ -141,7 +141,7 @@ func (g *GraphAggregate) AddDirectRelationship(
 	properties map[string]any,
 ) error {
 	var sourceNode, targetNode *entities.Node
-	
+
 	for _, node := range g.nodes {
 		if node.Properties != nil {
 			if nodeID, exists := node.Properties["id"]; exists && fmt.Sprintf("%v", nodeID) == fmt.Sprintf("%v", sourceNodeID) {
@@ -152,12 +152,12 @@ func (g *GraphAggregate) AddDirectRelationship(
 			}
 		}
 	}
-	
+
 	if sourceNode == nil || targetNode == nil {
 		logrus.Warnf("Could not find nodes for relationship %s: source=%v, target=%v", relType, sourceNodeID, targetNodeID)
 		return fmt.Errorf("source or target node not found for relationship %s", relType)
 	}
-	
+
 	rel := Relationship{
 		Type:       relType,
 		Direction:  transform.Outgoing,
@@ -165,7 +165,7 @@ func (g *GraphAggregate) AddDirectRelationship(
 		TargetNode: targetNode,
 		Properties: properties,
 	}
-	
+
 	g.relationships = append(g.relationships, rel)
 	logrus.Debugf("Added direct relationship: %s from %v to %v", relType, sourceNodeID, targetNodeID)
 	return nil

@@ -32,7 +32,7 @@ func (s *Neo4jGraphService) SearchNodes(term string) ([]models.SearchResult, err
 	if err != nil {
 		return nil, err
 	}
-	
+
 	// Convert GraphAggregates to SearchResults (placeholder implementation)
 	var results []models.SearchResult
 	for _, graphAgg := range graphs {

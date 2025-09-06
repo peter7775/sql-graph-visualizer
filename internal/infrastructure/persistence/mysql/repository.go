@@ -31,7 +31,6 @@ func (r *MySQLRepository) Close() error {
 	return r.db.Close()
 }
 
-
 func (r *MySQLRepository) ExecuteQuery(query string) ([]map[string]any, error) {
 	rows, err := r.db.Query(query)
 	if err != nil {

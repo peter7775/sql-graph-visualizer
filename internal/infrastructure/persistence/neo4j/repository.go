@@ -59,9 +59,9 @@ func (r *Neo4jRepository) StoreGraph(graph *graph.GraphAggregate) error {
 			logrus.Warnf("Target node missing id property for relationship %s", rel.Type)
 			continue
 		}
-		
+
 		logrus.Infof("Creating relationship %s: %v -> %v", rel.Type, sourceID, targetID)
-		
+
 		// Create relationship with proper source and target matching
 		query := "MATCH (a {id: $sourceId}), (b {id: $targetId}) CREATE (a)-[r:" + rel.Type + "]->(b) SET r = $props"
 		params := map[string]any{
@@ -69,13 +69,13 @@ func (r *Neo4jRepository) StoreGraph(graph *graph.GraphAggregate) error {
 			"targetId": targetID,
 			"props":    rel.Properties,
 		}
-		
+
 		result, err := session.Run(query, params)
 		if err != nil {
 			logrus.Errorf("Failed to create relationship %s from %v to %v: %v", rel.Type, sourceID, targetID, err)
 			return err
 		}
-		
+
 		// Check if relationship was actually created
 		summary, err := result.Consume()
 		if err != nil {
@@ -121,66 +121,66 @@ func (r *Neo4jRepository) ExportGraph(query string) (any, error) {
 	defer session.Close()
 
 	graphAgg := graph.NewGraphAggregate("")
-	
+
 	// First, fetch all nodes
 	nodeResult, err := session.Run(`MATCH (n) RETURN n`, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch nodes: %w", err)
 	}
-	
+
 	processedNodes := make(map[int64]bool)
 	for nodeResult.Next() {
 		record := nodeResult.Record()
 		node := record.GetByIndex(0).(neo4j.Node)
-		
+
 		// Check if we've already processed this node
 		if processedNodes[node.Id] {
 			continue
 		}
 		processedNodes[node.Id] = true
-		
+
 		// Add node to graph
 		nodeProps := make(map[string]any)
 		for key, value := range node.Props {
 			nodeProps[key] = value
 		}
-		
+
 		// Set ID if not present in props
 		if _, hasID := nodeProps["id"]; !hasID {
 			nodeProps["id"] = node.Id
 		}
-		
+
 		label := "Unknown"
 		if len(node.Labels) > 0 {
 			label = node.Labels[0]
 		}
-		
+
 		logrus.Debugf("Adding node to graph: ID=%d, Label=%s, Props=%+v", node.Id, label, nodeProps)
 		graphAgg.AddNode(label, nodeProps)
 	}
-	
+
 	if err = nodeResult.Err(); err != nil {
 		return nil, fmt.Errorf("error processing nodes: %w", err)
 	}
-	
+
 	// Then, fetch all relationships
 	relResult, err := session.Run(`MATCH (n)-[r]->(m) RETURN n, r, m`, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch relationships: %w", err)
 	}
-	
+
 	for relResult.Next() {
 		record := relResult.Record()
 		sourceNode := record.GetByIndex(0).(neo4j.Node)
 		rel := record.GetByIndex(1).(neo4j.Relationship)
 		targetNode := record.GetByIndex(2).(neo4j.Node)
-		
+
 		// Create relationship properties
 		relProps := make(map[string]any)
 		for key, value := range rel.Props {
 			relProps[key] = value
 		}
-		
+
 		// Add relationship to graph
 		err = graphAgg.AddDirectRelationship(
 			rel.Type,
@@ -192,18 +192,18 @@ func (r *Neo4jRepository) ExportGraph(query string) (any, error) {
 			logrus.Warnf("Failed to add relationship %s: %v", rel.Type, err)
 			continue
 		}
-		
-		logrus.Debugf("Adding relationship: Type=%s, Source=%d, Target=%d, Props=%+v", 
+
+		logrus.Debugf("Adding relationship: Type=%s, Source=%d, Target=%d, Props=%+v",
 			rel.Type, sourceNode.Id, targetNode.Id, relProps)
 	}
-	
+
 	if err = relResult.Err(); err != nil {
 		return nil, fmt.Errorf("error processing relationships: %w", err)
 	}
-	
-	logrus.Infof("ExportGraph complete: %d nodes, %d relationships", 
+
+	logrus.Infof("ExportGraph complete: %d nodes, %d relationships",
 		len(graphAgg.GetNodes()), len(graphAgg.GetRelationships()))
-	
+
 	return graphAgg, nil
 }
 

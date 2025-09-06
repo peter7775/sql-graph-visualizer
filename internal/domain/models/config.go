@@ -7,6 +7,7 @@
 
 package models
 
+// TransformationConfig represents a single transformation rule configuration.
 type TransformationConfig struct {
 	Name          string            `yaml:"name"`
 	Source        SourceConfig      `yaml:"source"`
@@ -23,34 +24,40 @@ type TransformationConfig struct {
 	Priority      int               `yaml:"priority,omitempty"`
 }
 
+// NodeConfig represents node configuration for transformation rules.
 type NodeConfig struct {
 	Label      string            `yaml:"label"`
 	Properties []PropertyMapping `yaml:"properties"`
 }
 
+// PropertyMapping represents mapping between source and target properties.
 type PropertyMapping struct {
 	Source string `yaml:"source"`
 	Target string `yaml:"target"`
 }
 
+// RelationConfig represents relationship configuration between nodes.
 type RelationConfig struct {
 	Type string       `yaml:"type"`
 	From RelationNode `yaml:"from"`
 	To   RelationNode `yaml:"to"`
 }
 
+// RelationNode represents a node in a relationship configuration.
 type RelationNode struct {
 	Type        string `yaml:"type"`
 	Key         string `yaml:"key"`
 	TargetField string `yaml:"target_field"`
 }
 
+// SourceConfig represents data source configuration for transformations.
 type SourceConfig struct {
 	Type        string `yaml:"type"`
 	Value       string `yaml:"value"`
 	SourceTable string `yaml:"source_table"`
 }
 
+// MySQLConfig represents MySQL database connection configuration.
 type MySQLConfig struct {
 	Host     string `yaml:"host"`
 	Port     int    `yaml:"port"`
@@ -59,12 +66,14 @@ type MySQLConfig struct {
 	Database string `yaml:"database"`
 }
 
+// Neo4jConfig represents Neo4j database connection configuration.
 type Neo4jConfig struct {
 	URI      string `yaml:"uri"`
 	User     string `yaml:"user"`
 	Password string `yaml:"password"`
 }
 
+// Config represents the main application configuration.
 type Config struct {
 	MySQL struct {
 		Host     string `yaml:"host"`

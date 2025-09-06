@@ -24,7 +24,7 @@ import (
 
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
-	
+
 	server "mysql-graph-visualizer/internal/application/services/graphql/server"
 	transformService "mysql-graph-visualizer/internal/application/services/transform"
 	"mysql-graph-visualizer/internal/domain/aggregates/graph"

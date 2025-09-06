@@ -86,7 +86,7 @@ func main() {
 
 	_, err = session.Run("MATCH (n) DETACH DELETE n", nil)
 	if err != nil {
- 	   logrus.Fatalf("Error deleting data in Neo4j: %v", err)
+		logrus.Fatalf("Error deleting data in Neo4j: %v", err)
 	}
 	logrus.Infof("All data in Neo4j deleted")
 
@@ -140,7 +140,7 @@ func startVisualizationServer(neo4jRepo ports.Neo4jPort, cfg *models.Config) *ht
 		logrus.Infof("Request to /config endpoint")
 		w.Header().Set("Content-Type", "application/json")
 		w.Header().Set("Access-Control-Allow-Origin", "*")
-		
+
 		configResponse := map[string]any{
 			"neo4j": map[string]string{
 				"uri":      cfg.Neo4j.URI,
@@ -148,7 +148,7 @@ func startVisualizationServer(neo4jRepo ports.Neo4jPort, cfg *models.Config) *ht
 				"password": cfg.Neo4j.Password,
 			},
 		}
-		
+
 		if err := json.NewEncoder(w).Encode(configResponse); err != nil {
 			logrus.Errorf("Error encoding config response: %v", err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)

@@ -14,7 +14,7 @@ import (
 	"path/filepath"
 
 	"github.com/sirupsen/logrus"
-	"gopkg.in/yaml.v2"
+	yaml "gopkg.in/yaml.v2"
 )
 
 type Config struct {
@@ -38,13 +38,13 @@ type Config struct {
 
 func LoadConfig(filePath string) (*Config, error) {
 	logrus.Debugf("Attempting to load config from: %s", filePath)
-	
+
 	// Check if file exists
 	if _, err := os.Stat(filePath); os.IsNotExist(err) {
 		logrus.Errorf("Config file does not exist: %s", filePath)
 		return nil, err
 	}
-	
+
 	data, err := os.ReadFile(filePath)
 	if err != nil {
 		logrus.Errorf("Error reading config file %s: %v", filePath, err)
@@ -64,7 +64,7 @@ func Load() (*Config, error) {
 	logrus.Debugf("Config loading - GO_ENV: %s, CONFIG_PATH: %s", os.Getenv("GO_ENV"), os.Getenv("CONFIG_PATH"))
 	logrus.Debugf("Current working directory: %s", getWorkingDir())
 	logrus.Debugf("Project root: %s", findProjectRoot())
-	
+
 	// Check for environment-specific config
 	if configPath := os.Getenv("CONFIG_PATH"); configPath != "" {
 		logrus.Debugf("Using CONFIG_PATH: %s", configPath)
@@ -75,14 +75,14 @@ func Load() (*Config, error) {
 		}
 		return LoadConfig(configPath)
 	}
-	
+
 	// Check if we're in test environment
 	if os.Getenv("GO_ENV") == "test" {
 		configPath := findProjectRoot() + "/config/config-test.yml"
 		logrus.Debugf("Using test config: %s", configPath)
 		return LoadConfig(configPath)
 	}
-	
+
 	// Default config
 	configPath := findProjectRoot() + "/config/config.yml"
 	logrus.Debugf("Using default config: %s", configPath)

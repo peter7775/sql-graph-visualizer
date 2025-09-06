@@ -17,10 +17,10 @@ type VisualizationHandler struct {
 	neo4jURI      string
 	neo4jUsername string
 	neo4jPassword string
-	graphService  services.GraphService
+	graphService  graph.GraphService
 }
 
-func NewVisualizationHandler(uri, username, password string, graphService services.GraphService) *VisualizationHandler {
+func NewVisualizationHandler(uri, username, password string, graphService graph.GraphService) *VisualizationHandler {
 	return &VisualizationHandler{
 		neo4jURI:      uri,
 		neo4jUsername: username,

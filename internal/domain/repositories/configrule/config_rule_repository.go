@@ -10,8 +10,8 @@ package configrule
 import (
 	"context"
 	"fmt"
-	"mysql-graph-visualizer/internal/domain/repositories/config"
 	transformAgg "mysql-graph-visualizer/internal/domain/aggregates/transform"
+	"mysql-graph-visualizer/internal/domain/repositories/config"
 	transformVal "mysql-graph-visualizer/internal/domain/valueobjects/transform"
 
 	"github.com/sirupsen/logrus"

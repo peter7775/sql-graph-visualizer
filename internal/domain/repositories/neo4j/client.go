@@ -108,9 +108,9 @@ func (c *Client) StoreGraph(graph *graph.GraphAggregate) error {
 			logrus.Warnf("Target node missing id property for relationship %s", rel.Type)
 			continue
 		}
-		
+
 		logrus.Infof("Creating relationship %s: %v -> %v", rel.Type, sourceID, targetID)
-		
+
 		// Create relationship with proper name (not generic RELATION)
 		query := "MATCH (a:Node {id: $fromId}), (b:Node {id: $toId}) CREATE (a)-[r:" + rel.Type + "]->(b) SET r = $props"
 		params := map[string]any{
@@ -118,13 +118,13 @@ func (c *Client) StoreGraph(graph *graph.GraphAggregate) error {
 			"toId":   targetID,
 			"props":  rel.Properties,
 		}
-		
+
 		result, err := session.Run(query, params)
 		if err != nil {
 			logrus.Errorf("Failed to create relationship %s from %v to %v: %v", rel.Type, sourceID, targetID, err)
 			return err
 		}
-		
+
 		// Check if relationship was actually created
 		summary, err := result.Consume()
 		if err != nil {

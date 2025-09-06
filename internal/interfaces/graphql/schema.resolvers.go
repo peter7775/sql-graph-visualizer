@@ -7,11 +7,10 @@
 
 package graphql
 
-
 import (
 	"context"
-	"mysql-graph-visualizer/internal/domain/aggregates/graph"
 	graphql "mysql-graph-visualizer/internal/application/services/graphql/generated"
+	"mysql-graph-visualizer/internal/domain/aggregates/graph"
 	graphqlModels "mysql-graph-visualizer/internal/domain/models/graphql"
 )
 

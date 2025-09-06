@@ -7,10 +7,12 @@
 
 package entities
 
+// BaseEntity provides basic entity functionality with an ID.
 type BaseEntity struct {
 	ID string
 }
 
+// GetID returns the entity's unique identifier.
 func (e *BaseEntity) GetID() string {
 	return e.ID
 }

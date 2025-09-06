@@ -7,6 +7,7 @@
 
 package models
 
+// SearchResult represents the result of a graph search operation.
 type SearchResult struct {
 	ID     string   `json:"id"`
 	Name   string   `json:"name"`
