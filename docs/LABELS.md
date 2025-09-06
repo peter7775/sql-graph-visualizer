@@ -1,8 +1,8 @@
-# ️ GitHub Labels Guide
+# GitHub Labels Guide
 
 This document describes the labeling system for the mysql-graph-visualizer project.
 
-##  Quick Setup
+## Quick Setup
 
 Run the setup script to create all labels automatically:
 
@@ -17,9 +17,9 @@ Run the setup script to create all labels automatically:
 
 ---
 
-## ️ Label Categories
+## Label Categories
 
-###  **Type Labels** (What kind of issue/PR)
+### **Type Labels** (What kind of issue/PR)
 | Label | Description | Color |
 |-------|-------------|-------|
 | `bug` | Something isn't working | ![#d73a4a](https://via.placeholder.com/15/d73a4a/000000?text=+) `#d73a4a` |
@@ -27,7 +27,7 @@ Run the setup script to create all labels automatically:
 | `documentation` | Improvements or additions to documentation | ![#0075ca](https://via.placeholder.com/15/0075ca/000000?text=+) `#0075ca` |
 | `question` | Further information is requested | ![#d876e3](https://via.placeholder.com/15/d876e3/000000?text=+) `#d876e3` |
 
-###  **Priority Labels** (How urgent)
+### **Priority Labels** (How urgent)
 | Label | Description | Color |
 |-------|-------------|-------|
 | `priority:critical` | Critical priority - needs immediate attention | ![#b60205](https://via.placeholder.com/15/b60205/000000?text=+) `#b60205` |
@@ -35,7 +35,7 @@ Run the setup script to create all labels automatically:
 | `priority:medium` | Medium priority | ![#fbca04](https://via.placeholder.com/15/fbca04/000000?text=+) `#fbca04` |
 | `priority:low` | Low priority | ![#0e8a16](https://via.placeholder.com/15/0e8a16/000000?text=+) `#0e8a16` |
 
-###  **Status Labels** (Current state)
+### **Status Labels** (Current state)
 | Label | Description | Color |
 |-------|-------------|-------|
 | `needs-triage` | Issue needs to be triaged and prioritized | ![#ededed](https://via.placeholder.com/15/ededed/000000?text=+) `#ededed` |
@@ -45,7 +45,7 @@ Run the setup script to create all labels automatically:
 | `blocked` | Progress is blocked by external dependency | ![#b60205](https://via.placeholder.com/15/b60205/000000?text=+) `#b60205` |
 | `wip` | Work in progress | ![#fef2c0](https://via.placeholder.com/15/fef2c0/000000?text=+) `#fef2c0` |
 
-### ️ **Component Labels** (DDD Architecture)
+### **Component Labels** (DDD Architecture)
 | Label | Description | Color |
 |-------|-------------|-------|
 | `domain` | Domain layer - core business logic | ![#5319e7](https://via.placeholder.com/15/5319e7/000000?text=+) `#5319e7` |
@@ -53,7 +53,7 @@ Run the setup script to create all labels automatically:
 | `infrastructure` | Infrastructure layer - databases, external services | ![#0052cc](https://via.placeholder.com/15/0052cc/000000?text=+) `#0052cc` |
 | `interface` | Interface layer - APIs and web interfaces | ![#006b75](https://via.placeholder.com/15/006b75/000000?text=+) `#006b75` |
 
-###  **Technology Labels** (Tech stack)
+### **Technology Labels** (Tech stack)
 | Label | Description | Color |
 |-------|-------------|-------|
 | `mysql` | MySQL database related | ![#e97627](https://via.placeholder.com/15/e97627/000000?text=+) `#e97627` |
@@ -63,7 +63,7 @@ Run the setup script to create all labels automatically:
 | `docker` | Docker containerization | ![#0db7ed](https://via.placeholder.com/15/0db7ed/000000?text=+) `#0db7ed` |
 | `visualization` | Graph visualization and UI | ![#8a2be2](https://via.placeholder.com/15/8a2be2/000000?text=+) `#8a2be2` |
 
-###  **Feature Area Labels** (Functional areas)
+### **Feature Area Labels** (Functional areas)
 | Label | Description | Color |
 |-------|-------------|-------|
 | `database` | Database operations and connections | ![#d4c5f9](https://via.placeholder.com/15/d4c5f9/000000?text=+) `#d4c5f9` |
@@ -73,7 +73,7 @@ Run the setup script to create all labels automatically:
 | `performance` | Performance optimization and issues | ![#ff6b6b](https://via.placeholder.com/15/ff6b6b/000000?text=+) `#ff6b6b` |
 | `security` | Security related issues | ![#ff9f43](https://via.placeholder.com/15/ff9f43/000000?text=+) `#ff9f43` |
 
-### ⏱️ **Effort Labels** (Time estimation)
+### **Effort Labels** (Time estimation)
 | Label | Description | Color |
 |-------|-------------|-------|
 | `effort:small` | Small effort - 1-2 hours | ![#c2e0c6](https://via.placeholder.com/15/c2e0c6/000000?text=+) `#c2e0c6` |
@@ -81,7 +81,7 @@ Run the setup script to create all labels automatically:
 | `effort:large` | Large effort - 1+ weeks | ![#ffaaa5](https://via.placeholder.com/15/ffaaa5/000000?text=+) `#ffaaa5` |
 | `effort:epic` | Epic - multiple weeks/months | ![#d1ecf1](https://via.placeholder.com/15/d1ecf1/000000?text=+) `#d1ecf1` |
 
-### ⭐ **Special Labels**
+### **Special Labels**
 | Label | Description | Color |
 |-------|-------------|-------|
 | `breaking-change` | Changes that break backward compatibility | ![#b60205](https://via.placeholder.com/15/b60205/000000?text=+) `#b60205` |
@@ -91,7 +91,7 @@ Run the setup script to create all labels automatically:
 
 ---
 
-##  **Usage Examples**
+## **Usage Examples**
 
 ### **Issue Labeling Examples:**
 
@@ -134,7 +134,7 @@ documentation + effort:small + ready-to-merge
 
 ---
 
-##  **Best Practices**
+## **Best Practices**
 
 ### **For Issues:**
 1. **Always use a type label** (`bug`, `enhancement`, `question`, etc.)
@@ -156,7 +156,7 @@ documentation + effort:small + ready-to-merge
 
 ---
 
-##  **Maintenance**
+## **Maintenance**
 
 ### **Regular Label Cleanup:**
 - Review `stale` labeled issues monthly
@@ -180,7 +180,7 @@ documentation + effort:small + ready-to-merge
 
 ---
 
-##  **Contributing**
+## **Contributing**
 
 When contributing to the project:
 1. **Use appropriate labels** on your issues and PRs
