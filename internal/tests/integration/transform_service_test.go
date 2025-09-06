@@ -26,9 +26,11 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	graphqlServer "mysql-graph-visualizer/internal/application/services/graphql"
+
 	transformService "mysql-graph-visualizer/internal/application/services/transform"
 	"mysql-graph-visualizer/internal/domain/aggregates/graph"
 	transformAggregates "mysql-graph-visualizer/internal/domain/aggregates/transform"
+	"mysql-graph-visualizer/internal/domain/models"
 	transformObjects "mysql-graph-visualizer/internal/domain/valueobjects/transform"
 	"mysql-graph-visualizer/internal/infrastructure/middleware"
 
@@ -47,42 +49,80 @@ type mockRuleRepo struct{}
 
 func (m *mockRuleRepo) GetAllRules(ctx context.Context) ([]*transformAggregates.RuleAggregate, error) {
 	return []*transformAggregates.RuleAggregate{
+		// Users to nodes
 		{
 			Rule: transformObjects.TransformRule{
-				Name:       "php_actions_to_nodes",
+				Name:       "users_to_nodes",
 				RuleType:   transformObjects.NodeRule,
-				SourceSQL:  "SELECT DISTINCT au.id as id, au.id_typu, au.infix, au.nazev, au.prefix FROM testdata_uzly au WHERE au.id_typu = 17",
-				TargetType: "NodePHPAction",
+				SourceSQL:  "SELECT u.id, u.username, u.email, u.full_name, u.role FROM users u WHERE u.is_active = 1",
+				TargetType: "User",
 				FieldMappings: map[string]string{
-					"id":      "id",
-					"id_typu": "id_typu",
-					"infix":   "infix",
-					"nazev":   "name",
-					"prefix":  "prefix",
+					"id":        "id",
+					"username":  "username",
+					"email":     "email",
+					"full_name": "full_name",
+					"role":      "role",
 				},
 			},
 		},
+		// Projects to nodes
 		{
 			Rule: transformObjects.TransformRule{
-				Name:       "php_actions",
+				Name:       "projects_to_nodes",
 				RuleType:   transformObjects.NodeRule,
-				SourceSQL:  "SELECT DISTINCT au.id_node as id, au.php_code FROM testdata_uzly_php_action au JOIN testdata_uzly aupa ON au.id_node = aupa.id",
-				TargetType: "PHPAction",
+				SourceSQL:  "SELECT p.id, p.name, p.description, p.status, p.priority, p.budget FROM projects p",
+				TargetType: "Project",
 				FieldMappings: map[string]string{
-					"id":       "id",
-					"php_code": "php_code",
+					"id":          "id",
+					"name":        "name",
+					"description": "description",
+					"status":      "status",
+					"priority":    "priority",
+					"budget":      "budget",
 				},
 			},
 		},
+		// Tasks to nodes
 		{
 			Rule: transformObjects.TransformRule{
-				Name:          "php_action_relationship",
+				Name:       "tasks_to_nodes",
+				RuleType:   transformObjects.NodeRule,
+				SourceSQL:  "SELECT t.id, t.title, t.description, t.status, t.priority, t.estimated_hours FROM tasks t",
+				TargetType: "Task",
+				FieldMappings: map[string]string{
+					"id":              "id",
+					"title":           "title",
+					"description":     "description",
+					"status":          "status",
+					"priority":        "priority",
+					"estimated_hours": "estimated_hours",
+				},
+			},
+		},
+		// User-Project relationship (created by)
+		{
+			Rule: transformObjects.TransformRule{
+				Name:          "user_created_project",
 				RuleType:      transformObjects.RelationshipRule,
-				RelationType:  "AKCE",
+				RelationType:  "CREATED",
 				Direction:     transformObjects.Outgoing,
-				SourceNode:    &transformObjects.NodeMapping{Type: "PHPAction", Key: "id", TargetField: "id"},
-				TargetNode:    &transformObjects.NodeMapping{Type: "NodePHPAction", Key: "id", TargetField: "id"},
-				FieldMappings: map[string]string{"id": "id"},
+				SourceSQL:     "SELECT p.created_by, p.id FROM projects p",
+				SourceNode:    &transformObjects.NodeMapping{Type: "User", Key: "created_by", TargetField: "id"},
+				TargetNode:    &transformObjects.NodeMapping{Type: "Project", Key: "id", TargetField: "id"},
+				FieldMappings: map[string]string{"created_by": "created_by", "id": "id"},
+			},
+		},
+		// Task-Project relationship (belongs to)
+		{
+			Rule: transformObjects.TransformRule{
+				Name:          "task_belongs_to_project",
+				RuleType:      transformObjects.RelationshipRule,
+				RelationType:  "BELONGS_TO",
+				Direction:     transformObjects.Outgoing,
+				SourceSQL:     "SELECT t.id, t.project_id FROM tasks t",
+				SourceNode:    &transformObjects.NodeMapping{Type: "Task", Key: "id", TargetField: "id"},
+				TargetNode:    &transformObjects.NodeMapping{Type: "Project", Key: "project_id", TargetField: "id"},
+				FieldMappings: map[string]string{"id": "id", "project_id": "project_id"},
 			},
 		},
 	}, nil
@@ -272,7 +312,15 @@ func TestIntegrationTransformRulesAndVisualization(t *testing.T) {
 	}
 	defer neo4jClient.Close()
 
-	go server.StartGraphQLServer(neo4jClient)
+	// Convert config to models.Config
+	modelsConfig := &models.Config{
+		Neo4j: models.Neo4jConfig{
+			URI:      cfg.Neo4j.URI,
+			User:     cfg.Neo4j.User,
+			Password: cfg.Neo4j.Password,
+		},
+	}
+	_ = graphqlServer.StartGraphQLServer(neo4jClient, modelsConfig)
 
 	mockRepo := &mockRuleRepo{}
 
@@ -305,21 +353,27 @@ func TestIntegrationTransformRulesAndVisualization(t *testing.T) {
 
 	mysqlRepo := &realMySQLRepo{db: db}
 
-	results1, err := mysqlRepo.ExecuteQuery("SELECT DISTINCT id, id_typu, infix, nazev, prefix FROM testdata_uzly WHERE id_typu = 17")
+	// Test queries with real data from init.sql
+	usersResults, err := mysqlRepo.ExecuteQuery("SELECT u.id, u.username, u.email, u.full_name, u.role FROM users u WHERE u.is_active = 1")
 	if err != nil {
-		t.Logf("Test table testdata_uzly not found (expected in CI): %v", err)
-		results1 = []map[string]any{}
-	} else {
-		t.Logf("First SQL query returned %d records: %v", len(results1), results1)
+		t.Fatalf("Error querying users table: %v", err)
 	}
+	t.Logf("Users query returned %d records", len(usersResults))
+	assert.Greater(t, len(usersResults), 0, "Should have users in database")
 
-	results2, err := mysqlRepo.ExecuteQuery("SELECT DISTINCT id_node as id, php_code FROM testdata_uzly_php_action au JOIN testdata_uzly aupa ON au.id_node = aupa.id")
+	projectsResults, err := mysqlRepo.ExecuteQuery("SELECT p.id, p.name, p.description, p.status, p.priority, p.budget FROM projects p")
 	if err != nil {
-		t.Logf("Test table testdata_uzly_php_action not found (expected in CI): %v", err)
-		results2 = []map[string]any{}
-	} else {
-		t.Logf("Second SQL query returned %d records: %v", len(results2), results2)
+		t.Fatalf("Error querying projects table: %v", err)
 	}
+	t.Logf("Projects query returned %d records", len(projectsResults))
+	assert.Greater(t, len(projectsResults), 0, "Should have projects in database")
+
+	tasksResults, err := mysqlRepo.ExecuteQuery("SELECT t.id, t.title, t.description, t.status, t.priority, t.estimated_hours FROM tasks t")
+	if err != nil {
+		t.Fatalf("Error querying tasks table: %v", err)
+	}
+	t.Logf("Tasks query returned %d records", len(tasksResults))
+	assert.Greater(t, len(tasksResults), 0, "Should have tasks in database")
 
 	session := neo4jClient.GetDriver().NewSession(neo4jDriver.SessionConfig{})
 	defer session.Close()
@@ -336,10 +390,9 @@ func TestIntegrationTransformRulesAndVisualization(t *testing.T) {
 
 	err = service.TransformAndStore(ctx)
 	if err != nil {
-		t.Logf("Transform service completed with expected errors (missing test tables): %v", err)
-	} else {
-		t.Logf("Transform service completed successfully")
+		t.Fatalf("Transform service failed: %v", err)
 	}
+	t.Logf("Transform service completed successfully")
 
 	testResult, err := session.Run("RETURN 1 as test", map[string]any{})
 	assert.NoError(t, err, "Neo4j should be accessible")
@@ -350,6 +403,8 @@ func TestIntegrationTransformRulesAndVisualization(t *testing.T) {
 	if countResult.Next() {
 		nodeCount := countResult.Record().GetByIndex(0)
 		t.Logf("Found %v nodes in Neo4j after transformation", nodeCount)
+		// Should have nodes from users (7), projects (5), and tasks (14) = 26 total
+		assert.Greater(t, nodeCount, int64(20), "Should have created multiple nodes from real data")
 	}
 
 	relCountResult, err := session.Run("MATCH ()-[r]->() RETURN count(r) as relCount", map[string]any{})
@@ -357,6 +412,33 @@ func TestIntegrationTransformRulesAndVisualization(t *testing.T) {
 	if relCountResult.Next() {
 		relCount := relCountResult.Record().GetByIndex(0)
 		t.Logf("Found %v relationships in Neo4j after transformation", relCount)
+		// Should have relationships: users created projects (5) + tasks belong to projects (14) = 19 total
+		assert.Greater(t, relCount, int64(10), "Should have created relationships from real data")
+	}
+
+	// Test specific node types
+	userCountResult, err := session.Run("MATCH (n:User) RETURN count(n) as userCount", map[string]any{})
+	assert.NoError(t, err, "Should be able to count User nodes")
+	if userCountResult.Next() {
+		userCount := userCountResult.Record().GetByIndex(0)
+		t.Logf("Found %v User nodes", userCount)
+		assert.Equal(t, int64(7), userCount, "Should have 7 active users")
+	}
+
+	projectCountResult, err := session.Run("MATCH (n:Project) RETURN count(n) as projectCount", map[string]any{})
+	assert.NoError(t, err, "Should be able to count Project nodes")
+	if projectCountResult.Next() {
+		projectCount := projectCountResult.Record().GetByIndex(0)
+		t.Logf("Found %v Project nodes", projectCount)
+		assert.Equal(t, int64(5), projectCount, "Should have 5 projects")
+	}
+
+	taskCountResult, err := session.Run("MATCH (n:Task) RETURN count(n) as taskCount", map[string]any{})
+	assert.NoError(t, err, "Should be able to count Task nodes")
+	if taskCountResult.Next() {
+		taskCount := taskCountResult.Record().GetByIndex(0)
+		t.Logf("Found %v Task nodes", taskCount)
+		assert.Equal(t, int64(14), taskCount, "Should have 14 tasks")
 	}
 
 	if os.Getenv("CI") == "" {
