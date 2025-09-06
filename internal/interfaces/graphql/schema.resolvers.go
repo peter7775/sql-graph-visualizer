@@ -6,42 +6,235 @@ package graphql
 
 import (
 	"context"
-	graphql1 "mysql-graph-visualizer/internal/application/services/graphql/generated"
+	"encoding/json"
+	"fmt"
 	"mysql-graph-visualizer/internal/domain/aggregates/graph"
-	graphqlModels "mysql-graph-visualizer/internal/domain/models/graphql"
+	"mysql-graph-visualizer/internal/interfaces/graphql/generated"
+	"mysql-graph-visualizer/internal/interfaces/graphql/models"
 )
 
-// Nodes is the resolver for the nodes field.
-func (r *queryResolver) Nodes(ctx context.Context) ([]*graphqlModels.Node, error) {
-	graphAgg := graph.NewGraphAggregate("")
-	nodes := graphAgg.GetNodes()
-
-	var gqlNodes []*graphqlModels.Node
-	for _, node := range nodes {
-		var props *graphqlModels.Properties
-		if node.Properties != nil {
-			key, keyOk := node.Properties["key"].(string)
-			value, valueOk := node.Properties["value"].(string)
-			if keyOk && valueOk {
-				props = &graphqlModels.Properties{
-					Key:   &key,
-					Value: &value,
-				}
-			}
-		}
-
-		gqlNode := &graphqlModels.Node{
-			ID:         node.ID,
-			Label:      node.Type,
-			Properties: props,
-		}
-		gqlNodes = append(gqlNodes, gqlNode)
-	}
-
-	return gqlNodes, nil
+// TransformData is the resolver for the transformData field.
+func (r *mutationResolver) TransformData(ctx context.Context) (bool, error) {
+	// This would trigger the data transformation process
+	// For now, we'll return true to indicate success
+	// In a full implementation, this would call the transformation service
+	return true, nil
 }
 
-// Query returns graphql1.QueryResolver implementation.
-func (r *Resolver) Query() graphql1.QueryResolver { return &queryResolver{r} }
+// Graph is the resolver for the graph field.
+func (r *queryResolver) Graph(ctx context.Context) (*models.Graph, error) {
+	// Get graph data from Neo4j
+	graphInterface, err := r.Resolver.Neo4jRepo.ExportGraph("MATCH (n)-[r]->(m) RETURN n, r, m")
+	if err != nil {
+		return nil, fmt.Errorf("failed to export graph: %w", err)
+	}
 
+	// Import the graph aggregate type
+	graphAggregate, ok := graphInterface.(*graph.GraphAggregate)
+	if !ok {
+		return nil, fmt.Errorf("invalid graph type")
+	}
+
+	// Convert to GraphQL models
+	graphQLNodes := make([]*models.Node, 0)
+	for _, node := range graphAggregate.GetNodes() {
+		// Convert properties to JSON string
+		propertiesJSON, err := json.Marshal(node.Properties)
+		if err != nil {
+			propertiesJSON = []byte("{}")
+		}
+
+		graphQLNodes = append(graphQLNodes, &models.Node{
+			ID:         node.ID,
+			Label:      node.Type,
+			Properties: string(propertiesJSON),
+		})
+	}
+
+	graphQLRelationships := make([]*models.Relationship, 0)
+	for _, rel := range graphAggregate.GetRelationships() {
+		// Convert properties to JSON string
+		propertiesJSON, err := json.Marshal(rel.Properties)
+		if err != nil {
+			propertiesJSON = []byte("{}")
+		}
+
+		graphQLRelationships = append(graphQLRelationships, &models.Relationship{
+			From:       rel.SourceNode.ID,
+			To:         rel.TargetNode.ID,
+			Type:       rel.Type,
+			Properties: string(propertiesJSON),
+		})
+	}
+
+	return &models.Graph{
+		Nodes:         graphQLNodes,
+		Relationships: graphQLRelationships,
+	}, nil
+}
+
+// NodesByType is the resolver for the nodesByType field.
+func (r *queryResolver) NodesByType(ctx context.Context, typeArg string) ([]*models.Node, error) {
+	// Query Neo4j for nodes of specific type/label
+	cypher := fmt.Sprintf("MATCH (n:%s) RETURN n", typeArg)
+	graphInterface, err := r.Resolver.Neo4jRepo.ExportGraph(cypher)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch nodes by type: %w", err)
+	}
+
+	graphAggregate, ok := graphInterface.(*graph.GraphAggregate)
+	if !ok {
+		return nil, fmt.Errorf("invalid graph type")
+	}
+
+	// Convert nodes to GraphQL models
+	graphQLNodes := make([]*models.Node, 0)
+	for _, node := range graphAggregate.GetNodes() {
+		if node.Type == typeArg {
+			propertiesJSON, err := json.Marshal(node.Properties)
+			if err != nil {
+				propertiesJSON = []byte("{}")
+			}
+
+			graphQLNodes = append(graphQLNodes, &models.Node{
+				ID:         node.ID,
+				Label:      node.Type,
+				Properties: string(propertiesJSON),
+			})
+		}
+	}
+
+	return graphQLNodes, nil
+}
+
+// Node is the resolver for the node field.
+func (r *queryResolver) Node(ctx context.Context, id string) (*models.Node, error) {
+	// Query Neo4j for specific node by ID
+	cypher := "MATCH (n) WHERE id(n) = $nodeId RETURN n"
+	graphInterface, err := r.Resolver.Neo4jRepo.ExportGraph(cypher)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch node by ID: %w", err)
+	}
+
+	graphAggregate, ok := graphInterface.(*graph.GraphAggregate)
+	if !ok {
+		return nil, fmt.Errorf("invalid graph type")
+	}
+
+	// Find the node with matching ID
+	for _, node := range graphAggregate.GetNodes() {
+		if node.ID == id {
+			propertiesJSON, err := json.Marshal(node.Properties)
+			if err != nil {
+				propertiesJSON = []byte("{}")
+			}
+
+			return &models.Node{
+				ID:         node.ID,
+				Label:      node.Type,
+				Properties: string(propertiesJSON),
+			}, nil
+		}
+	}
+
+	return nil, fmt.Errorf("node with ID %s not found", id)
+}
+
+// RelationshipsByType is the resolver for the relationshipsByType field.
+func (r *queryResolver) RelationshipsByType(ctx context.Context, typeArg string) ([]*models.Relationship, error) {
+	// Query Neo4j for relationships of specific type
+	cypher := fmt.Sprintf("MATCH (n)-[r:%s]->(m) RETURN n, r, m", typeArg)
+	graphInterface, err := r.Resolver.Neo4jRepo.ExportGraph(cypher)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch relationships by type: %w", err)
+	}
+
+	graphAggregate, ok := graphInterface.(*graph.GraphAggregate)
+	if !ok {
+		return nil, fmt.Errorf("invalid graph type")
+	}
+
+	// Convert relationships to GraphQL models
+	graphQLRelationships := make([]*models.Relationship, 0)
+	for _, rel := range graphAggregate.GetRelationships() {
+		if rel.Type == typeArg {
+			propertiesJSON, err := json.Marshal(rel.Properties)
+			if err != nil {
+				propertiesJSON = []byte("{}")
+			}
+
+			graphQLRelationships = append(graphQLRelationships, &models.Relationship{
+				From:       rel.SourceNode.ID,
+				To:         rel.TargetNode.ID,
+				Type:       rel.Type,
+				Properties: string(propertiesJSON),
+			})
+		}
+	}
+
+	return graphQLRelationships, nil
+}
+
+// Config is the resolver for the config field.
+func (r *queryResolver) Config(ctx context.Context) (*models.Config, error) {
+	return &models.Config{
+		Neo4j: &models.Neo4jConfig{
+			URI:      r.Resolver.Config.Neo4j.URI,
+			Username: r.Resolver.Config.Neo4j.User,
+			Password: r.Resolver.Config.Neo4j.Password,
+		},
+	}, nil
+}
+
+// SearchNodes is the resolver for the searchNodes field.
+func (r *queryResolver) SearchNodes(ctx context.Context, query string) ([]*models.Node, error) {
+	// Search nodes by property values using CONTAINS or regex
+	cypher := fmt.Sprintf(
+		"MATCH (n) WHERE ANY(prop IN keys(n) WHERE toString(n[prop]) CONTAINS '%s') RETURN n",
+		query,
+	)
+	graphInterface, err := r.Resolver.Neo4jRepo.ExportGraph(cypher)
+	if err != nil {
+		return nil, fmt.Errorf("failed to search nodes: %w", err)
+	}
+
+	graphAggregate, ok := graphInterface.(*graph.GraphAggregate)
+	if !ok {
+		return nil, fmt.Errorf("invalid graph type")
+	}
+
+	// Convert matching nodes to GraphQL models
+	graphQLNodes := make([]*models.Node, 0)
+	for _, node := range graphAggregate.GetNodes() {
+		propertiesJSON, err := json.Marshal(node.Properties)
+		if err != nil {
+			propertiesJSON = []byte("{}")
+		}
+
+		graphQLNodes = append(graphQLNodes, &models.Node{
+			ID:         node.ID,
+			Label:      node.Type,
+			Properties: string(propertiesJSON),
+		})
+	}
+
+	return graphQLNodes, nil
+}
+
+// GraphUpdates is the resolver for the graphUpdates field.
+func (r *subscriptionResolver) GraphUpdates(ctx context.Context) (<-chan *models.Graph, error) {
+	panic(fmt.Errorf("not implemented: GraphUpdates - graphUpdates"))
+}
+
+// Mutation returns generated.MutationResolver implementation.
+func (r *Resolver) Mutation() generated.MutationResolver { return &mutationResolver{r} }
+
+// Query returns generated.QueryResolver implementation.
+func (r *Resolver) Query() generated.QueryResolver { return &queryResolver{r} }
+
+// Subscription returns generated.SubscriptionResolver implementation.
+func (r *Resolver) Subscription() generated.SubscriptionResolver { return &subscriptionResolver{r} }
+
+type mutationResolver struct{ *Resolver }
 type queryResolver struct{ *Resolver }
+type subscriptionResolver struct{ *Resolver }

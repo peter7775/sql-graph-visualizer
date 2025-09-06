@@ -1,12 +1,41 @@
+# gqlgen configuration for MySQL Graph Visualizer
+# This configuration avoids package conflicts by using separate directories
+
+# Schema definition
 schema:
-  - internal/interfaces/graphql/schema/schema.graphqls
+  - schema/schema.graphqls
+
+# Generated Go code locations
 exec:
-  filename: internal/application/services/graphql/generated/exec.go
+  filename: internal/interfaces/graphql/generated/exec.go
   package: generated
+
+# Model types
 model:
-  filename: internal/domain/models/graphql/models_gen.go
-  package: graphql
+  filename: internal/interfaces/graphql/models/models_gen.go
+  package: models
+
+# Resolver interface and implementation
 resolver:
   layout: follow-schema
   dir: internal/interfaces/graphql
-  package: graphql 
+  package: graphql
+  filename_template: "{name}.resolvers.go"
+
+# Auto-bind built-in Go types
+# autobind:
+#   - map[string]interface{}
+
+# Custom scalar mappings
+models:
+  # Map ID to string
+  ID:
+    model:
+      - github.com/99designs/gqlgen/graphql.ID
+      - github.com/99designs/gqlgen/graphql.String
+      - github.com/99designs/gqlgen/graphql.Int
+      - github.com/99designs/gqlgen/graphql.Int64
+      - github.com/99designs/gqlgen/graphql.Int32
+
+# Skip validation for certain fields
+skip_validation: true
