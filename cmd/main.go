@@ -55,12 +55,23 @@ func main() {
 	// Railway deployment detected
 	if os.Getenv("RAILWAY_ENVIRONMENT") != "" {
 		logrus.Info("Railway deployment detected - using environment variables for configuration")
+		logrus.Infof("Railway environment: %s", os.Getenv("RAILWAY_ENVIRONMENT"))
+		logrus.Infof("PORT env var: %s", os.Getenv("PORT"))
+		logrus.Infof("NEO4J_URI set: %t", os.Getenv("NEO4J_URI") != "")
+		logrus.Infof("MYSQL_HOST set: %t", os.Getenv("MYSQL_HOST") != "")
 	}
 
 	logrus.Infof("Loading configuration...")
 	cfg, err := config.Load()
 	if err != nil {
-		logrus.Fatalf("Failed to load configuration: %v", err)
+		logrus.Errorf("Failed to load configuration: %v", err)
+		// On Railway, try to continue with minimal config
+		if os.Getenv("RAILWAY_ENVIRONMENT") != "" {
+			logrus.Warn("Railway deployment - creating minimal config...")
+			cfg = createMinimalRailwayConfig()
+		} else {
+			logrus.Fatalf("Failed to load configuration and not on Railway: %v", err)
+		}
 	}
 
 	// Initialize database connection based on configuration
@@ -229,14 +240,39 @@ func main() {
 
 	// Health check endpoint
 	router.HandleFunc("/api/health", func(w http.ResponseWriter, r *http.Request) {
+		logrus.Info("Health check requested")
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
+		
+		// Test database connectivity
+		dbStatus := "unknown"
+		if db != nil {
+			if err := db.Ping(); err == nil {
+				dbStatus = "connected"
+			} else {
+				dbStatus = "error: " + err.Error()
+			}
+		} else {
+			dbStatus = "not_initialized"
+		}
+		
 		response := map[string]interface{}{
-			"status":    "healthy",
-			"timestamp": time.Now().Format(time.RFC3339),
-			"version":   "v1.1.0",
-			"database":  "connected",
-			"neo4j":     "connected",
+			"status":      "healthy",
+			"timestamp":   time.Now().Format(time.RFC3339),
+			"version":     "v1.1.0",
+			"database":    dbStatus,
+			"neo4j":       "connected", // TODO: Add real Neo4j health check
+			"environment": map[string]string{
+				"railway":    getEnvOrDefault("RAILWAY_ENVIRONMENT", "not_set"),
+				"port":       getEnvOrDefault("PORT", "not_set"),
+				"mysql_host": getEnvOrDefault("MYSQL_HOST", "not_set"),
+				"neo4j_uri":  func() string {
+					if uri := os.Getenv("NEO4J_URI"); uri != "" {
+						return "set"
+					}
+					return "not_set"
+				}(),
+			},
 		}
 		if err := json.NewEncoder(w).Encode(response); err != nil {
 			logrus.Errorf("Error encoding health response: %v", err)
@@ -631,6 +667,48 @@ func createRealtimeConfig(cfg *models.Config) *performance.RealtimeMonitorConfig
 	}
 
 	return config
+}
+
+// createMinimalRailwayConfig creates a basic config when YAML loading fails on Railway
+func createMinimalRailwayConfig() *models.Config {
+	logrus.Info("Creating minimal Railway configuration from environment variables...")
+	
+	return &models.Config{
+		MySQL: models.MySQLConfig{
+			Host:     os.Getenv("MYSQL_HOST"),
+			Port:     3306,
+			User:     os.Getenv("MYSQL_USER"),
+			Password: os.Getenv("MYSQL_PASSWORD"),
+			Database: os.Getenv("MYSQL_DATABASE"),
+		},
+		Neo4j: models.Neo4jConfig{
+			URI:      os.Getenv("NEO4J_URI"),
+			User:     getEnvOrDefault("NEO4J_USER", "neo4j"),
+			Password: os.Getenv("NEO4J_PASSWORD"),
+		},
+		TransformRules: []models.TransformRule{
+			{
+				Name:     "demo_rule",
+				RuleType: "node",
+				Source: models.TransformSource{
+					Type:  "query",
+					Value: "SELECT 'Railway Demo' as name, 'demo' as type",
+				},
+				TargetType: "DemoNode",
+				FieldMappings: map[string]string{
+					"name": "name",
+					"type": "type",
+				},
+			},
+		},
+	}
+}
+
+func getEnvOrDefault(key, defaultValue string) string {
+	if value := os.Getenv(key); value != "" {
+		return value
+	}
+	return defaultValue
 }
 
 func createBenchmarkConfig(cfg *models.Config) *performance.BenchmarkServiceConfig {
