@@ -37,10 +37,10 @@ import (
 	"sql-graph-visualizer/internal/domain/repositories/config"
 	"sql-graph-visualizer/internal/domain/repositories/configrule"
 	"sql-graph-visualizer/internal/infrastructure/middleware"
-	"sql-graph-visualizer/internal/interfaces/api"
 	mysqlrepo "sql-graph-visualizer/internal/infrastructure/persistence/mysql"
 	"sql-graph-visualizer/internal/infrastructure/persistence/neo4j"
 	postgresqlrepo "sql-graph-visualizer/internal/infrastructure/persistence/postgresql"
+	"sql-graph-visualizer/internal/interfaces/api"
 
 	// Import database drivers
 	_ "github.com/go-sql-driver/mysql"
@@ -162,17 +162,17 @@ func main() {
 
 	logrus.Infof("Initializing services...")
 	transformService := transform.NewTransformService(dbPort, neo4jRepo, configrule.NewRuleRepository())
-	
+
 	// Initialize performance services if enabled
 	var performanceServices *PerformanceServiceContainer
 	if cfg.Performance != nil && cfg.Performance.Monitoring != nil && cfg.Performance.Monitoring.Enabled {
-		logrus.Info("Initializing performance monitoring services...")
+		logrus.Info("Initializing performance .monitoring services...")
 		performanceServices = initializePerformanceServices(cfg, db)
 		logrus.Info("Performance services initialized")
 	} else {
-		logrus.Info("Performance monitoring is disabled")
+		logrus.Info("Performance .monitoring is disabled")
 	}
-	
+
 	// Initialize SimpleMetricsInjector for demo visualization (always enabled)
 	logrus.Info("Initializing performance metrics visualization...")
 	metricsInjectorConfig := &performance.SimpleMetricsConfig{
@@ -180,16 +180,16 @@ func main() {
 		MetricsRetention: 1 * time.Hour,
 		SimulationMode:   true,
 	}
-	
+
 	metricsInjector := performance.NewSimpleMetricsInjector(neo4jRepo, logrus.StandardLogger(), metricsInjectorConfig)
-	
+
 	// Start MetricsInjector for live performance visualization
 	if err := metricsInjector.Start(ctx); err != nil {
 		logrus.Errorf("Failed to start metrics injector: %v", err)
 	} else {
 		logrus.Info("🚀 Performance metrics visualization started!")
 	}
-	
+
 	logrus.Infof("Services initialized")
 
 	// Start GraphQL server
@@ -206,7 +206,7 @@ func main() {
 	startVisualizationServer(neo4jRepo, cfg)
 
 	router := mux.NewRouter()
-	
+
 	// Register performance routes if services are initialized
 	if performanceServices != nil {
 		logrus.Info("Registering performance API routes...")
@@ -429,25 +429,25 @@ func init() {
 type PerformanceServiceContainer struct {
 	BenchmarkService    *performance.BenchmarkService
 	PerformanceAnalyzer *performance.PerformanceAnalyzer
-	PSAdapter          *performance.PerformanceSchemaAdapter
-	GraphMapper        *performance.GraphPerformanceMapper
-	RealtimeMonitor    *performance.RealtimePerformanceMonitor
-	MetricsInjector    *performance.SimpleMetricsInjector
+	PSAdapter           *performance.PerformanceSchemaAdapter
+	GraphMapper         *performance.GraphPerformanceMapper
+	RealtimeMonitor     *performance.RealtimePerformanceMonitor
+	MetricsInjector     *performance.SimpleMetricsInjector
 }
 
 // initializePerformanceServices creates and configures all performance services
 func initializePerformanceServices(cfg *models.Config, db *sql.DB) *PerformanceServiceContainer {
 	logger := logrus.StandardLogger()
-	
+
 	// Parse configuration durations
 	updateInterval, err := time.ParseDuration(cfg.Performance.Monitoring.UpdateInterval)
 	if err != nil {
 		logrus.Warnf("Invalid update_interval, using default 5s: %v", err)
 		updateInterval = 5 * time.Second
 	}
-	
+
 	// Cache duration is handled internally by the performance schema adapter
-	
+
 	// Create Performance Schema Adapter configuration with safe defaults
 	maxStatements := 100
 	maxTables := 50
@@ -455,7 +455,7 @@ func initializePerformanceServices(cfg *models.Config, db *sql.DB) *PerformanceS
 		maxStatements = cfg.Performance.Monitoring.PerformanceSchema.StatementLimit
 		maxTables = cfg.Performance.Monitoring.PerformanceSchema.TableIOLimit
 	}
-	
+
 	psConfig := &performance.PerformanceSchemaConfig{
 		CollectionInterval:  updateInterval,
 		SlowQueryThreshold:  1 * time.Second,
@@ -467,94 +467,93 @@ func initializePerformanceServices(cfg *models.Config, db *sql.DB) *PerformanceS
 		CollectConnections:  true,
 		CollectReplication:  false,
 		MaxStatements:       maxStatements,
-		MaxTables:          maxTables,
+		MaxTables:           maxTables,
 		IgnoredSchemas:      []string{"mysql", "information_schema", "performance_schema", "sys"},
 		IgnoredUsers:        []string{"root", "mysql.sys", "mysql.session"},
 		EnableDigestText:    true,
 		MinExecutionCount:   10,
 		MinAvgLatency:       10.0,
 	}
-	
+
 	// Initialize Performance Schema Adapter
 	psAdapter := performance.NewPerformanceSchemaAdapter(db, logger, psConfig)
-	
+
 	// Create Performance Analyzer configuration with safe defaults
 	slowQueryThreshold := 200.0 // Default 200ms
 	if cfg.Performance != nil && cfg.Performance.Monitoring != nil && cfg.Performance.Monitoring.Analysis != nil {
 		slowQueryThreshold = cfg.Performance.Monitoring.Analysis.SlowQueryThreshold
 	}
-	
+
 	analyzerConfig := &performance.PerformanceAnalyzerConfig{
-		HighLatencyThreshold:       time.Duration(slowQueryThreshold) * time.Millisecond,
-		LowThroughputThreshold:     10.0, // Default value
-		HighErrorRateThreshold:     1.0,  // Default value
-		HotspotLatencyWeight:       0.4,
-		HotspotFrequencyWeight:     0.4,
-		HotspotResourceWeight:      0.2,
-		MaxCriticalPaths:           10,
-		MinPathImpactScore:         50.0,
-		MinPatternFrequency:        100,
-		SimilarityThreshold:        0.8,
-		IndexSuggestionMinGain:     20.0,
-		QueryRewriteMinComplexity:  3,
-		MinDataPoints:              5,
-		TrendSignificanceLevel:     0.05,
+		HighLatencyThreshold:      time.Duration(slowQueryThreshold) * time.Millisecond,
+		LowThroughputThreshold:    10.0, // Default value
+		HighErrorRateThreshold:    1.0,  // Default value
+		HotspotLatencyWeight:      0.4,
+		HotspotFrequencyWeight:    0.4,
+		HotspotResourceWeight:     0.2,
+		MaxCriticalPaths:          10,
+		MinPathImpactScore:        50.0,
+		MinPatternFrequency:       100,
+		SimilarityThreshold:       0.8,
+		IndexSuggestionMinGain:    20.0,
+		QueryRewriteMinComplexity: 3,
+		MinDataPoints:             5,
+		TrendSignificanceLevel:    0.05,
 	}
-	
+
 	// Initialize Performance Analyzer
 	performanceAnalyzer := performance.NewPerformanceAnalyzer(logger, analyzerConfig)
-	
+
 	// Create Graph Performance Mapper configuration
 	graphMapperConfig := createGraphMapperConfig(cfg)
-	
+
 	// Initialize Graph Performance Mapper
 	graphMapper := performance.NewGraphPerformanceMapper(logger, graphMapperConfig, psAdapter, performanceAnalyzer)
-	
+
 	// Create Real-time Monitor configuration
 	realtimeConfig := createRealtimeConfig(cfg)
-	
+
 	// Initialize Real-time Performance Monitor
 	realtimeMonitor := performance.NewRealtimePerformanceMonitor(logger, realtimeConfig, psAdapter, performanceAnalyzer, graphMapper)
-	
+
 	// Create Benchmark Service configuration
 	benchmarkConfig := createBenchmarkConfig(cfg)
-	
+
 	// TODO: Initialize benchmark tools when implemented
 	// For now, create benchmark service with minimal configuration
 	benchmarkService := performance.NewBenchmarkService(nil, nil, nil, performanceAnalyzer, logger, benchmarkConfig)
-	
-	
-	// Start real-time monitoring if enabled
+
+	// Start real-time .monitoring if enabled
 	if cfg.Performance != nil && cfg.Performance.Realtime != nil && cfg.Performance.Realtime.Enabled {
 		ctx := context.Background()
 		if err := realtimeMonitor.Start(ctx); err != nil {
 			logrus.Errorf("Failed to start real-time monitor: %v", err)
 		} else {
-			logrus.Info("Real-time performance monitoring started")
+			logrus.Info("Real-time performance .monitoring started")
 		}
 	}
-	
+
 	return &PerformanceServiceContainer{
 		BenchmarkService:    benchmarkService,
 		PerformanceAnalyzer: performanceAnalyzer,
-		PSAdapter:          psAdapter,
-		GraphMapper:        graphMapper,
-		RealtimeMonitor:    realtimeMonitor,
-		MetricsInjector:    nil, // Handled separately in main function
+		PSAdapter:           psAdapter,
+		GraphMapper:         graphMapper,
+		RealtimeMonitor:     realtimeMonitor,
+		MetricsInjector:     nil, // Handled separately in main function
 	}
 }
 
 func createGraphMapperConfig(cfg *models.Config) *performance.GraphPerformanceMapperConfig {
 	config := &performance.GraphPerformanceMapperConfig{}
-	
+
 	if cfg.Performance.Visualization != nil {
 		updateInterval, _ := time.ParseDuration(cfg.Performance.Visualization.UpdateInterval)
 		historyRetention, _ := time.ParseDuration(cfg.Performance.Visualization.HistoryRetention)
-		
+
 		config.UpdateInterval = updateInterval
 		config.HistoryRetention = historyRetention
 		config.MaxConcurrentUpdates = cfg.Performance.Visualization.MaxConcurrentUpdates
-		
+
 		if cfg.Performance.Visualization.EdgeThickness != nil {
 			config.EdgeThickness = performance.EdgeThicknessConfig{
 				Metric:       cfg.Performance.Visualization.EdgeThickness.Metric,
@@ -564,23 +563,23 @@ func createGraphMapperConfig(cfg *models.Config) *performance.GraphPerformanceMa
 				Multiplier:   cfg.Performance.Visualization.EdgeThickness.Multiplier,
 			}
 		}
-		
+
 		// Set other visualization configs similarly...
 	}
-	
+
 	return config
 }
 
 func createRealtimeConfig(cfg *models.Config) *performance.RealtimeMonitorConfig {
 	config := &performance.RealtimeMonitorConfig{}
-	
+
 	if cfg.Performance.Realtime != nil {
 		updateInterval, _ := time.ParseDuration(cfg.Performance.Realtime.UpdateInterval)
 		heartbeatInterval, _ := time.ParseDuration(cfg.Performance.Realtime.HeartbeatInterval)
 		writeTimeout, _ := time.ParseDuration(cfg.Performance.Realtime.WriteTimeout)
 		readTimeout, _ := time.ParseDuration(cfg.Performance.Realtime.ReadTimeout)
 		pingTimeout, _ := time.ParseDuration(cfg.Performance.Realtime.PingTimeout)
-		
+
 		config.DataUpdateInterval = updateInterval
 		config.HeartbeatInterval = heartbeatInterval
 		config.MaxConnections = cfg.Performance.Realtime.MaxConnections
@@ -589,42 +588,42 @@ func createRealtimeConfig(cfg *models.Config) *performance.RealtimeMonitorConfig
 		config.PingTimeout = pingTimeout
 		config.MaxMessageSize = cfg.Performance.Realtime.MaxMessageSize
 		config.CompressionEnabled = cfg.Performance.Realtime.CompressionEnabled
-		
+
 		if cfg.Performance.Realtime.Alerts != nil {
 			config.AlertThresholds = performance.AlertThresholds{
-				HighLatency:          cfg.Performance.Realtime.Alerts.HighLatency,
-				HighErrorRate:        cfg.Performance.Realtime.Alerts.HighErrorRate,
-				HighCPUUsage:         cfg.Performance.Realtime.Alerts.HighCPUUsage,
-				HighMemoryUsage:      cfg.Performance.Realtime.Alerts.HighMemoryUsage,
-				SlowQueryThreshold:   cfg.Performance.Realtime.Alerts.SlowQueryThreshold,
-				DeadlockThreshold:    cfg.Performance.Realtime.Alerts.DeadlockThreshold,
+				HighLatency:        cfg.Performance.Realtime.Alerts.HighLatency,
+				HighErrorRate:      cfg.Performance.Realtime.Alerts.HighErrorRate,
+				HighCPUUsage:       cfg.Performance.Realtime.Alerts.HighCPUUsage,
+				HighMemoryUsage:    cfg.Performance.Realtime.Alerts.HighMemoryUsage,
+				SlowQueryThreshold: cfg.Performance.Realtime.Alerts.SlowQueryThreshold,
+				DeadlockThreshold:  cfg.Performance.Realtime.Alerts.DeadlockThreshold,
 			}
 		}
 	}
-	
+
 	return config
 }
 
 func createBenchmarkConfig(cfg *models.Config) *performance.BenchmarkServiceConfig {
 	config := &performance.BenchmarkServiceConfig{}
-	
+
 	if cfg.Performance.Benchmarks != nil {
 		defaultDuration, _ := time.ParseDuration(cfg.Performance.Benchmarks.DefaultDuration)
 		maxDuration, _ := time.ParseDuration(cfg.Performance.Benchmarks.MaxDuration)
 		resultsRetention, _ := time.ParseDuration(cfg.Performance.Benchmarks.ResultsRetention)
 		cleanupInterval := 15 * time.Minute // Default cleanup interval
-		
+
 		config.DefaultTimeout = defaultDuration
 		config.MaxDuration = maxDuration
 		config.RetainResults = resultsRetention
 		config.CleanupInterval = cleanupInterval
-		
+
 		if cfg.Performance.Benchmarks.Limits != nil {
 			config.MaxConcurrentRuns = cfg.Performance.Benchmarks.Limits.MaxConcurrentBenchmarks
 			config.MaxResultsInMemory = cfg.Performance.Benchmarks.Limits.MemoryLimitMB
 			// CPUThreshold not available in BenchmarkServiceConfig
 		}
 	}
-	
+
 	return config
 }

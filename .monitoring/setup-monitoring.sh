@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # SQL Graph Visualizer - Monitoring Setup Script
-# Sets up automated code monitoring via cron
+# Sets up automated code .monitoring via cron
 
 set -e
 
@@ -10,7 +10,7 @@ SCRIPT_PATH="$PROJECT_DIR/monitoring/code-monitoring.sh"
 
 echo "Setting up SQL Graph Visualizer code monitoring..."
 
-# Make monitoring script executable
+# Make .monitoring script executable
 chmod +x "$SCRIPT_PATH"
 
 # Check if required tools are available
@@ -46,7 +46,7 @@ if [ ${#MISSING_DEPS[@]} -ne 0 ]; then
     fi
 fi
 
-# Create monitoring directories
+# Create .monitoring directories
 mkdir -p "$PROJECT_DIR/monitoring/results"
 
 # Setup cron jobs
@@ -58,10 +58,10 @@ CRON_TEMP=$(mktemp)
 # Preserve existing crontab
 crontab -l 2>/dev/null > "$CRON_TEMP" || true
 
-# Remove any existing monitoring entries
+# Remove any existing .monitoring entries
 grep -v "sql-graph-visualizer.*monitoring" "$CRON_TEMP" > "$CRON_TEMP.clean" 2>/dev/null || cp "$CRON_TEMP" "$CRON_TEMP.clean"
 
-# Add new monitoring entries
+# Add new .monitoring entries
 cat >> "$CRON_TEMP.clean" << EOF
 
 # SQL Graph Visualizer - Code Monitoring

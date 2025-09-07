@@ -15,7 +15,10 @@ vendor/
 
 go.work
 
+WARP.md
+
 # Monitoring sensitive data
+.monitoring/
 monitoring/results/*.json
-monitoring/monitoring-results.log
-monitoring/results/repo_search.json
+.monitoring/monitoring-results.log
+.monitoring/results/repo_search.json

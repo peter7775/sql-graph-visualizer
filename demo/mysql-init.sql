@@ -230,7 +230,7 @@ BEGIN
 END//
 DELIMITER ;
 
--- Create performance monitoring views
+-- Create performance .monitoring views
 CREATE VIEW v_product_performance AS
 SELECT 
     p.id,

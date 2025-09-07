@@ -99,7 +99,7 @@ services:
     profiles:
       - admin  # Only start with --profile admin
 
-  # Optional: PostgreSQL monitoring with pg_stat_statements
+  # Optional: PostgreSQL .monitoring with pg_stat_statements
   postgres-exporter:
     image: prometheuscommunity/postgres-exporter:v0.12.0
     container_name: sql-graph-visualizer-postgres-exporter
@@ -117,7 +117,7 @@ services:
       postgresql:
         condition: service_healthy
     profiles:
-      - monitoring  # Only start with --profile monitoring
+      - .monitoring  # Only start with --profile .monitoring
 
 volumes:
   postgres_data:

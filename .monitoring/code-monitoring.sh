@@ -12,7 +12,7 @@ DATE=$(date '+%Y-%m-%d %H:%M:%S')
 RESULTS_DIR="monitoring/results"
 
 # Create directories if they don't exist
-mkdir -p monitoring/results
+mkdir -p .monitoring/results
 
 # Colors for output
 RED='\033[0;31m'
@@ -89,7 +89,7 @@ search_web() {
     fi
 }
 
-# Main monitoring queries
+# Main .monitoring queries
 echo -e "${GREEN}=== GitHub API Monitoring ===${NC}"
 
 # High-priority queries (most unique identifiers)

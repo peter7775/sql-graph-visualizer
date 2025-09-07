@@ -1,4 +1,4 @@
-# PostgreSQL monitoring queries for SQL Graph Visualizer
+# PostgreSQL .monitoring queries for SQL Graph Visualizer
 
 # Table sizes and row counts
 table_stats:

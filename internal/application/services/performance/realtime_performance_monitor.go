@@ -13,54 +13,54 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-// RealtimePerformanceMonitor provides real-time performance monitoring with WebSocket streaming
+// RealtimePerformanceMonitor provides real-time performance .monitoring with WebSocket streaming
 type RealtimePerformanceMonitor struct {
-	logger           *logrus.Logger
-	config          *RealtimeMonitorConfig
-	psAdapter       *PerformanceSchemaAdapter
-	analyzer        *PerformanceAnalyzer
-	graphMapper     *GraphPerformanceMapper
-	
+	logger      *logrus.Logger
+	config      *RealtimeMonitorConfig
+	psAdapter   *PerformanceSchemaAdapter
+	analyzer    *PerformanceAnalyzer
+	graphMapper *GraphPerformanceMapper
+
 	// WebSocket management
-	upgrader        websocket.Upgrader
-	clients         map[*websocket.Conn]*ClientInfo
-	clientMutex     sync.RWMutex
-	
+	upgrader    websocket.Upgrader
+	clients     map[*websocket.Conn]*ClientInfo
+	clientMutex sync.RWMutex
+
 	// Monitoring control
-	isRunning       bool
-	runningMutex    sync.RWMutex
-	stopChannel     chan struct{}
-	
+	isRunning    bool
+	runningMutex sync.RWMutex
+	stopChannel  chan struct{}
+
 	// Data channels
 	performanceData chan *PerformanceGraphData
 	alertsChannel   chan *PerformanceAlert
-	
+
 	// Cache and state
-	lastGraphData   *PerformanceGraphData
-	lastUpdate      time.Time
-	stateMutex      sync.RWMutex
+	lastGraphData *PerformanceGraphData
+	lastUpdate    time.Time
+	stateMutex    sync.RWMutex
 }
 
-// RealtimeMonitorConfig contains configuration for real-time monitoring
+// RealtimeMonitorConfig contains configuration for real-time .monitoring
 type RealtimeMonitorConfig struct {
 	// Update intervals
-	DataUpdateInterval    time.Duration `yaml:"data_update_interval" json:"data_update_interval"`
-	HeartbeatInterval     time.Duration `yaml:"heartbeat_interval" json:"heartbeat_interval"`
-	
+	DataUpdateInterval time.Duration `yaml:"data_update_interval" json:"data_update_interval"`
+	HeartbeatInterval  time.Duration `yaml:"heartbeat_interval" json:"heartbeat_interval"`
+
 	// WebSocket settings
-	MaxConnections        int           `yaml:"max_connections" json:"max_connections"`
-	WriteTimeout          time.Duration `yaml:"write_timeout" json:"write_timeout"`
-	ReadTimeout           time.Duration `yaml:"read_timeout" json:"read_timeout"`
-	PingTimeout           time.Duration `yaml:"ping_timeout" json:"ping_timeout"`
-	MaxMessageSize        int64         `yaml:"max_message_size" json:"max_message_size"`
-	
-	// Performance monitoring
-	AlertThresholds       AlertThresholds `yaml:"alert_thresholds" json:"alert_thresholds"`
-	MetricsRetention      time.Duration   `yaml:"metrics_retention" json:"metrics_retention"`
-	CompressionEnabled    bool           `yaml:"compression_enabled" json:"compression_enabled"`
-	
+	MaxConnections int           `yaml:"max_connections" json:"max_connections"`
+	WriteTimeout   time.Duration `yaml:"write_timeout" json:"write_timeout"`
+	ReadTimeout    time.Duration `yaml:"read_timeout" json:"read_timeout"`
+	PingTimeout    time.Duration `yaml:"ping_timeout" json:"ping_timeout"`
+	MaxMessageSize int64         `yaml:"max_message_size" json:"max_message_size"`
+
+	// Performance .monitoring
+	AlertThresholds    AlertThresholds `yaml:"alert_thresholds" json:"alert_thresholds"`
+	MetricsRetention   time.Duration   `yaml:"metrics_retention" json:"metrics_retention"`
+	CompressionEnabled bool            `yaml:"compression_enabled" json:"compression_enabled"`
+
 	// Resource limits
-	MaxConcurrentQueries  int     `yaml:"max_concurrent_queries" json:"max_concurrent_queries"`
+	MaxConcurrentQueries int     `yaml:"max_concurrent_queries" json:"max_concurrent_queries"`
 	MemoryLimitMB        int     `yaml:"memory_limit_mb" json:"memory_limit_mb"`
 	CPUThreshold         float64 `yaml:"cpu_threshold" json:"cpu_threshold"`
 }
@@ -78,11 +78,11 @@ type AlertThresholds struct {
 // ClientInfo stores information about connected WebSocket clients
 type ClientInfo struct {
 	ID               string                 `json:"id"`
-	ConnectedAt      time.Time             `json:"connected_at"`
-	LastPingAt       time.Time             `json:"last_ping_at"`
-	SubscribedTopics []string              `json:"subscribed_topics"`
+	ConnectedAt      time.Time              `json:"connected_at"`
+	LastPingAt       time.Time              `json:"last_ping_at"`
+	SubscribedTopics []string               `json:"subscribed_topics"`
 	Filters          map[string]interface{} `json:"filters"`
-	Compression      bool                  `json:"compression"`
+	Compression      bool                   `json:"compression"`
 }
 
 // WebSocketMessage represents a WebSocket message structure
@@ -103,9 +103,9 @@ type PerformanceAlert struct {
 	Description string                 `json:"description"`
 	TableName   string                 `json:"table_name,omitempty"`
 	QueryID     string                 `json:"query_id,omitempty"`
-	Value       float64               `json:"value"`
-	Threshold   float64               `json:"threshold"`
-	Timestamp   time.Time             `json:"timestamp"`
+	Value       float64                `json:"value"`
+	Threshold   float64                `json:"threshold"`
+	Timestamp   time.Time              `json:"timestamp"`
 	Metadata    map[string]interface{} `json:"metadata,omitempty"`
 }
 
@@ -133,11 +133,11 @@ type SystemMetrics struct {
 
 // DatabaseMetrics contains database-specific metrics
 type DatabaseMetrics struct {
-	QueriesPerSecond   float64 `json:"queries_per_second"`
-	SlowQueries        int64   `json:"slow_queries"`
-	ConnectionsUsed    int     `json:"connections_used"`
-	ConnectionsMax     int     `json:"connections_max"`
-	InnoDBBufferPool   struct {
+	QueriesPerSecond float64 `json:"queries_per_second"`
+	SlowQueries      int64   `json:"slow_queries"`
+	ConnectionsUsed  int     `json:"connections_used"`
+	ConnectionsMax   int     `json:"connections_max"`
+	InnoDBBufferPool struct {
 		HitRatio     float64 `json:"hit_ratio"`
 		Usage        float64 `json:"usage"`
 		PagesRead    int64   `json:"pages_read"`
@@ -147,13 +147,13 @@ type DatabaseMetrics struct {
 
 // QueryPerformanceMetric represents performance metrics for individual queries
 type QueryPerformanceMetric struct {
-	QueryID         string  `json:"query_id"`
-	DigestText      string  `json:"digest_text"`
-	ExecutionCount  int64   `json:"execution_count"`
+	QueryID          string  `json:"query_id"`
+	DigestText       string  `json:"digest_text"`
+	ExecutionCount   int64   `json:"execution_count"`
 	AvgExecutionTime float64 `json:"avg_execution_time"`
 	MaxExecutionTime float64 `json:"max_execution_time"`
-	RowsAffected    int64   `json:"rows_affected"`
-	ErrorCount      int64   `json:"error_count"`
+	RowsAffected     int64   `json:"rows_affected"`
+	ErrorCount       int64   `json:"error_count"`
 }
 
 // NewRealtimePerformanceMonitor creates a new real-time performance monitor
@@ -169,11 +169,11 @@ func NewRealtimePerformanceMonitor(
 	}
 
 	return &RealtimePerformanceMonitor{
-		logger:          logger,
-		config:          config,
-		psAdapter:       psAdapter,
-		analyzer:        analyzer,
-		graphMapper:     graphMapper,
+		logger:      logger,
+		config:      config,
+		psAdapter:   psAdapter,
+		analyzer:    analyzer,
+		graphMapper: graphMapper,
 		upgrader: websocket.Upgrader{
 			CheckOrigin: func(r *http.Request) bool {
 				// TODO: Implement proper origin checking in production
@@ -189,7 +189,7 @@ func NewRealtimePerformanceMonitor(
 	}
 }
 
-// Start begins real-time monitoring
+// Start begins real-time .monitoring
 func (rpm *RealtimePerformanceMonitor) Start(ctx context.Context) error {
 	rpm.runningMutex.Lock()
 	if rpm.isRunning {
@@ -201,7 +201,7 @@ func (rpm *RealtimePerformanceMonitor) Start(ctx context.Context) error {
 
 	rpm.logger.Info("Starting real-time performance monitor")
 
-	// Start monitoring goroutines
+	// Start .monitoring goroutines
 	go rpm.performanceCollectionLoop(ctx)
 	go rpm.alertProcessingLoop(ctx)
 	go rpm.clientCleanupLoop(ctx)
@@ -209,7 +209,7 @@ func (rpm *RealtimePerformanceMonitor) Start(ctx context.Context) error {
 	return nil
 }
 
-// Stop stops real-time monitoring
+// Stop stops real-time .monitoring
 func (rpm *RealtimePerformanceMonitor) Stop() error {
 	rpm.runningMutex.Lock()
 	defer rpm.runningMutex.Unlock()
@@ -270,9 +270,9 @@ func (rpm *RealtimePerformanceMonitor) HandleWebSocket(w http.ResponseWriter, r 
 	rpm.clientMutex.Unlock()
 
 	rpm.logger.WithFields(logrus.Fields{
-		"client_id":      clientInfo.ID,
-		"remote_addr":    r.RemoteAddr,
-		"total_clients":  len(rpm.clients),
+		"client_id":     clientInfo.ID,
+		"remote_addr":   r.RemoteAddr,
+		"total_clients": len(rpm.clients),
 	}).Info("New WebSocket client connected")
 
 	// Send initial data
@@ -282,7 +282,7 @@ func (rpm *RealtimePerformanceMonitor) HandleWebSocket(w http.ResponseWriter, r 
 	go rpm.handleClientMessages(conn, clientInfo)
 }
 
-// Private methods for monitoring loops and client handling
+// Private methods for .monitoring loops and client handling
 
 func (rpm *RealtimePerformanceMonitor) performanceCollectionLoop(ctx context.Context) {
 	ticker := time.NewTicker(rpm.config.DataUpdateInterval)
@@ -375,13 +375,13 @@ func (rpm *RealtimePerformanceMonitor) generateRealtimeMetrics(perfData *Perform
 			break
 		}
 		topQueries = append(topQueries, QueryPerformanceMetric{
-			QueryID:         stmt.SchemaName,
-			DigestText:      stmt.DigestText,
-			ExecutionCount:  stmt.CountStar,
+			QueryID:          stmt.SchemaName,
+			DigestText:       stmt.DigestText,
+			ExecutionCount:   stmt.CountStar,
 			AvgExecutionTime: float64(stmt.AvgTimerWait) / 1000000.0, // Convert to milliseconds
 			MaxExecutionTime: float64(stmt.MaxTimerWait) / 1000000.0,
-			RowsAffected:    stmt.SumRowsAffected,
-			ErrorCount:      0, // SumErrors field not available - use 0
+			RowsAffected:     stmt.SumRowsAffected,
+			ErrorCount:       0, // SumErrors field not available - use 0
 		})
 	}
 
@@ -412,8 +412,8 @@ func (rpm *RealtimePerformanceMonitor) collectDatabaseMetrics(perfData *Performa
 
 	return &DatabaseMetrics{
 		QueriesPerSecond: float64(totalQueries) / rpm.config.DataUpdateInterval.Seconds(),
-		SlowQueries:      0, // TODO: Calculate from perfData
-	ConnectionsUsed:  1, // ConnectionStats is a struct, not slice - use 1
+		SlowQueries:      0,    // TODO: Calculate from perfData
+		ConnectionsUsed:  1,    // ConnectionStats is a struct, not slice - use 1
 		ConnectionsMax:   1000, // TODO: Get from MySQL configuration
 	}
 }
@@ -636,8 +636,8 @@ func defaultRealtimeMonitorConfig() *RealtimeMonitorConfig {
 		MetricsRetention:     1 * time.Hour,
 		CompressionEnabled:   true,
 		MaxConcurrentQueries: 10,
-		MemoryLimitMB:       100,
-		CPUThreshold:        80.0,
+		MemoryLimitMB:        100,
+		CPUThreshold:         80.0,
 		AlertThresholds: AlertThresholds{
 			HighLatency:        1000.0, // 1 second
 			HighErrorRate:      5.0,    // 5%

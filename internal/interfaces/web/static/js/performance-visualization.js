@@ -139,7 +139,7 @@ class PerformanceGraphVisualizer {
 
         this.websocket.onopen = () => {
             console.log('WebSocket connected for performance data');
-            this.showStatus('Connected to real-time performance monitoring', 'success');
+            this.showStatus('Connected to real-time performance .monitoring', 'success');
         };
 
         this.websocket.onmessage = (event) => {

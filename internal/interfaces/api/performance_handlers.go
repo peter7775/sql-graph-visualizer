@@ -17,12 +17,12 @@ import (
 
 // PerformanceHandlers contains HTTP handlers for performance-related operations
 type PerformanceHandlers struct {
-	logger                *logrus.Logger
-	benchmarkService      *performance.BenchmarkService
-	performanceAnalyzer   *performance.PerformanceAnalyzer
-	graphMapper          *performance.GraphPerformanceMapper
-	realtimeMonitor      *performance.RealtimePerformanceMonitor
-	psAdapter            *performance.PerformanceSchemaAdapter
+	logger              *logrus.Logger
+	benchmarkService    *performance.BenchmarkService
+	performanceAnalyzer *performance.PerformanceAnalyzer
+	graphMapper         *performance.GraphPerformanceMapper
+	realtimeMonitor     *performance.RealtimePerformanceMonitor
+	psAdapter           *performance.PerformanceSchemaAdapter
 }
 
 // APIResponse represents a standard API response
@@ -51,39 +51,39 @@ type BenchmarkRequest struct {
 
 // BenchmarkStatusResponse represents benchmark status
 type BenchmarkStatusResponse struct {
-	ID          string                 `json:"id"`
-	Status      string                 `json:"status"`
-	StartTime   time.Time              `json:"start_time"`
-	EndTime     *time.Time             `json:"end_time,omitempty"`
-	Progress    float64                `json:"progress"`
-	Results     interface{}            `json:"results,omitempty"`
-	Error       string                 `json:"error,omitempty"`
-	Metadata    map[string]interface{} `json:"metadata"`
+	ID        string                 `json:"id"`
+	Status    string                 `json:"status"`
+	StartTime time.Time              `json:"start_time"`
+	EndTime   *time.Time             `json:"end_time,omitempty"`
+	Progress  float64                `json:"progress"`
+	Results   interface{}            `json:"results,omitempty"`
+	Error     string                 `json:"error,omitempty"`
+	Metadata  map[string]interface{} `json:"metadata"`
 }
 
 // PerformanceDataResponse represents performance data response
 type PerformanceDataResponse struct {
-	ID                    string                                 `json:"id"`
-	CollectedAt           time.Time                              `json:"collected_at"`
-	StatementStats        []performance.StatementStatistic       `json:"statement_stats"`
-	TableIOStats          []performance.TableIOStatistic         `json:"table_io_stats"`
-	IndexStats            []performance.IndexStatistic           `json:"index_stats"`
-	ConnectionStats       performance.ConnectionStatistics       `json:"connection_stats"`
-	Summary               *PerformanceSummary                    `json:"summary"`
-	GraphData             *performance.PerformanceGraphData      `json:"graph_data,omitempty"`
-	AnalysisResults       interface{}                            `json:"analysis_results,omitempty"`
+	ID              string                            `json:"id"`
+	CollectedAt     time.Time                         `json:"collected_at"`
+	StatementStats  []performance.StatementStatistic  `json:"statement_stats"`
+	TableIOStats    []performance.TableIOStatistic    `json:"table_io_stats"`
+	IndexStats      []performance.IndexStatistic      `json:"index_stats"`
+	ConnectionStats performance.ConnectionStatistics  `json:"connection_stats"`
+	Summary         *PerformanceSummary               `json:"summary"`
+	GraphData       *performance.PerformanceGraphData `json:"graph_data,omitempty"`
+	AnalysisResults interface{}                       `json:"analysis_results,omitempty"`
 }
 
 // PerformanceSummary provides a high-level summary of performance metrics
 type PerformanceSummary struct {
-	TotalQueries       int64   `json:"total_queries"`
-	AverageLatency     float64 `json:"average_latency_ms"`
-	QueriesPerSecond   float64 `json:"queries_per_second"`
-	SlowQueriesCount   int64   `json:"slow_queries_count"`
-	ErrorRate          float64 `json:"error_rate"`
-	HotspotCount       int     `json:"hotspot_count"`
-	BottleneckCount    int     `json:"bottleneck_count"`
-	PerformanceRating  string  `json:"performance_rating"`
+	TotalQueries      int64   `json:"total_queries"`
+	AverageLatency    float64 `json:"average_latency_ms"`
+	QueriesPerSecond  float64 `json:"queries_per_second"`
+	SlowQueriesCount  int64   `json:"slow_queries_count"`
+	ErrorRate         float64 `json:"error_rate"`
+	HotspotCount      int     `json:"hotspot_count"`
+	BottleneckCount   int     `json:"bottleneck_count"`
+	PerformanceRating string  `json:"performance_rating"`
 }
 
 // NewPerformanceHandlers creates new performance API handlers
@@ -96,9 +96,9 @@ func NewPerformanceHandlers(
 	psAdapter *performance.PerformanceSchemaAdapter,
 ) *PerformanceHandlers {
 	return &PerformanceHandlers{
-		logger:               logger,
-		benchmarkService:     benchmarkService,
-		performanceAnalyzer:  performanceAnalyzer,
+		logger:              logger,
+		benchmarkService:    benchmarkService,
+		performanceAnalyzer: performanceAnalyzer,
 		graphMapper:         graphMapper,
 		realtimeMonitor:     realtimeMonitor,
 		psAdapter:           psAdapter,
@@ -120,7 +120,7 @@ func (ph *PerformanceHandlers) RegisterRoutes(router *mux.Router) {
 	router.HandleFunc("/api/performance/data/analysis", ph.GetPerformanceAnalysis).Methods("GET")
 	router.HandleFunc("/api/performance/data/graph", ph.GetPerformanceGraph).Methods("GET")
 
-	// Real-time monitoring endpoints
+	// Real-time .monitoring endpoints
 	router.HandleFunc("/api/performance/realtime/clients", ph.GetRealtimeClients).Methods("GET")
 	router.HandleFunc("/api/performance/realtime/status", ph.GetRealtimeStatus).Methods("GET")
 	router.HandleFunc("/ws/performance", ph.HandleWebSocket).Methods("GET")
@@ -140,7 +140,7 @@ func (ph *PerformanceHandlers) RegisterRoutes(router *mux.Router) {
 
 func (ph *PerformanceHandlers) ListBenchmarks(w http.ResponseWriter, r *http.Request) {
 	benchmarks := ph.benchmarkService.ListRunningBenchmarks(r.Context())
-	
+
 	ph.sendJSONResponse(w, http.StatusOK, APIResponse{
 		Success:   true,
 		Data:      benchmarks,
@@ -180,7 +180,7 @@ func (ph *PerformanceHandlers) StartBenchmark(w http.ResponseWriter, r *http.Req
 		Status:    "started",
 		StartTime: time.Now(),
 		Progress:  0.0,
-		Metadata:  map[string]interface{}{
+		Metadata: map[string]interface{}{
 			"benchmark_type": req.BenchmarkType,
 			"duration":       req.Duration,
 		},
@@ -227,7 +227,7 @@ func (ph *PerformanceHandlers) GetBenchmark(w http.ResponseWriter, r *http.Reque
 		Progress:  progressFloat,
 		Results:   status.Result,
 		Error:     "", // No direct error field in execution
-		Metadata:  map[string]interface{}{
+		Metadata: map[string]interface{}{
 			"config": status.Config,
 		},
 	}
@@ -302,7 +302,7 @@ func (ph *PerformanceHandlers) GetCurrentPerformanceData(w http.ResponseWriter, 
 		StatementStats:  perfData.StatementStats,
 		TableIOStats:    perfData.TableIOStats,
 		IndexStats:      perfData.IndexStats,
-	ConnectionStats: *perfData.ConnectionStats,
+		ConnectionStats: *perfData.ConnectionStats,
 		Summary:         ph.generatePerformanceSummary(perfData),
 	}
 
@@ -322,7 +322,7 @@ func (ph *PerformanceHandlers) GetCurrentPerformanceData(w http.ResponseWriter, 
 	if includeAnalysis {
 		// TODO: Implement performance analysis when method is available
 		response.AnalysisResults = map[string]interface{}{
-			"status": "analysis_not_available",
+			"status":  "analysis_not_available",
 			"message": "Performance analysis feature is under development",
 		}
 	}
@@ -400,9 +400,9 @@ func (ph *PerformanceHandlers) GetPerformanceAnalysis(w http.ResponseWriter, r *
 
 	// TODO: Implement performance analysis
 	analysisResults := map[string]interface{}{
-		"status": "analysis_not_available",
+		"status":  "analysis_not_available",
 		"message": "Performance analysis feature is under development",
-		"data": perfData,
+		"data":    perfData,
 	}
 
 	ph.sendJSONResponse(w, http.StatusOK, APIResponse{
@@ -441,11 +441,11 @@ func (ph *PerformanceHandlers) GetPerformanceGraph(w http.ResponseWriter, r *htt
 	})
 }
 
-// Real-time monitoring handlers
+// Real-time .monitoring handlers
 
 func (ph *PerformanceHandlers) GetRealtimeClients(w http.ResponseWriter, r *http.Request) {
 	clients := ph.realtimeMonitor.GetConnectedClients()
-	
+
 	ph.sendJSONResponse(w, http.StatusOK, APIResponse{
 		Success:   true,
 		Data:      clients,
@@ -543,7 +543,7 @@ func (ph *PerformanceHandlers) GetQueryMetrics(w http.ResponseWriter, r *http.Re
 func (ph *PerformanceHandlers) GetAlerts(w http.ResponseWriter, r *http.Request) {
 	// TODO: Implement alerts retrieval
 	// This would typically query an alerts storage system
-	
+
 	alerts := []map[string]interface{}{
 		{
 			"message": "Alerts system not yet implemented",
@@ -561,7 +561,7 @@ func (ph *PerformanceHandlers) GetAlerts(w http.ResponseWriter, r *http.Request)
 // Configuration handlers
 
 func (ph *PerformanceHandlers) GetPerformanceConfig(w http.ResponseWriter, r *http.Request) {
-	// TODO: Return current performance monitoring configuration
+	// TODO: Return current performance .monitoring configuration
 	config := map[string]interface{}{
 		"message": "Configuration endpoint not yet implemented",
 	}
@@ -574,7 +574,7 @@ func (ph *PerformanceHandlers) GetPerformanceConfig(w http.ResponseWriter, r *ht
 }
 
 func (ph *PerformanceHandlers) UpdatePerformanceConfig(w http.ResponseWriter, r *http.Request) {
-	// TODO: Update performance monitoring configuration
+	// TODO: Update performance .monitoring configuration
 	ph.sendJSONResponse(w, http.StatusOK, APIResponse{
 		Success:   true,
 		Data:      map[string]string{"status": "configuration update not yet implemented"},
@@ -625,8 +625,8 @@ func (ph *PerformanceHandlers) generatePerformanceSummary(perfData *performance.
 		QueriesPerSecond:  float64(totalQueries) / 300.0, // Assume 5-minute collection period
 		SlowQueriesCount:  slowQueriesCount,
 		ErrorRate:         errorRate,
-		HotspotCount:      0,      // TODO: Calculate from analysis
-		BottleneckCount:   0,      // TODO: Calculate from analysis
+		HotspotCount:      0, // TODO: Calculate from analysis
+		BottleneckCount:   0, // TODO: Calculate from analysis
 		PerformanceRating: rating,
 	}
 }
@@ -634,7 +634,7 @@ func (ph *PerformanceHandlers) generatePerformanceSummary(perfData *performance.
 func (ph *PerformanceHandlers) sendJSONResponse(w http.ResponseWriter, statusCode int, response APIResponse) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(statusCode)
-	
+
 	if err := json.NewEncoder(w).Encode(response); err != nil {
 		ph.logger.WithError(err).Error("Failed to encode JSON response")
 	}
@@ -642,7 +642,7 @@ func (ph *PerformanceHandlers) sendJSONResponse(w http.ResponseWriter, statusCod
 
 func (ph *PerformanceHandlers) sendErrorResponse(w http.ResponseWriter, statusCode int, code, message, details string) {
 	response := APIResponse{
-		Success:   false,
+		Success: false,
 		Error: &APIError{
 			Code:    code,
 			Message: message,
@@ -652,7 +652,7 @@ func (ph *PerformanceHandlers) sendErrorResponse(w http.ResponseWriter, statusCo
 	}
 
 	ph.sendJSONResponse(w, statusCode, response)
-	
+
 	ph.logger.WithFields(logrus.Fields{
 		"status_code": statusCode,
 		"error_code":  code,

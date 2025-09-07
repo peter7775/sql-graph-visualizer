@@ -15,9 +15,9 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"strings"
 	"sql-graph-visualizer/internal/domain/models"
 	"sql-graph-visualizer/internal/domain/repository"
+	"strings"
 	"time"
 
 	_ "github.com/lib/pq"
@@ -75,7 +75,7 @@ func (r *PostgreSQLDatabaseRepository) Connect(ctx context.Context, config model
 		connString.WriteString(fmt.Sprintf(" statement_timeout=%dms", pgConfig.StatementTimeout*1000))
 	}
 
-	// Set application name for monitoring
+	// Set application name for .monitoring
 	appName := pgConfig.ApplicationName
 	if appName == "" {
 		appName = "sql-graph-visualizer"
@@ -437,7 +437,7 @@ func (r *PostgreSQLDatabaseRepository) GetSchemaNames(ctx context.Context) ([]st
 			AND schema_name NOT LIKE 'pg_toast_temp_%'
 		ORDER BY schema_name
 	`
-	
+
 	rows, err := r.db.QueryContext(ctx, query)
 	if err != nil {
 		return nil, err

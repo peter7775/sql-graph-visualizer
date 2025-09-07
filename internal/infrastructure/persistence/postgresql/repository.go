@@ -123,7 +123,7 @@ func (r *PostgreSQLRepository) ConnectToExisting(ctx context.Context, config *mo
 		connString.WriteString(fmt.Sprintf(" statement_timeout=%dms", config.StatementTimeout*1000))
 	}
 
-	// Set application name for monitoring
+	// Set application name for .monitoring
 	appName := config.ApplicationName
 	if appName == "" {
 		appName = "sql-graph-visualizer"

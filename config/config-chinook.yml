@@ -36,7 +36,7 @@ neo4j:
   user: "neo4j"
   password: "testpass"
 
-# Performance monitoring and benchmarking configuration
+# Performance .monitoring and benchmarking configuration
 performance:
   # Performance data collection settings
   monitoring:
@@ -52,7 +52,7 @@ performance:
       high_load_threshold: 80.0
       hotspot_threshold: 75.0
       
-  # Real-time monitoring via WebSocket
+  # Real-time .monitoring via WebSocket
   realtime:
     enabled: false  # Disable for PostgreSQL demo
     update_interval: "5s"

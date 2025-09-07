@@ -6,10 +6,10 @@ Tento monitoring system automaticky kontroluje potenciální neautorizované kop
 
 ```bash
 # Spusťte setup script pro automatickou instalaci
-./monitoring/setup-monitoring.sh
+./.monitoring/setup-.monitoring.sh
 
-# Nebo manuálně spusťte monitoring
-./monitoring/code-monitoring.sh
+# Nebo manuálně spusťte .monitoring
+./.monitoring/code-.monitoring.sh
 ```
 
 ## 📁 Struktura souborů
@@ -51,7 +51,7 @@ Když monitoring najde potenciální kopie:
 
 1. **Zkontrolujte výsledky manuálně**
    ```bash
-   cat monitoring/monitoring-results.log | grep ALERT
+   cat .monitoring/.monitoring-results.log | grep ALERT
    ```
 
 2. **Prohlédněte si nalezené repository**
@@ -130,7 +130,7 @@ sudo pacman -S curl  # Manjaro/Arch
 ### Log soubory rostou příliš rychle
 ```bash
 # Automatické čištění starých logů
-find monitoring/ -name "*.log" -mtime +30 -delete
+find .monitoring/ -name "*.log" -mtime +30 -delete
 ```
 
 ## 🔐 Bezpečnostní poznámky
