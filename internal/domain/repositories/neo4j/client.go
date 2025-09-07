@@ -182,6 +182,34 @@ func (c *Client) FetchNodes(nodeType string) ([]map[string]any, error) {
 	return nodes, nil
 }
 
+// ExecuteQuery executes a custom Cypher query with parameters
+func (c *Client) ExecuteQuery(query string, params map[string]interface{}) ([]map[string]interface{}, error) {
+	session := c.driver.NewSession(neo4j.SessionConfig{})
+	defer func() {
+		if err := session.Close(); err != nil {
+			logrus.Errorf("Error closing session: %v", err)
+		}
+	}()
+
+	result, err := session.Run(query, params)
+	if err != nil {
+		return nil, fmt.Errorf("failed to execute query: %w", err)
+	}
+
+	var records []map[string]interface{}
+	for result.Next() {
+		record := result.Record()
+		data := make(map[string]interface{})
+		for i, key := range record.Keys {
+			data[key] = record.Values[i]
+		}
+		records = append(records, data)
+	}
+
+	logrus.Debugf("ExecuteQuery returned %d records for query: %s", len(records), query)
+	return records, nil
+}
+
 // GetDriver returns Neo4j driver for direct access
 func (c *Client) GetDriver() neo4j.Driver {
 	return c.driver
