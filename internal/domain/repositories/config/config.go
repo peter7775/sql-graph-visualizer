@@ -9,14 +9,13 @@
  * and graph visualization. Commercial use requires separate licensing.
  */
 
-
 package config
 
 import (
 	"fmt"
-	"sql-graph-visualizer/internal/domain/models"
 	"os"
 	"path/filepath"
+	"sql-graph-visualizer/internal/domain/models"
 	"strings"
 
 	"github.com/sirupsen/logrus"
@@ -25,7 +24,7 @@ import (
 
 func Load() (*models.Config, error) {
 	var configPath string
-	
+
 	// Check for CONFIG_PATH environment variable
 	if envPath := os.Getenv("CONFIG_PATH"); envPath != "" {
 		logrus.Infof("Using CONFIG_PATH environment variable: %s", envPath)
@@ -37,7 +36,7 @@ func Load() (*models.Config, error) {
 	} else {
 		configPath = findProjectRoot() + "/config/config.yml"
 	}
-	
+
 	logrus.Infof("Loading configuration from YAML file: %s", configPath)
 
 	// Validate path to prevent directory traversal

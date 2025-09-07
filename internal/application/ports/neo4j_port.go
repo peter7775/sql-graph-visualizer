@@ -9,7 +9,6 @@
  * and graph visualization. Commercial use requires separate licensing.
  */
 
-
 package ports
 
 import "sql-graph-visualizer/internal/domain/aggregates/graph"

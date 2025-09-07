@@ -41,11 +41,11 @@ func (s *SecurityValidationService) ValidateConnectionSecurity(
 	ctx context.Context,
 	dbConfig *models.MySQLConfig,
 ) (*models.SecurityValidationResult, error) {
-	
+
 	result := &models.SecurityValidationResult{
-		IsValid:        true,
-		SecurityLevel:  "HIGH",
-		Validations:    make(map[string]*models.ValidationCheck),
+		IsValid:         true,
+		SecurityLevel:   "HIGH",
+		Validations:     make(map[string]*models.ValidationCheck),
 		Recommendations: []string{},
 	}
 
@@ -78,7 +78,7 @@ func (s *SecurityValidationService) validateConnectionParameters(
 	dbConfig *models.MySQLConfig,
 	result *models.SecurityValidationResult,
 ) {
-	
+
 	// Validate host security
 	hostCheck := &models.ValidationCheck{
 		CheckName:   "host_security",
@@ -130,7 +130,7 @@ func (s *SecurityValidationService) validateConnectionParameters(
 		credCheck.Message = "Weak password detected - use strong passwords for production"
 		credCheck.Severity = "CRITICAL"
 		result.IsValid = false
-		result.Recommendations = append(result.Recommendations, 
+		result.Recommendations = append(result.Recommendations,
 			"Use strong passwords with mixed case, numbers, and special characters")
 	} else if s.isDefaultCredentials(dbConfig.Username, dbConfig.Password) {
 		credCheck.Passed = false
@@ -152,7 +152,7 @@ func (s *SecurityValidationService) validateNetworkSecurity(
 	dbConfig *models.MySQLConfig,
 	result *models.SecurityValidationResult,
 ) error {
-	
+
 	networkCheck := &models.ValidationCheck{
 		CheckName:   "network_security",
 		Passed:      true,
@@ -193,7 +193,7 @@ func (s *SecurityValidationService) validateSSLConfiguration(
 	dbConfig *models.MySQLConfig,
 	result *models.SecurityValidationResult,
 ) {
-	
+
 	sslCheck := &models.ValidationCheck{
 		CheckName:   "ssl_security",
 		Passed:      true,
@@ -242,7 +242,7 @@ func (s *SecurityValidationService) validateAuthenticationMethod(
 	dbConfig *models.MySQLConfig,
 	result *models.SecurityValidationResult,
 ) {
-	
+
 	authCheck := &models.ValidationCheck{
 		CheckName:   "authentication_security",
 		Passed:      true,
@@ -269,7 +269,7 @@ func (s *SecurityValidationService) applySecurityPolicies(
 	dbConfig *models.MySQLConfig,
 	result *models.SecurityValidationResult,
 ) {
-	
+
 	policyCheck := &models.ValidationCheck{
 		CheckName:   "security_policies",
 		Passed:      true,
@@ -347,7 +347,7 @@ func (s *SecurityValidationService) isProductionHost(host string) bool {
 		`.*live.*`,
 		`.*master.*`,
 	}
-	
+
 	hostLower := strings.ToLower(host)
 	for _, pattern := range prodPatterns {
 		matched, _ := regexp.MatchString(pattern, hostLower)
@@ -374,7 +374,7 @@ func (s *SecurityValidationService) isPublicIP(host string) bool {
 		// If it's not an IP, assume it's a hostname that could be public
 		return !s.isLocalhostConnection(host)
 	}
-	
+
 	return !ip.IsLoopback() && !ip.IsPrivate()
 }
 
@@ -382,7 +382,7 @@ func (s *SecurityValidationService) isWeakPassword(password string) bool {
 	if len(password) < 8 {
 		return true
 	}
-	
+
 	// Check for common weak patterns
 	weakPatterns := []string{
 		`^password`,
@@ -391,7 +391,7 @@ func (s *SecurityValidationService) isWeakPassword(password string) bool {
 		`^root`,
 		`^test`,
 	}
-	
+
 	passwordLower := strings.ToLower(password)
 	for _, pattern := range weakPatterns {
 		matched, _ := regexp.MatchString(pattern, passwordLower)
@@ -399,7 +399,7 @@ func (s *SecurityValidationService) isWeakPassword(password string) bool {
 			return true
 		}
 	}
-	
+
 	return false
 }
 
@@ -416,16 +416,16 @@ func (s *SecurityValidationService) isDefaultCredentials(username, password stri
 		{"admin", "password"},
 		{"test", "test"},
 	}
-	
+
 	usernameLower := strings.ToLower(username)
 	passwordLower := strings.ToLower(password)
-	
+
 	for _, combo := range defaultCombos {
 		if combo.username == usernameLower && combo.password == passwordLower {
 			return true
 		}
 	}
-	
+
 	return false
 }
 
@@ -435,24 +435,24 @@ func (s *SecurityValidationService) validateSSLCertificates(sslConfig models.SSL
 		if err != nil {
 			return fmt.Errorf("failed to load SSL certificate: %w", err)
 		}
-		
+
 		// Parse certificate to check validity
 		x509Cert, err := x509.ParseCertificate(cert.Certificate[0])
 		if err != nil {
 			return fmt.Errorf("failed to parse SSL certificate: %w", err)
 		}
-		
+
 		// Check if certificate is expired
 		if time.Now().After(x509Cert.NotAfter) {
 			return fmt.Errorf("SSL certificate has expired")
 		}
-		
+
 		// Check if certificate is not yet valid
 		if time.Now().Before(x509Cert.NotBefore) {
 			return fmt.Errorf("SSL certificate is not yet valid")
 		}
 	}
-	
+
 	return nil
 }
 

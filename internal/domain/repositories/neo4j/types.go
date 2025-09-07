@@ -9,7 +9,6 @@
  * and graph visualization. Commercial use requires separate licensing.
  */
 
-
 package neo4j
 
 type DataType struct {

@@ -1,3 +1,5 @@
+//go:build tools
+
 /*
  * Copyright (c) 2025 Petr Miroslav Stepanek <petrstepanek99@gmail.com>
  *
@@ -8,8 +10,6 @@
  * This software contains patent-pending innovations in database analysis
  * and graph visualization. Commercial use requires separate licensing.
  */
-
-//go:build tools
 
 package tools
 

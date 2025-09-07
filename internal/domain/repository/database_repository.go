@@ -23,32 +23,32 @@ type DatabaseRepository interface {
 	Connect(ctx context.Context, config models.DatabaseConfig) (*sql.DB, error)
 	Close() error
 	TestConnection(ctx context.Context) error
-	
+
 	// Schema introspection
 	GetTables(ctx context.Context, filters models.DataFilteringConfig) ([]string, error)
 	GetColumns(ctx context.Context, tableName string) ([]*models.ColumnInfo, error)
 	GetForeignKeys(ctx context.Context, tableName string) ([]models.ForeignKeyInfo, error)
 	GetIndexes(ctx context.Context, tableName string) ([]models.IndexInfo, error)
 	GetConstraints(ctx context.Context, tableName string) ([]models.Constraint, error)
-	
+
 	// Database metadata
 	GetDatabaseName(ctx context.Context) (string, error)
 	GetDatabaseVersion(ctx context.Context) (string, error)
 	GetSchemaNames(ctx context.Context) ([]string, error)
-	
+
 	// Data sampling and analysis
 	GetTableRowCount(ctx context.Context, tableName string) (int64, error)
 	SampleTableData(ctx context.Context, tableName string, limit int) ([]map[string]interface{}, error)
 	AnalyzeColumnStatistics(ctx context.Context, tableName, columnName string) (*models.ColumnStatistics, error)
-	
+
 	// Performance and optimization
 	GetTableSize(ctx context.Context, tableName string) (*models.TableSize, error)
 	GetQueryExecutionPlan(ctx context.Context, query string) (string, error)
-	
+
 	// Security validation
 	ValidatePermissions(ctx context.Context, requiredPerms []string) error
 	CheckUserPrivileges(ctx context.Context) (*models.UserPrivileges, error)
-	
+
 	// Database-specific utility methods
 	EscapeIdentifier(identifier string) string
 	GetQuoteChar() string
@@ -70,21 +70,21 @@ type QueryBuilder interface {
 	BuildForeignKeysQuery(tableName string) string
 	BuildIndexesQuery(tableName string) string
 	BuildConstraintsQuery(tableName string) string
-	
+
 	// Metadata queries
 	BuildDatabaseVersionQuery() string
 	BuildSchemaNamesQuery() string
 	BuildTableRowCountQuery(tableName string) string
 	BuildTableSizeQuery(tableName string) string
-	
+
 	// Data analysis queries
 	BuildSampleDataQuery(tableName string, limit int) string
 	BuildColumnStatisticsQuery(tableName, columnName string) string
-	
+
 	// Security queries
 	BuildUserPrivilegesQuery() string
 	BuildPermissionCheckQuery(permission string) string
-	
+
 	// Utility methods
 	FormatTableName(tableName string, schema ...string) string
 	FormatColumnName(columnName string) string
@@ -150,36 +150,36 @@ type SchemaCache interface {
 
 // CacheStats provides cache performance statistics
 type CacheStats struct {
-	HitCount    int64
-	MissCount   int64
-	HitRate     float64
-	Size        int
-	MaxSize     int
-	Evictions   int64
+	HitCount  int64
+	MissCount int64
+	HitRate   float64
+	Size      int
+	MaxSize   int
+	Evictions int64
 }
 
 // DatabaseSpecificConfig holds database-specific configuration and behaviors
 type DatabaseSpecificConfig struct {
-	QuoteChar          string
-	IdentifierMaxLen   int
-	CaseSensitive      bool
-	DefaultPort        int
-	DefaultSchema      string
-	SupportsSchemas    bool
-	SupportsCatalogs   bool
+	QuoteChar            string
+	IdentifierMaxLen     int
+	CaseSensitive        bool
+	DefaultPort          int
+	DefaultSchema        string
+	SupportsSchemas      bool
+	SupportsCatalogs     bool
 	SupportsTransactions bool
-	
+
 	// Query limits and timeouts
-	MaxQueryTimeout    int // seconds
-	MaxResultSetSize   int64
-	DefaultBatchSize   int
-	
+	MaxQueryTimeout  int // seconds
+	MaxResultSetSize int64
+	DefaultBatchSize int
+
 	// Feature support
 	SupportsWindowFunctions bool
-	SupportsCTE            bool
-	SupportsRecursiveCTE   bool
-	SupportsArrayTypes     bool
-	SupportsJSONType       bool
+	SupportsCTE             bool
+	SupportsRecursiveCTE    bool
+	SupportsArrayTypes      bool
+	SupportsJSONType        bool
 }
 
 // ErrorHandler provides database-specific error handling

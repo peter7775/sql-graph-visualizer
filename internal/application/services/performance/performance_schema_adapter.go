@@ -10,24 +10,24 @@ import (
 	"time"
 
 	"sql-graph-visualizer/internal/application/ports"
-	
+
 	"github.com/sirupsen/logrus"
 )
 
 // PerformanceSchemaAdapter collects performance data from MySQL Performance Schema
 type PerformanceSchemaAdapter struct {
-	db          *sql.DB
-	logger      *logrus.Logger
-	config      *PerformanceSchemaConfig
-	
+	db     *sql.DB
+	logger *logrus.Logger
+	config *PerformanceSchemaConfig
+
 	// Caching and state management
-	lastCollection  time.Time
+	lastCollection time.Time
 	mutex          sync.RWMutex
 	isConnected    bool
-	
+
 	// Query cache for performance schema queries
-	queryCache     map[string]*sql.Stmt
-	queryCacheMux  sync.RWMutex
+	queryCache    map[string]*sql.Stmt
+	queryCacheMux sync.RWMutex
 }
 
 // PerformanceSchemaConfig contains configuration for Performance Schema data collection
@@ -36,123 +36,123 @@ type PerformanceSchemaConfig struct {
 	CollectionInterval  time.Duration `yaml:"collection_interval" json:"collection_interval"`
 	SlowQueryThreshold  time.Duration `yaml:"slow_query_threshold" json:"slow_query_threshold"`
 	MaxHistoryRetention time.Duration `yaml:"max_history_retention" json:"max_history_retention"`
-	
+
 	// Data collection toggles
-	CollectStatements   bool `yaml:"collect_statements" json:"collect_statements"`
-	CollectTableIO      bool `yaml:"collect_table_io" json:"collect_table_io"`
-	CollectIndexUsage   bool `yaml:"collect_index_usage" json:"collect_index_usage"`
-	CollectWaitEvents   bool `yaml:"collect_wait_events" json:"collect_wait_events"`
-	CollectConnections  bool `yaml:"collect_connections" json:"collect_connections"`
-	CollectReplication  bool `yaml:"collect_replication" json:"collect_replication"`
-	
+	CollectStatements  bool `yaml:"collect_statements" json:"collect_statements"`
+	CollectTableIO     bool `yaml:"collect_table_io" json:"collect_table_io"`
+	CollectIndexUsage  bool `yaml:"collect_index_usage" json:"collect_index_usage"`
+	CollectWaitEvents  bool `yaml:"collect_wait_events" json:"collect_wait_events"`
+	CollectConnections bool `yaml:"collect_connections" json:"collect_connections"`
+	CollectReplication bool `yaml:"collect_replication" json:"collect_replication"`
+
 	// Query limits
-	MaxStatements       int `yaml:"max_statements" json:"max_statements"`
-	MaxTables           int `yaml:"max_tables" json:"max_tables"`
-	
+	MaxStatements int `yaml:"max_statements" json:"max_statements"`
+	MaxTables     int `yaml:"max_tables" json:"max_tables"`
+
 	// Filtering options
-	IgnoredSchemas      []string `yaml:"ignored_schemas" json:"ignored_schemas"`
-	IgnoredUsers        []string `yaml:"ignored_users" json:"ignored_users"`
-	FocusedTables       []string `yaml:"focused_tables" json:"focused_tables"`
-	
+	IgnoredSchemas []string `yaml:"ignored_schemas" json:"ignored_schemas"`
+	IgnoredUsers   []string `yaml:"ignored_users" json:"ignored_users"`
+	FocusedTables  []string `yaml:"focused_tables" json:"focused_tables"`
+
 	// Advanced settings
-	EnableDigestText    bool    `yaml:"enable_digest_text" json:"enable_digest_text"`
-	MinExecutionCount   int64   `yaml:"min_execution_count" json:"min_execution_count"`
-	MinAvgLatency       float64 `yaml:"min_avg_latency" json:"min_avg_latency"` // milliseconds
+	EnableDigestText  bool    `yaml:"enable_digest_text" json:"enable_digest_text"`
+	MinExecutionCount int64   `yaml:"min_execution_count" json:"min_execution_count"`
+	MinAvgLatency     float64 `yaml:"min_avg_latency" json:"min_avg_latency"` // milliseconds
 }
 
 // PerformanceSchemaData contains collected performance data
 type PerformanceSchemaData struct {
-	CollectionTime     time.Time                    `json:"collection_time"`
-	GlobalStatus       *GlobalStatusData            `json:"global_status"`
-	StatementStats     []StatementStatistic         `json:"statement_stats"`
-	TableIOStats       []TableIOStatistic           `json:"table_io_stats"`
-	IndexStats         []IndexStatistic             `json:"index_stats"`
-	WaitEventStats     []WaitEventStatistic         `json:"wait_event_stats"`
-	ConnectionStats    *ConnectionStatistics        `json:"connection_stats"`
-	ReplicationStats   *ReplicationStatistics       `json:"replication_stats"`
-	SlowQueries        []SlowQueryInfo              `json:"slow_queries"`
+	CollectionTime   time.Time              `json:"collection_time"`
+	GlobalStatus     *GlobalStatusData      `json:"global_status"`
+	StatementStats   []StatementStatistic   `json:"statement_stats"`
+	TableIOStats     []TableIOStatistic     `json:"table_io_stats"`
+	IndexStats       []IndexStatistic       `json:"index_stats"`
+	WaitEventStats   []WaitEventStatistic   `json:"wait_event_stats"`
+	ConnectionStats  *ConnectionStatistics  `json:"connection_stats"`
+	ReplicationStats *ReplicationStatistics `json:"replication_stats"`
+	SlowQueries      []SlowQueryInfo        `json:"slow_queries"`
 }
 
 // GlobalStatusData contains global MySQL status information
 type GlobalStatusData struct {
-	QueriesPerSecond       float64 `json:"queries_per_second"`
-	ConnectionsPerSecond   float64 `json:"connections_per_second"`
-	SlowQueries            int64   `json:"slow_queries"`
-	OpenTables             int64   `json:"open_tables"`
-	ThreadsRunning         int64   `json:"threads_running"`
-	ThreadsConnected       int64   `json:"threads_connected"`
+	QueriesPerSecond        float64 `json:"queries_per_second"`
+	ConnectionsPerSecond    float64 `json:"connections_per_second"`
+	SlowQueries             int64   `json:"slow_queries"`
+	OpenTables              int64   `json:"open_tables"`
+	ThreadsRunning          int64   `json:"threads_running"`
+	ThreadsConnected        int64   `json:"threads_connected"`
 	InnodbBufferPoolHitRate float64 `json:"innodb_buffer_pool_hit_rate"`
-	KeyCacheHitRate        float64 `json:"key_cache_hit_rate"`
-	TmpTablesCreated       int64   `json:"tmp_tables_created"`
-	TmpDiskTablesCreated   int64   `json:"tmp_disk_tables_created"`
+	KeyCacheHitRate         float64 `json:"key_cache_hit_rate"`
+	TmpTablesCreated        int64   `json:"tmp_tables_created"`
+	TmpDiskTablesCreated    int64   `json:"tmp_disk_tables_created"`
 }
 
 // StatementStatistic contains per-statement performance data
 type StatementStatistic struct {
-	SchemaName       string        `json:"schema_name"`
-	Digest           string        `json:"digest"`
-	DigestText       string        `json:"digest_text,omitempty"`
-	CountStar        int64         `json:"count_star"`
-	SumTimerWait     time.Duration `json:"sum_timer_wait"`
-	MinTimerWait     time.Duration `json:"min_timer_wait"`
-	AvgTimerWait     time.Duration `json:"avg_timer_wait"`
-	MaxTimerWait     time.Duration `json:"max_timer_wait"`
-	SumRowsAffected  int64         `json:"sum_rows_affected"`
-	SumRowsSent      int64         `json:"sum_rows_sent"`
-	SumRowsExamined  int64         `json:"sum_rows_examined"`
-	SumCreatedTmpTables int64      `json:"sum_created_tmp_tables"`
-	SumCreatedTmpDiskTables int64  `json:"sum_created_tmp_disk_tables"`
-	SumSelectFullJoin int64        `json:"sum_select_full_join"`
-	SumSelectScan    int64         `json:"sum_select_scan"`
-	SumSortScan      int64         `json:"sum_sort_scan"`
-	SumSortRows      int64         `json:"sum_sort_rows"`
-	SumNoIndexUsed   int64         `json:"sum_no_index_used"`
-	SumNoGoodIndexUsed int64       `json:"sum_no_good_index_used"`
-	FirstSeen        time.Time     `json:"first_seen"`
-	LastSeen         time.Time     `json:"last_seen"`
+	SchemaName              string        `json:"schema_name"`
+	Digest                  string        `json:"digest"`
+	DigestText              string        `json:"digest_text,omitempty"`
+	CountStar               int64         `json:"count_star"`
+	SumTimerWait            time.Duration `json:"sum_timer_wait"`
+	MinTimerWait            time.Duration `json:"min_timer_wait"`
+	AvgTimerWait            time.Duration `json:"avg_timer_wait"`
+	MaxTimerWait            time.Duration `json:"max_timer_wait"`
+	SumRowsAffected         int64         `json:"sum_rows_affected"`
+	SumRowsSent             int64         `json:"sum_rows_sent"`
+	SumRowsExamined         int64         `json:"sum_rows_examined"`
+	SumCreatedTmpTables     int64         `json:"sum_created_tmp_tables"`
+	SumCreatedTmpDiskTables int64         `json:"sum_created_tmp_disk_tables"`
+	SumSelectFullJoin       int64         `json:"sum_select_full_join"`
+	SumSelectScan           int64         `json:"sum_select_scan"`
+	SumSortScan             int64         `json:"sum_sort_scan"`
+	SumSortRows             int64         `json:"sum_sort_rows"`
+	SumNoIndexUsed          int64         `json:"sum_no_index_used"`
+	SumNoGoodIndexUsed      int64         `json:"sum_no_good_index_used"`
+	FirstSeen               time.Time     `json:"first_seen"`
+	LastSeen                time.Time     `json:"last_seen"`
 }
 
 // TableIOStatistic contains per-table I/O performance data
 type TableIOStatistic struct {
-	SchemaName       string  `json:"schema_name"`
-	TableName        string  `json:"table_name"`
-	CountRead        int64   `json:"count_read"`
-	SumTimerRead     time.Duration `json:"sum_timer_read"`
-	CountWrite       int64   `json:"count_write"`
-	SumTimerWrite    time.Duration `json:"sum_timer_write"`
-	CountFetch       int64   `json:"count_fetch"`
-	SumTimerFetch    time.Duration `json:"sum_timer_fetch"`
-	CountInsert      int64   `json:"count_insert"`
-	SumTimerInsert   time.Duration `json:"sum_timer_insert"`
-	CountUpdate      int64   `json:"count_update"`
-	SumTimerUpdate   time.Duration `json:"sum_timer_update"`
-	CountDelete      int64   `json:"count_delete"`
-	SumTimerDelete   time.Duration `json:"sum_timer_delete"`
+	SchemaName     string        `json:"schema_name"`
+	TableName      string        `json:"table_name"`
+	CountRead      int64         `json:"count_read"`
+	SumTimerRead   time.Duration `json:"sum_timer_read"`
+	CountWrite     int64         `json:"count_write"`
+	SumTimerWrite  time.Duration `json:"sum_timer_write"`
+	CountFetch     int64         `json:"count_fetch"`
+	SumTimerFetch  time.Duration `json:"sum_timer_fetch"`
+	CountInsert    int64         `json:"count_insert"`
+	SumTimerInsert time.Duration `json:"sum_timer_insert"`
+	CountUpdate    int64         `json:"count_update"`
+	SumTimerUpdate time.Duration `json:"sum_timer_update"`
+	CountDelete    int64         `json:"count_delete"`
+	SumTimerDelete time.Duration `json:"sum_timer_delete"`
 }
 
 // IndexStatistic contains index usage statistics
 type IndexStatistic struct {
-	SchemaName     string  `json:"schema_name"`
-	TableName      string  `json:"table_name"`
-	IndexName      string  `json:"index_name"`
-	CountFetch     int64   `json:"count_fetch"`
+	SchemaName     string        `json:"schema_name"`
+	TableName      string        `json:"table_name"`
+	IndexName      string        `json:"index_name"`
+	CountFetch     int64         `json:"count_fetch"`
 	SumTimerFetch  time.Duration `json:"sum_timer_fetch"`
-	CountInsert    int64   `json:"count_insert"`
+	CountInsert    int64         `json:"count_insert"`
 	SumTimerInsert time.Duration `json:"sum_timer_insert"`
-	CountUpdate    int64   `json:"count_update"`
+	CountUpdate    int64         `json:"count_update"`
 	SumTimerUpdate time.Duration `json:"sum_timer_update"`
-	CountDelete    int64   `json:"count_delete"`
+	CountDelete    int64         `json:"count_delete"`
 	SumTimerDelete time.Duration `json:"sum_timer_delete"`
 }
 
 // WaitEventStatistic contains wait event statistics
 type WaitEventStatistic struct {
-	EventName     string        `json:"event_name"`
-	CountStar     int64         `json:"count_star"`
-	SumTimerWait  time.Duration `json:"sum_timer_wait"`
-	MinTimerWait  time.Duration `json:"min_timer_wait"`
-	AvgTimerWait  time.Duration `json:"avg_timer_wait"`
-	MaxTimerWait  time.Duration `json:"max_timer_wait"`
+	EventName    string        `json:"event_name"`
+	CountStar    int64         `json:"count_star"`
+	SumTimerWait time.Duration `json:"sum_timer_wait"`
+	MinTimerWait time.Duration `json:"min_timer_wait"`
+	AvgTimerWait time.Duration `json:"avg_timer_wait"`
+	MaxTimerWait time.Duration `json:"max_timer_wait"`
 }
 
 // ConnectionStatistics contains connection-related statistics
@@ -167,26 +167,26 @@ type ConnectionStatistics struct {
 
 // ReplicationStatistics contains replication-related statistics
 type ReplicationStatistics struct {
-	SlaveRunning        bool          `json:"slave_running"`
-	SecondsBehindMaster *int64        `json:"seconds_behind_master"`
-	MasterLogFile       string        `json:"master_log_file"`
-	MasterLogPos        int64         `json:"master_log_pos"`
-	RelayLogFile        string        `json:"relay_log_file"`
-	RelayLogPos         int64         `json:"relay_log_pos"`
-	LastIOError         string        `json:"last_io_error,omitempty"`
-	LastSQLError        string        `json:"last_sql_error,omitempty"`
+	SlaveRunning        bool   `json:"slave_running"`
+	SecondsBehindMaster *int64 `json:"seconds_behind_master"`
+	MasterLogFile       string `json:"master_log_file"`
+	MasterLogPos        int64  `json:"master_log_pos"`
+	RelayLogFile        string `json:"relay_log_file"`
+	RelayLogPos         int64  `json:"relay_log_pos"`
+	LastIOError         string `json:"last_io_error,omitempty"`
+	LastSQLError        string `json:"last_sql_error,omitempty"`
 }
 
 // SlowQueryInfo contains information about slow queries
 type SlowQueryInfo struct {
-	StartTime      time.Time     `json:"start_time"`
-	UserHost       string        `json:"user_host"`
-	QueryTime      time.Duration `json:"query_time"`
-	LockTime       time.Duration `json:"lock_time"`
-	RowsSent       int64         `json:"rows_sent"`
-	RowsExamined   int64         `json:"rows_examined"`
-	SQLText        string        `json:"sql_text"`
-	Schema         string        `json:"schema"`
+	StartTime    time.Time     `json:"start_time"`
+	UserHost     string        `json:"user_host"`
+	QueryTime    time.Duration `json:"query_time"`
+	LockTime     time.Duration `json:"lock_time"`
+	RowsSent     int64         `json:"rows_sent"`
+	RowsExamined int64         `json:"rows_examined"`
+	SQLText      string        `json:"sql_text"`
+	Schema       string        `json:"schema"`
 }
 
 // NewPerformanceSchemaAdapter creates a new Performance Schema adapter
@@ -318,7 +318,7 @@ func (p *PerformanceSchemaAdapter) ConvertToPerformanceMetrics(data *Performance
 		for _, stmt := range data.StatementStats {
 			totalQueries += stmt.CountStar
 			totalLatency += stmt.SumTimerWait
-			
+
 			if stmt.MinTimerWait < minLatency {
 				minLatency = stmt.MinTimerWait
 			}
@@ -344,21 +344,21 @@ func (p *PerformanceSchemaAdapter) ConvertToQueryPerformance(data *PerformanceSc
 	for _, stmt := range data.StatementStats {
 		// Extract table names from digest text (basic implementation)
 		tables := p.extractTableNames(stmt.DigestText)
-		
+
 		perf := ports.QueryPerformance{
-			QueryPattern:       stmt.DigestText,
-			QueryType:          p.identifyQueryType(stmt.DigestText),
-			ExecutionCount:     stmt.CountStar,
-			TotalTime:          stmt.SumTimerWait,
-			AverageTime:        stmt.AvgTimerWait,
-			MinTime:            stmt.MinTimerWait,
-			MaxTime:            stmt.MaxTimerWait,
-			SourceTables:       tables,
-			RowsExamined:       stmt.SumRowsExamined,
-			RowsReturned:       stmt.SumRowsSent,
-			IndexUsed:          stmt.SumNoIndexUsed == 0,
-			RelationshipType:   p.determineRelationshipType(stmt),
-			PerformanceImpact:  p.classifyPerformanceImpact(stmt.AvgTimerWait),
+			QueryPattern:      stmt.DigestText,
+			QueryType:         p.identifyQueryType(stmt.DigestText),
+			ExecutionCount:    stmt.CountStar,
+			TotalTime:         stmt.SumTimerWait,
+			AverageTime:       stmt.AvgTimerWait,
+			MinTime:           stmt.MinTimerWait,
+			MaxTime:           stmt.MaxTimerWait,
+			SourceTables:      tables,
+			RowsExamined:      stmt.SumRowsExamined,
+			RowsReturned:      stmt.SumRowsSent,
+			IndexUsed:         stmt.SumNoIndexUsed == 0,
+			RelationshipType:  p.determineRelationshipType(stmt),
+			PerformanceImpact: p.classifyPerformanceImpact(stmt.AvgTimerWait),
 		}
 
 		queryPerformance = append(queryPerformance, perf)
@@ -454,7 +454,7 @@ func (p *PerformanceSchemaAdapter) collectGlobalStatus(ctx context.Context) (*Gl
 	}
 
 	status := &GlobalStatusData{}
-	
+
 	// Parse numeric values
 	if val, exists := statusMap["Queries"]; exists {
 		if queries, err := strconv.ParseInt(val, 10, 64); err == nil {
@@ -526,8 +526,8 @@ func (p *PerformanceSchemaAdapter) collectStatementStats(ctx context.Context) ([
 		LIMIT ?`
 
 	minLatencyNanos := int64(p.config.MinAvgLatency * 1000000) // Convert ms to nanoseconds
-	
-	rows, err := p.db.QueryContext(ctx, query, 
+
+	rows, err := p.db.QueryContext(ctx, query,
 		p.config.MinExecutionCount,
 		minLatencyNanos,
 		p.config.MaxStatements)
@@ -540,7 +540,7 @@ func (p *PerformanceSchemaAdapter) collectStatementStats(ctx context.Context) ([
 	for rows.Next() {
 		var stmt StatementStatistic
 		var digestText sql.NullString
-		
+
 		err := rows.Scan(
 			&stmt.SchemaName,
 			&stmt.Digest,
@@ -564,7 +564,7 @@ func (p *PerformanceSchemaAdapter) collectStatementStats(ctx context.Context) ([
 			&stmt.FirstSeen,
 			&stmt.LastSeen,
 		)
-		
+
 		if err != nil {
 			p.logger.WithError(err).Debug("Failed to scan statement row")
 			continue
@@ -617,7 +617,7 @@ func (p *PerformanceSchemaAdapter) collectTableIOStats(ctx context.Context) ([]T
 	var tableStats []TableIOStatistic
 	for rows.Next() {
 		var stat TableIOStatistic
-		
+
 		err := rows.Scan(
 			&stat.SchemaName,
 			&stat.TableName,
@@ -634,7 +634,7 @@ func (p *PerformanceSchemaAdapter) collectTableIOStats(ctx context.Context) ([]T
 			&stat.CountDelete,
 			&stat.SumTimerDelete,
 		)
-		
+
 		if err != nil {
 			p.logger.WithError(err).Debug("Failed to scan table I/O row")
 			continue
@@ -692,7 +692,7 @@ func (p *PerformanceSchemaAdapter) extractTableNames(digestText string) []string
 	// Simple table name extraction from SQL text
 	// This is a basic implementation - could be enhanced with proper SQL parsing
 	tables := make([]string, 0)
-	
+
 	if digestText == "" {
 		return tables
 	}
@@ -700,7 +700,7 @@ func (p *PerformanceSchemaAdapter) extractTableNames(digestText string) []string
 	// Look for FROM clauses and JOIN clauses
 	lowerText := strings.ToLower(digestText)
 	words := strings.Fields(lowerText)
-	
+
 	for i, word := range words {
 		if word == "from" || word == "join" || word == "update" || word == "into" {
 			if i+1 < len(words) && !strings.Contains(words[i+1], "(") {
@@ -711,7 +711,7 @@ func (p *PerformanceSchemaAdapter) extractTableNames(digestText string) []string
 			}
 		}
 	}
-	
+
 	return tables
 }
 
@@ -719,9 +719,9 @@ func (p *PerformanceSchemaAdapter) identifyQueryType(digestText string) string {
 	if digestText == "" {
 		return "UNKNOWN"
 	}
-	
+
 	lowerText := strings.ToLower(strings.TrimSpace(digestText))
-	
+
 	if strings.HasPrefix(lowerText, "select") {
 		return "SELECT"
 	} else if strings.HasPrefix(lowerText, "insert") {
@@ -737,7 +737,7 @@ func (p *PerformanceSchemaAdapter) identifyQueryType(digestText string) string {
 	} else if strings.HasPrefix(lowerText, "alter") {
 		return "ALTER"
 	}
-	
+
 	return "OTHER"
 }
 
@@ -756,7 +756,7 @@ func (p *PerformanceSchemaAdapter) determineRelationshipType(stmt StatementStati
 
 func (p *PerformanceSchemaAdapter) classifyPerformanceImpact(avgLatency time.Duration) string {
 	latencyMs := float64(avgLatency.Milliseconds())
-	
+
 	if latencyMs < 10 {
 		return "LOW"
 	} else if latencyMs < 100 {
@@ -776,12 +776,12 @@ func (p *PerformanceSchemaAdapter) IsConnected() bool {
 func (p *PerformanceSchemaAdapter) Close() error {
 	p.queryCacheMux.Lock()
 	defer p.queryCacheMux.Unlock()
-	
+
 	for _, stmt := range p.queryCache {
 		stmt.Close()
 	}
 	p.queryCache = make(map[string]*sql.Stmt)
-	
+
 	return nil
 }
 
@@ -791,23 +791,23 @@ func defaultPerformanceSchemaConfig() *PerformanceSchemaConfig {
 		CollectionInterval:  30 * time.Second,
 		SlowQueryThreshold:  1 * time.Second,
 		MaxHistoryRetention: 1 * time.Hour,
-		
-		CollectStatements:   true,
-		CollectTableIO:      true,
-		CollectIndexUsage:   true,
-		CollectWaitEvents:   true,
-		CollectConnections:  true,
-		CollectReplication:  false,
-		
-		MaxStatements:       100,
-		MaxTables:          50,
-		
-		IgnoredSchemas:      []string{"mysql", "information_schema", "performance_schema", "sys"},
-		IgnoredUsers:        []string{"root", "mysql.sys", "mysql.session"},
-		FocusedTables:       []string{},
-		
-		EnableDigestText:    true,
-		MinExecutionCount:   10,
-		MinAvgLatency:       10.0, // 10ms
+
+		CollectStatements:  true,
+		CollectTableIO:     true,
+		CollectIndexUsage:  true,
+		CollectWaitEvents:  true,
+		CollectConnections: true,
+		CollectReplication: false,
+
+		MaxStatements: 100,
+		MaxTables:     50,
+
+		IgnoredSchemas: []string{"mysql", "information_schema", "performance_schema", "sys"},
+		IgnoredUsers:   []string{"root", "mysql.sys", "mysql.session"},
+		FocusedTables:  []string{},
+
+		EnableDigestText:  true,
+		MinExecutionCount: 10,
+		MinAvgLatency:     10.0, // 10ms
 	}
 }

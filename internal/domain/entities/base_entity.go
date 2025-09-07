@@ -9,7 +9,6 @@
  * and graph visualization. Commercial use requires separate licensing.
  */
 
-
 package entities
 
 // BaseEntity provides basic entity functionality with an ID.

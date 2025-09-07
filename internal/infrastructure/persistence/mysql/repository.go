@@ -9,7 +9,6 @@
  * and graph visualization. Commercial use requires separate licensing.
  */
 
-
 package mysql
 
 import (
@@ -95,7 +94,7 @@ func (r *MySQLRepository) ConnectToExisting(ctx context.Context, config *models.
 	if username == "" {
 		username = config.User
 	}
-	
+
 	dsn := fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?parseTime=true&timeout=%ds&readTimeout=%ds&writeTimeout=%ds",
 		username,
 		config.Password,
@@ -130,7 +129,7 @@ func (r *MySQLRepository) ConnectToExisting(ctx context.Context, config *models.
 	// Test connection
 	ctxTimeout, cancel := context.WithTimeout(ctx, time.Duration(config.Security.ConnectionTimeout)*time.Second)
 	defer cancel()
-	
+
 	if err := db.PingContext(ctxTimeout); err != nil {
 		return nil, fmt.Errorf("failed to ping database: %w", err)
 	}
@@ -142,10 +141,10 @@ func (r *MySQLRepository) ConnectToExisting(ctx context.Context, config *models.
 // ValidateConnection performs comprehensive connection validation
 func (r *MySQLRepository) ValidateConnection(ctx context.Context, db *sql.DB) (*models.ConnectionValidationResult, error) {
 	result := &models.ConnectionValidationResult{
-		IsValid:        true,
-		DatabaseInfo:   make(map[string]string),
-		Permissions:    []string{},
-		ServerInfo:     make(map[string]string),
+		IsValid:      true,
+		DatabaseInfo: make(map[string]string),
+		Permissions:  []string{},
+		ServerInfo:   make(map[string]string),
 	}
 
 	// Test basic connectivity
@@ -204,13 +203,13 @@ func (r *MySQLRepository) checkDatabasePermissions(ctx context.Context, db *sql.
 		var grant string
 		if err := rows.Scan(&grant); err == nil {
 			result.Permissions = append(result.Permissions, grant)
-			
+
 			// Check for dangerous permissions
 			grantUpper := strings.ToUpper(grant)
-			if strings.Contains(grantUpper, "INSERT") || 
-			   strings.Contains(grantUpper, "UPDATE") || 
-			   strings.Contains(grantUpper, "DELETE") ||
-			   strings.Contains(grantUpper, "DROP") {
+			if strings.Contains(grantUpper, "INSERT") ||
+				strings.Contains(grantUpper, "UPDATE") ||
+				strings.Contains(grantUpper, "DELETE") ||
+				strings.Contains(grantUpper, "DROP") {
 				result.HasWritePermissions = true
 			}
 		}
@@ -222,7 +221,7 @@ func (r *MySQLRepository) checkDatabasePermissions(ctx context.Context, db *sql.
 // DiscoverSchema analyzes database schema and structure
 func (r *MySQLRepository) DiscoverSchema(ctx context.Context, db *sql.DB, filterConfig *models.DataFilteringConfig) (*models.SchemaAnalysisResult, error) {
 	logrus.Infof("Starting database schema discovery")
-	
+
 	result := &models.SchemaAnalysisResult{
 		DatabaseName: "",
 		Tables:       []*models.TableInfo{},
@@ -262,7 +261,7 @@ func (r *MySQLRepository) DiscoverSchema(ctx context.Context, db *sql.DB, filter
 // GetTables returns list of tables based on filtering configuration
 func (r *MySQLRepository) GetTables(ctx context.Context, db *sql.DB, filters *models.DataFilteringConfig) ([]string, error) {
 	query := "SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_TYPE = 'BASE TABLE'"
-	
+
 	rows, err := db.QueryContext(ctx, query)
 	if err != nil {
 		return nil, err
@@ -372,7 +371,7 @@ func (r *MySQLRepository) getTableColumns(ctx context.Context, db *sql.DB, table
 	for rows.Next() {
 		var col models.ColumnInfo
 		var defaultVal sql.NullString
-		
+
 		err := rows.Scan(
 			&col.Name,
 			&col.DataType,
@@ -421,10 +420,10 @@ func (r *MySQLRepository) getTableRowCount(ctx context.Context, db *sql.DB, tabl
 // ExtractTableData extracts data from a table with filtering
 func (r *MySQLRepository) ExtractTableData(ctx context.Context, db *sql.DB, tableName string, config *models.DataFilteringConfig) ([]map[string]any, error) {
 	logrus.Infof("📤 Extracting data from table: %s", tableName)
-	
+
 	// Build query with optional WHERE conditions
 	query := fmt.Sprintf("SELECT * FROM %s", tableName)
-	
+
 	// Add WHERE condition if specified
 	if config != nil && config.WhereConditions != nil {
 		if condition, exists := config.WhereConditions[tableName]; exists && condition != "" {
@@ -492,7 +491,7 @@ func (r *MySQLRepository) ExecuteQueryWithContext(ctx context.Context, query str
 // EstimateDataSize provides dataset size estimation
 func (r *MySQLRepository) EstimateDataSize(ctx context.Context, db *sql.DB, config *models.DataFilteringConfig) (*models.DatasetInfo, error) {
 	logrus.Infof("Estimating dataset size")
-	
+
 	tables, err := r.GetTables(ctx, db, config)
 	if err != nil {
 		return nil, err
@@ -511,12 +510,12 @@ func (r *MySQLRepository) EstimateDataSize(ctx context.Context, db *sql.DB, conf
 			logrus.Warnf("Failed to get row count for table %s: %v", tableName, err)
 			continue
 		}
-		
+
 		// Apply row limit if configured
 		if config != nil && config.RowLimitPerTable > 0 && rowCount > int64(config.RowLimitPerTable) {
 			rowCount = int64(config.RowLimitPerTable)
 		}
-		
+
 		datasetInfo.TableSizes[tableName] = rowCount
 		totalRows += rowCount
 	}
@@ -524,7 +523,7 @@ func (r *MySQLRepository) EstimateDataSize(ctx context.Context, db *sql.DB, conf
 	datasetInfo.TotalRows = totalRows
 	datasetInfo.EstimatedSizeMB = r.estimateDataSizeInMB(totalRows)
 
-	logrus.Infof("Dataset estimation: %d tables, %d total rows (~%.2f MB)", 
+	logrus.Infof("Dataset estimation: %d tables, %d total rows (~%.2f MB)",
 		datasetInfo.TotalTables, datasetInfo.TotalRows, datasetInfo.EstimatedSizeMB)
 
 	return datasetInfo, nil

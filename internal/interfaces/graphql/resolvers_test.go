@@ -9,7 +9,6 @@
  * and graph visualization. Commercial use requires separate licensing.
  */
 
-
 package graphql
 
 import (
@@ -47,6 +46,11 @@ func (m *MockNeo4jPort) ExportGraph(query string) (any, error) {
 func (m *MockNeo4jPort) FetchNodes(nodeType string) ([]map[string]any, error) {
 	args := m.Called(nodeType)
 	return args.Get(0).([]map[string]any), args.Error(1)
+}
+
+func (m *MockNeo4jPort) ExecuteQuery(query string, params map[string]interface{}) ([]map[string]interface{}, error) {
+	args := m.Called(query, params)
+	return args.Get(0).([]map[string]interface{}), args.Error(1)
 }
 
 func (m *MockNeo4jPort) Close() error {

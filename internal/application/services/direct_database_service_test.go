@@ -24,7 +24,7 @@ func TestDirectDatabaseService_ValidateConfiguration(t *testing.T) {
 	}{
 		{
 			name: "Valid configuration",
-		config: &models.MySQLConfig{
+			config: &models.MySQLConfig{
 				Host:     "localhost",
 				Port:     3306,
 				User:     "testuser",
@@ -77,13 +77,13 @@ func TestDirectDatabaseService_ValidateConfiguration(t *testing.T) {
 			service := &DirectDatabaseService{
 				config: tt.config,
 			}
-			
+
 			err := service.ValidateConfiguration()
-			
+
 			if tt.expectErr && err == nil {
 				t.Errorf("Expected error but got none")
 			}
-			
+
 			if !tt.expectErr && err != nil {
 				t.Errorf("Unexpected error: %v", err)
 			}

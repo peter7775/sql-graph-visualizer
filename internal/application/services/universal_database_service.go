@@ -24,9 +24,9 @@ import (
 // UniversalDatabaseService orchestrates database operations for any supported database type
 // Works with MySQL, PostgreSQL, and future database types through the generic DatabaseRepository interface
 type UniversalDatabaseService struct {
-	repo           repository.DatabaseRepository
-	config         models.DatabaseConfig
-	dbType         models.DatabaseType
+	repo              repository.DatabaseRepository
+	config            models.DatabaseConfig
+	dbType            models.DatabaseType
 	securityValidator *SecurityValidationService
 }
 
@@ -35,7 +35,7 @@ func NewUniversalDatabaseService(
 	repo repository.DatabaseRepository,
 	config models.DatabaseConfig,
 ) *UniversalDatabaseService {
-	
+
 	// Initialize security validator based on config
 	var securityValidator *SecurityValidationService
 	switch config.GetDatabaseType() {
@@ -64,7 +64,7 @@ func NewUniversalDatabaseService(
 // 4. Transformation rule generation (basic)
 func (s *UniversalDatabaseService) ConnectAndAnalyze(ctx context.Context) (*models.UniversalDatabaseAnalysisResult, error) {
 	logrus.Infof("Starting universal database connection and analysis workflow for %s", s.dbType)
-	
+
 	result := &models.UniversalDatabaseAnalysisResult{
 		StartTime:    time.Now(),
 		Success:      false,
@@ -75,11 +75,11 @@ func (s *UniversalDatabaseService) ConnectAndAnalyze(ctx context.Context) (*mode
 	// Step 1: Security validation (if validator is available)
 	if s.securityValidator != nil {
 		logrus.Infof("Step 1: Validating connection security")
-		
+
 		// Convert config for security validation
 		var securityResult *models.SecurityValidationResult
 		var err error
-		
+
 		switch s.dbType {
 		case models.DatabaseTypeMySQL:
 			if mysqlConfig, ok := s.config.(*models.MySQLConfig); ok {
@@ -88,26 +88,26 @@ func (s *UniversalDatabaseService) ConnectAndAnalyze(ctx context.Context) (*mode
 		case models.DatabaseTypePostgreSQL:
 			// For PostgreSQL, create a basic security result for now
 			securityResult = &models.SecurityValidationResult{
-				IsValid:       true,
-				SecurityLevel: "BASIC",
-				Validations:   make(map[string]*models.ValidationCheck),
+				IsValid:         true,
+				SecurityLevel:   "BASIC",
+				Validations:     make(map[string]*models.ValidationCheck),
 				Recommendations: []string{},
 			}
 		}
-		
+
 		if err != nil {
 			result.ErrorMessage = fmt.Sprintf("Security validation failed: %v", err)
 			result.EndTime = time.Now()
 			return result, nil
 		}
-		
+
 		result.SecurityValidation = securityResult
 		if securityResult != nil && !securityResult.IsValid {
 			result.ErrorMessage = "Connection failed security validation"
 			result.EndTime = time.Now()
 			return result, nil
 		}
-		
+
 		logrus.Infof("Security validation passed")
 	}
 
@@ -148,9 +148,9 @@ func (s *UniversalDatabaseService) ConnectAndAnalyze(ctx context.Context) (*mode
 		result.DatabaseInfo.Version = version
 	}
 
-	logrus.Infof("Connected to %s (User: %s, Version: %s)", 
-		result.DatabaseInfo.Database, 
-		result.DatabaseInfo.User, 
+	logrus.Infof("Connected to %s (User: %s, Version: %s)",
+		result.DatabaseInfo.Database,
+		result.DatabaseInfo.User,
 		result.DatabaseInfo.Version)
 
 	// Step 4: Analyze database schema
@@ -161,9 +161,9 @@ func (s *UniversalDatabaseService) ConnectAndAnalyze(ctx context.Context) (*mode
 		result.EndTime = time.Now()
 		return result, nil
 	}
-	
+
 	result.SchemaAnalysis = schemaResult
-	
+
 	logrus.Infof("Schema analysis completed: %d tables analyzed", len(schemaResult.Tables))
 
 	// Step 5: Generate summary and recommendations
@@ -175,14 +175,14 @@ func (s *UniversalDatabaseService) ConnectAndAnalyze(ctx context.Context) (*mode
 	result.ProcessingDuration = result.EndTime.Sub(result.StartTime)
 
 	logrus.Infof("Universal database analysis completed successfully in %v", result.ProcessingDuration)
-	
+
 	return result, nil
 }
 
 // TestConnection performs a quick connection test without full analysis
 func (s *UniversalDatabaseService) TestConnection(ctx context.Context) (*models.UniversalConnectionTestResult, error) {
 	logrus.Infof("Testing %s database connection", s.dbType)
-	
+
 	testResult := &models.UniversalConnectionTestResult{
 		TestedAt:     time.Now(),
 		Success:      false,

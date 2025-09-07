@@ -12,26 +12,26 @@ import (
 
 // GraphPerformanceMapper maps performance data to graph visualization elements
 type GraphPerformanceMapper struct {
-	logger       *logrus.Logger
-	config       *GraphPerformanceMapperConfig
-	psAdapter    *PerformanceSchemaAdapter
-	analyzer     *PerformanceAnalyzer
+	logger    *logrus.Logger
+	config    *GraphPerformanceMapperConfig
+	psAdapter *PerformanceSchemaAdapter
+	analyzer  *PerformanceAnalyzer
 }
 
 // GraphPerformanceMapperConfig contains configuration for graph performance mapping
 type GraphPerformanceMapperConfig struct {
 	// Visual encoding settings
-	EdgeThickness    EdgeThicknessConfig    `yaml:"edge_thickness" json:"edge_thickness"`
-	EdgeColor        EdgeColorConfig        `yaml:"edge_color" json:"edge_color"`
-	NodeSize         NodeSizeConfig         `yaml:"node_size" json:"node_size"`
-	NodeColor        NodeColorConfig        `yaml:"node_color" json:"node_color"`
-	Animation        AnimationConfig        `yaml:"animation" json:"animation"`
-	
+	EdgeThickness EdgeThicknessConfig `yaml:"edge_thickness" json:"edge_thickness"`
+	EdgeColor     EdgeColorConfig     `yaml:"edge_color" json:"edge_color"`
+	NodeSize      NodeSizeConfig      `yaml:"node_size" json:"node_size"`
+	NodeColor     NodeColorConfig     `yaml:"node_color" json:"node_color"`
+	Animation     AnimationConfig     `yaml:"animation" json:"animation"`
+
 	// Performance thresholds
-	HotspotThreshold     float64 `yaml:"hotspot_threshold" json:"hotspot_threshold"`
-	SlowQueryThreshold   float64 `yaml:"slow_query_threshold" json:"slow_query_threshold"`
-	HighLoadThreshold    float64 `yaml:"high_load_threshold" json:"high_load_threshold"`
-	
+	HotspotThreshold   float64 `yaml:"hotspot_threshold" json:"hotspot_threshold"`
+	SlowQueryThreshold float64 `yaml:"slow_query_threshold" json:"slow_query_threshold"`
+	HighLoadThreshold  float64 `yaml:"high_load_threshold" json:"high_load_threshold"`
+
 	// Update settings
 	UpdateInterval       time.Duration `yaml:"update_interval" json:"update_interval"`
 	HistoryRetention     time.Duration `yaml:"history_retention" json:"history_retention"`
@@ -49,17 +49,17 @@ type EdgeThicknessConfig struct {
 
 // EdgeColorConfig controls edge color mapping
 type EdgeColorConfig struct {
-	Metric      string                 `yaml:"metric" json:"metric"`
-	ColorScale  string                 `yaml:"color_scale" json:"color_scale"`
-	Thresholds  map[string]interface{} `yaml:"thresholds" json:"thresholds"`
+	Metric     string                 `yaml:"metric" json:"metric"`
+	ColorScale string                 `yaml:"color_scale" json:"color_scale"`
+	Thresholds map[string]interface{} `yaml:"thresholds" json:"thresholds"`
 }
 
 // NodeSizeConfig controls node size mapping
 type NodeSizeConfig struct {
-	Metric    string  `yaml:"metric" json:"metric"`
-	MinSize   float64 `yaml:"min_size" json:"min_size"`
-	MaxSize   float64 `yaml:"max_size" json:"max_size"`
-	Scale     string  `yaml:"scale" json:"scale"`
+	Metric  string  `yaml:"metric" json:"metric"`
+	MinSize float64 `yaml:"min_size" json:"min_size"`
+	MaxSize float64 `yaml:"max_size" json:"max_size"`
+	Scale   string  `yaml:"scale" json:"scale"`
 }
 
 // NodeColorConfig controls node color mapping
@@ -71,47 +71,47 @@ type NodeColorConfig struct {
 
 // AnimationConfig controls animation settings
 type AnimationConfig struct {
-	ShowDataFlow     bool    `yaml:"show_data_flow" json:"show_data_flow"`
-	SpeedBasedOn     string  `yaml:"speed_based_on" json:"speed_based_on"`
-	AnimationSpeed   float64 `yaml:"animation_speed" json:"animation_speed"`
-	ParticleCount    int     `yaml:"particle_count" json:"particle_count"`
+	ShowDataFlow   bool    `yaml:"show_data_flow" json:"show_data_flow"`
+	SpeedBasedOn   string  `yaml:"speed_based_on" json:"speed_based_on"`
+	AnimationSpeed float64 `yaml:"animation_speed" json:"animation_speed"`
+	ParticleCount  int     `yaml:"particle_count" json:"particle_count"`
 }
 
 // PerformanceGraphData contains performance-enhanced graph data
 type PerformanceGraphData struct {
-	ID            string                   `json:"id"`
-	GeneratedAt   time.Time               `json:"generated_at"`
-	Nodes         []PerformanceGraphNode   `json:"nodes"`
-	Edges         []PerformanceGraphEdge   `json:"edges"`
+	ID            string                    `json:"id"`
+	GeneratedAt   time.Time                 `json:"generated_at"`
+	Nodes         []PerformanceGraphNode    `json:"nodes"`
+	Edges         []PerformanceGraphEdge    `json:"edges"`
 	GlobalMetrics *PerformanceGlobalMetrics `json:"global_metrics"`
-	Hotspots      []HotspotInfo            `json:"hotspots"`
-	Bottlenecks   []BottleneckInfo         `json:"bottlenecks"`
-	Metadata      GraphMetadata            `json:"metadata"`
+	Hotspots      []HotspotInfo             `json:"hotspots"`
+	Bottlenecks   []BottleneckInfo          `json:"bottlenecks"`
+	Metadata      GraphMetadata             `json:"metadata"`
 }
 
 // PerformanceGraphNode represents a node with performance data
 type PerformanceGraphNode struct {
-	ID              string                 `json:"id"`
-	TableName       string                 `json:"table_name"`
-	Label           string                 `json:"label"`
-	Position        NodePosition           `json:"position"`
-	Visual          NodeVisualProperties   `json:"visual"`
-	Performance     NodePerformanceData    `json:"performance"`
-	Issues          []NodeIssue            `json:"issues"`
-	Recommendations []string               `json:"recommendations"`
+	ID              string               `json:"id"`
+	TableName       string               `json:"table_name"`
+	Label           string               `json:"label"`
+	Position        NodePosition         `json:"position"`
+	Visual          NodeVisualProperties `json:"visual"`
+	Performance     NodePerformanceData  `json:"performance"`
+	Issues          []NodeIssue          `json:"issues"`
+	Recommendations []string             `json:"recommendations"`
 }
 
 // PerformanceGraphEdge represents an edge with performance data
 type PerformanceGraphEdge struct {
-	ID           string                 `json:"id"`
-	SourceID     string                 `json:"source_id"`
-	TargetID     string                 `json:"target_id"`
-	RelationType string                 `json:"relation_type"`
-	Label        string                 `json:"label"`
-	Visual       EdgeVisualProperties   `json:"visual"`
-	Performance  EdgePerformanceData    `json:"performance"`
-	QueryPattern string                 `json:"query_pattern"`
-	Issues       []EdgeIssue            `json:"issues"`
+	ID           string               `json:"id"`
+	SourceID     string               `json:"source_id"`
+	TargetID     string               `json:"target_id"`
+	RelationType string               `json:"relation_type"`
+	Label        string               `json:"label"`
+	Visual       EdgeVisualProperties `json:"visual"`
+	Performance  EdgePerformanceData  `json:"performance"`
+	QueryPattern string               `json:"query_pattern"`
+	Issues       []EdgeIssue          `json:"issues"`
 }
 
 // NodePosition represents node coordinates
@@ -123,35 +123,35 @@ type NodePosition struct {
 
 // NodeVisualProperties controls node appearance
 type NodeVisualProperties struct {
-	Size            float64           `json:"size"`
-	Color           string            `json:"color"`
-	ColorIntensity  float64           `json:"color_intensity"`
-	BorderColor     string            `json:"border_color"`
-	BorderWidth     float64           `json:"border_width"`
-	Shape           string            `json:"shape"`
-	Icon            string            `json:"icon,omitempty"`
-	Label           NodeLabelStyle    `json:"label"`
-	Effects         []VisualEffect    `json:"effects,omitempty"`
+	Size           float64        `json:"size"`
+	Color          string         `json:"color"`
+	ColorIntensity float64        `json:"color_intensity"`
+	BorderColor    string         `json:"border_color"`
+	BorderWidth    float64        `json:"border_width"`
+	Shape          string         `json:"shape"`
+	Icon           string         `json:"icon,omitempty"`
+	Label          NodeLabelStyle `json:"label"`
+	Effects        []VisualEffect `json:"effects,omitempty"`
 }
 
 // EdgeVisualProperties controls edge appearance
 type EdgeVisualProperties struct {
-	Thickness       float64           `json:"thickness"`
-	Color           string            `json:"color"`
-	ColorIntensity  float64           `json:"color_intensity"`
-	Style           string            `json:"style"` // solid, dashed, dotted
-	Arrow           ArrowStyle        `json:"arrow"`
-	Animation       EdgeAnimation     `json:"animation,omitempty"`
-	Effects         []VisualEffect    `json:"effects,omitempty"`
+	Thickness      float64        `json:"thickness"`
+	Color          string         `json:"color"`
+	ColorIntensity float64        `json:"color_intensity"`
+	Style          string         `json:"style"` // solid, dashed, dotted
+	Arrow          ArrowStyle     `json:"arrow"`
+	Animation      EdgeAnimation  `json:"animation,omitempty"`
+	Effects        []VisualEffect `json:"effects,omitempty"`
 }
 
 // NodeLabelStyle controls label appearance
 type NodeLabelStyle struct {
-	Text      string  `json:"text"`
-	Size      float64 `json:"size"`
-	Color     string  `json:"color"`
-	Position  string  `json:"position"`
-	Visible   bool    `json:"visible"`
+	Text     string  `json:"text"`
+	Size     float64 `json:"size"`
+	Color    string  `json:"color"`
+	Position string  `json:"position"`
+	Visible  bool    `json:"visible"`
 }
 
 // ArrowStyle controls arrow appearance
@@ -163,51 +163,51 @@ type ArrowStyle struct {
 
 // EdgeAnimation controls edge animations
 type EdgeAnimation struct {
-	Type        string  `json:"type"`
-	Speed       float64 `json:"speed"`
-	Direction   string  `json:"direction"`
+	Type         string  `json:"type"`
+	Speed        float64 `json:"speed"`
+	Direction    string  `json:"direction"`
 	ParticleSize float64 `json:"particle_size"`
-	Enabled     bool    `json:"enabled"`
+	Enabled      bool    `json:"enabled"`
 }
 
 // VisualEffect represents visual effects
 type VisualEffect struct {
 	Type       string                 `json:"type"`
-	Intensity  float64               `json:"intensity"`
+	Intensity  float64                `json:"intensity"`
 	Parameters map[string]interface{} `json:"parameters,omitempty"`
 }
 
 // NodePerformanceData contains performance metrics for nodes
 type NodePerformanceData struct {
-	QueriesPerSecond   float64            `json:"queries_per_second"`
-	AverageLatency     float64            `json:"average_latency"`
-	TotalQueries       int64              `json:"total_queries"`
-	ErrorRate          float64            `json:"error_rate"`
-	HotspotScore       float64            `json:"hotspot_score"`
-	LoadScore          float64            `json:"load_score"`
-	PerformanceScore   float64            `json:"performance_score"`
-	IndexEfficiency    float64            `json:"index_efficiency"`
-	ResourceUsage      ResourceUsageData  `json:"resource_usage"`
-	TrendDirection     string             `json:"trend_direction"`
+	QueriesPerSecond float64           `json:"queries_per_second"`
+	AverageLatency   float64           `json:"average_latency"`
+	TotalQueries     int64             `json:"total_queries"`
+	ErrorRate        float64           `json:"error_rate"`
+	HotspotScore     float64           `json:"hotspot_score"`
+	LoadScore        float64           `json:"load_score"`
+	PerformanceScore float64           `json:"performance_score"`
+	IndexEfficiency  float64           `json:"index_efficiency"`
+	ResourceUsage    ResourceUsageData `json:"resource_usage"`
+	TrendDirection   string            `json:"trend_direction"`
 }
 
 // EdgePerformanceData contains performance metrics for edges
 type EdgePerformanceData struct {
-	QueryFrequency    float64  `json:"query_frequency"`
-	AverageLatency    float64  `json:"average_latency"`
-	TotalExecutions   int64    `json:"total_executions"`
-	ErrorRate         float64  `json:"error_rate"`
-	LoadFactor        float64  `json:"load_factor"`
-	PerformanceRank   string   `json:"performance_rank"`
-	IndexUsage        bool     `json:"index_usage"`
-	JoinEfficiency    float64  `json:"join_efficiency"`
+	QueryFrequency  float64 `json:"query_frequency"`
+	AverageLatency  float64 `json:"average_latency"`
+	TotalExecutions int64   `json:"total_executions"`
+	ErrorRate       float64 `json:"error_rate"`
+	LoadFactor      float64 `json:"load_factor"`
+	PerformanceRank string  `json:"performance_rank"`
+	IndexUsage      bool    `json:"index_usage"`
+	JoinEfficiency  float64 `json:"join_efficiency"`
 }
 
 // ResourceUsageData contains resource utilization data
 type ResourceUsageData struct {
-	CPUPercent    float64 `json:"cpu_percent"`
-	MemoryPercent float64 `json:"memory_percent"`
-	IOUtilization float64 `json:"io_utilization"`
+	CPUPercent     float64 `json:"cpu_percent"`
+	MemoryPercent  float64 `json:"memory_percent"`
+	IOUtilization  float64 `json:"io_utilization"`
 	LockContention float64 `json:"lock_contention"`
 }
 
@@ -247,24 +247,24 @@ type EdgeIssue struct {
 
 // PerformanceGlobalMetrics contains global performance metrics
 type PerformanceGlobalMetrics struct {
-	OverallScore        float64   `json:"overall_score"`
-	TotalQueriesPerSec  float64   `json:"total_queries_per_sec"`
-	AverageLatency      float64   `json:"average_latency"`
-	ErrorRate           float64   `json:"error_rate"`
-	HotspotCount        int       `json:"hotspot_count"`
-	BottleneckCount     int       `json:"bottleneck_count"`
-	PerformanceRating   string    `json:"performance_rating"`
-	LastUpdated         time.Time `json:"last_updated"`
+	OverallScore       float64   `json:"overall_score"`
+	TotalQueriesPerSec float64   `json:"total_queries_per_sec"`
+	AverageLatency     float64   `json:"average_latency"`
+	ErrorRate          float64   `json:"error_rate"`
+	HotspotCount       int       `json:"hotspot_count"`
+	BottleneckCount    int       `json:"bottleneck_count"`
+	PerformanceRating  string    `json:"performance_rating"`
+	LastUpdated        time.Time `json:"last_updated"`
 }
 
 // GraphMetadata contains graph metadata
 type GraphMetadata struct {
-	NodeCount         int       `json:"node_count"`
-	EdgeCount         int       `json:"edge_count"`
-	DataSource        string    `json:"data_source"`
-	CollectionPeriod  string    `json:"collection_period"`
-	GenerationTime    float64   `json:"generation_time_ms"`
-	Version           string    `json:"version"`
+	NodeCount        int     `json:"node_count"`
+	EdgeCount        int     `json:"edge_count"`
+	DataSource       string  `json:"data_source"`
+	CollectionPeriod string  `json:"collection_period"`
+	GenerationTime   float64 `json:"generation_time_ms"`
+	Version          string  `json:"version"`
 }
 
 // NewGraphPerformanceMapper creates a new graph performance mapper
@@ -514,17 +514,33 @@ func (gpm *GraphPerformanceMapper) createPerformanceEdge(
 
 // Stub implementations for helper methods
 func (gpm *GraphPerformanceMapper) extractTableNames(digestText string) []string { return []string{} }
-func (gpm *GraphPerformanceMapper) aggregateTablePerformance(info *TablePerformanceInfo, stmt *StatementStatistic) {}
-func (gpm *GraphPerformanceMapper) createTablePerformanceInfo(tableName string, stmt *StatementStatistic) *TablePerformanceInfo { return nil }
-func (gpm *GraphPerformanceMapper) generateNodeRecommendations(perfInfo *TablePerformanceInfo) []string { return []string{} }
-func (gpm *GraphPerformanceMapper) enhanceWithIOStats(info *TablePerformanceInfo, tableIO *TableIOStatistic) {}
-func (gpm *GraphPerformanceMapper) calculateNodeVisualProperties(info *TablePerformanceInfo) NodeVisualProperties { return NodeVisualProperties{} }
-func (gpm *GraphPerformanceMapper) mapNodePerformanceData(info *TablePerformanceInfo) NodePerformanceData { return NodePerformanceData{} }
-func (gpm *GraphPerformanceMapper) findEdgePerformanceData(edge *models.Relation, data *PerformanceSchemaData) EdgePerformanceData { return EdgePerformanceData{} }
-func (gpm *GraphPerformanceMapper) calculateEdgeVisualProperties(edgePerf EdgePerformanceData) EdgeVisualProperties { return EdgeVisualProperties{} }
+func (gpm *GraphPerformanceMapper) aggregateTablePerformance(info *TablePerformanceInfo, stmt *StatementStatistic) {
+}
+func (gpm *GraphPerformanceMapper) createTablePerformanceInfo(tableName string, stmt *StatementStatistic) *TablePerformanceInfo {
+	return nil
+}
+func (gpm *GraphPerformanceMapper) generateNodeRecommendations(perfInfo *TablePerformanceInfo) []string {
+	return []string{}
+}
+func (gpm *GraphPerformanceMapper) enhanceWithIOStats(info *TablePerformanceInfo, tableIO *TableIOStatistic) {
+}
+func (gpm *GraphPerformanceMapper) calculateNodeVisualProperties(info *TablePerformanceInfo) NodeVisualProperties {
+	return NodeVisualProperties{}
+}
+func (gpm *GraphPerformanceMapper) mapNodePerformanceData(info *TablePerformanceInfo) NodePerformanceData {
+	return NodePerformanceData{}
+}
+func (gpm *GraphPerformanceMapper) findEdgePerformanceData(edge *models.Relation, data *PerformanceSchemaData) EdgePerformanceData {
+	return EdgePerformanceData{}
+}
+func (gpm *GraphPerformanceMapper) calculateEdgeVisualProperties(edgePerf EdgePerformanceData) EdgeVisualProperties {
+	return EdgeVisualProperties{}
+}
 func (gpm *GraphPerformanceMapper) generateQueryPattern(edge *models.Relation) string { return "" }
-func (gpm *GraphPerformanceMapper) identifyEdgeIssues(edgePerf EdgePerformanceData) []EdgeIssue { return []EdgeIssue{} }
-func (gpm *GraphPerformanceMapper) calculateGlobalMetrics(perfGraph *PerformanceGraphData) {}
+func (gpm *GraphPerformanceMapper) identifyEdgeIssues(edgePerf EdgePerformanceData) []EdgeIssue {
+	return []EdgeIssue{}
+}
+func (gpm *GraphPerformanceMapper) calculateGlobalMetrics(perfGraph *PerformanceGraphData)         {}
 func (gpm *GraphPerformanceMapper) identifyHotspotsAndBottlenecks(perfGraph *PerformanceGraphData) {}
 
 // Default configuration

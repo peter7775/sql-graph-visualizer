@@ -42,7 +42,7 @@ func (s *SchemaAnalyzerService) AnalyzeSchemaFromConnection(
 	db *sql.DB,
 	filterConfig *models.DataFilteringConfig,
 ) (*models.SchemaAnalysisResult, error) {
-	
+
 	// Step 1: Validate connection
 	validation, err := s.mysqlPort.ValidateConnection(ctx, db)
 	if err != nil {
@@ -87,7 +87,7 @@ func (s *SchemaAnalyzerService) enrichSchemaWithRelationshipAnalysis(
 	db *sql.DB,
 	result *models.SchemaAnalysisResult,
 ) error {
-	
+
 	// Analyze foreign key relationships
 	for _, table := range result.Tables {
 		relationships, err := s.analyzeForeignKeyRelationships(ctx, db, table.Name)
@@ -99,7 +99,7 @@ func (s *SchemaAnalyzerService) enrichSchemaWithRelationshipAnalysis(
 		// Identify potential junction tables (many-to-many relationships)
 		if s.isJunctionTable(table) {
 			table.GraphType = "RELATIONSHIP"
-			table.Recommendations = append(table.Recommendations, 
+			table.Recommendations = append(table.Recommendations,
 				"This table appears to be a junction table - consider modeling as Neo4j relationships")
 		} else {
 			table.GraphType = "NODE"
@@ -108,7 +108,7 @@ func (s *SchemaAnalyzerService) enrichSchemaWithRelationshipAnalysis(
 
 	// Identify graph patterns
 	result.GraphPatterns = s.identifyGraphPatterns(result.Tables)
-	
+
 	return nil
 }
 
@@ -118,7 +118,7 @@ func (s *SchemaAnalyzerService) analyzeForeignKeyRelationships(
 	db *sql.DB,
 	tableName string,
 ) ([]*models.Relationship, error) {
-	
+
 	query := `
 		SELECT 
 			COLUMN_NAME,
@@ -151,7 +151,7 @@ func (s *SchemaAnalyzerService) analyzeForeignKeyRelationships(
 		if err != nil {
 			return nil, err
 		}
-		
+
 		rel.SourceTable = tableName
 		rel.RelationshipType = "FOREIGN_KEY"
 		relationships = append(relationships, &rel)
@@ -166,14 +166,14 @@ func (s *SchemaAnalyzerService) isJunctionTable(table *models.TableInfo) bool {
 	// 1. Has only foreign key columns (plus optional metadata like timestamps)
 	// 2. Primary key is composite of foreign keys
 	// 3. Table name suggests relationship (contains underscores, plural forms)
-	
+
 	if len(table.Relationships) < 2 {
 		return false
 	}
 
 	foreignKeyCount := len(table.Relationships)
 	totalColumns := len(table.Columns)
-	
+
 	// If most columns are foreign keys, likely a junction table
 	if float64(foreignKeyCount)/float64(totalColumns) > 0.6 {
 		return true
@@ -181,10 +181,10 @@ func (s *SchemaAnalyzerService) isJunctionTable(table *models.TableInfo) bool {
 
 	// Check naming patterns
 	junctionPatterns := []string{
-		`.*_.*`, // contains underscore
+		`.*_.*`,   // contains underscore
 		`.*s_.*s`, // plural_plural pattern
 	}
-	
+
 	for _, pattern := range junctionPatterns {
 		matched, _ := regexp.MatchString(pattern, strings.ToLower(table.Name))
 		if matched && foreignKeyCount >= 2 {
@@ -198,7 +198,7 @@ func (s *SchemaAnalyzerService) isJunctionTable(table *models.TableInfo) bool {
 // identifyGraphPatterns identifies common graph database patterns
 func (s *SchemaAnalyzerService) identifyGraphPatterns(tables []*models.TableInfo) []*models.GraphPattern {
 	var patterns []*models.GraphPattern
-	
+
 	// Pattern 1: Star schema (one central table with many relationships)
 	starCenters := s.findStarSchemaPatterns(tables)
 	for _, center := range starCenters {
@@ -227,7 +227,7 @@ func (s *SchemaAnalyzerService) identifyGraphPatterns(tables []*models.TableInfo
 // findStarSchemaPatterns identifies tables that are centers of star schemas
 func (s *SchemaAnalyzerService) findStarSchemaPatterns(tables []*models.TableInfo) []*models.TableInfo {
 	var starCenters []*models.TableInfo
-	
+
 	for _, table := range tables {
 		// Count incoming relationships (other tables referencing this one)
 		incomingRels := 0
@@ -238,20 +238,20 @@ func (s *SchemaAnalyzerService) findStarSchemaPatterns(tables []*models.TableInf
 				}
 			}
 		}
-		
+
 		// If many tables reference this one, it's likely a central node
 		if incomingRels >= 3 {
 			starCenters = append(starCenters, table)
 		}
 	}
-	
+
 	return starCenters
 }
 
 // findHierarchicalPatterns identifies tables with self-referencing relationships
 func (s *SchemaAnalyzerService) findHierarchicalPatterns(tables []*models.TableInfo) []*models.TableInfo {
 	var hierarchical []*models.TableInfo
-	
+
 	for _, table := range tables {
 		for _, rel := range table.Relationships {
 			if rel.TargetTable == table.Name {
@@ -260,7 +260,7 @@ func (s *SchemaAnalyzerService) findHierarchicalPatterns(tables []*models.TableI
 			}
 		}
 	}
-	
+
 	return hierarchical
 }
 
@@ -281,7 +281,7 @@ func (s *SchemaAnalyzerService) calculatePatternConfidence(patternType string, t
 // generateTransformationRules creates Neo4j transformation rules based on schema analysis
 func (s *SchemaAnalyzerService) generateTransformationRules(result *models.SchemaAnalysisResult) error {
 	var rules []*models.TransformationRule
-	
+
 	for _, table := range result.Tables {
 		if table.GraphType == "NODE" {
 			// Generate node creation rule
@@ -293,7 +293,7 @@ func (s *SchemaAnalyzerService) generateTransformationRules(result *models.Schem
 			rules = append(rules, relRule)
 		}
 	}
-	
+
 	result.GeneratedRules = rules
 	return nil
 }
@@ -302,24 +302,24 @@ func (s *SchemaAnalyzerService) generateTransformationRules(result *models.Schem
 func (s *SchemaAnalyzerService) generateNodeRule(table *models.TableInfo) *models.TransformationRule {
 	// Generate Neo4j CREATE statement
 	cypher := fmt.Sprintf("CREATE (n:%s {", strings.Title(table.Name))
-	
+
 	var properties []string
 	for _, col := range table.Columns {
 		if !s.isForeignKeyColumn(col.Name, table.Relationships) {
 			properties = append(properties, fmt.Sprintf("%s: row.%s", col.Name, col.Name))
 		}
 	}
-	
+
 	cypher += strings.Join(properties, ", ") + "})"
-	
+
 	return &models.TransformationRule{
-		RuleID:      fmt.Sprintf("create_%s_nodes", strings.ToLower(table.Name)),
-		RuleType:    "NODE_CREATION",
-		SourceTable: table.Name,
-		CypherQuery: cypher,
-		Description: fmt.Sprintf("Creates %s nodes from %s table", strings.Title(table.Name), table.Name),
+		RuleID:        fmt.Sprintf("create_%s_nodes", strings.ToLower(table.Name)),
+		RuleType:      "NODE_CREATION",
+		SourceTable:   table.Name,
+		CypherQuery:   cypher,
+		Description:   fmt.Sprintf("Creates %s nodes from %s table", strings.Title(table.Name), table.Name),
 		AutoGenerated: true,
-		Confidence:  0.8,
+		Confidence:    0.8,
 	}
 }
 
@@ -328,28 +328,28 @@ func (s *SchemaAnalyzerService) generateRelationshipRule(table *models.TableInfo
 	if len(table.Relationships) < 2 {
 		return nil
 	}
-	
+
 	// For junction tables, create relationships between the referenced entities
 	rel1 := table.Relationships[0]
 	rel2 := table.Relationships[1]
-	
+
 	relationshipType := s.generateRelationshipType(table.Name, rel1.TargetTable, rel2.TargetTable)
-	
+
 	cypher := fmt.Sprintf(
 		"MATCH (a:%s {id: row.%s}), (b:%s {id: row.%s}) CREATE (a)-[:%s]->(b)",
 		strings.Title(rel1.TargetTable), rel1.SourceColumn,
 		strings.Title(rel2.TargetTable), rel2.SourceColumn,
 		relationshipType,
 	)
-	
+
 	return &models.TransformationRule{
-		RuleID:      fmt.Sprintf("create_%s_relationships", strings.ToLower(table.Name)),
-		RuleType:    "RELATIONSHIP_CREATION",
-		SourceTable: table.Name,
-		CypherQuery: cypher,
-		Description: fmt.Sprintf("Creates %s relationships from %s junction table", relationshipType, table.Name),
+		RuleID:        fmt.Sprintf("create_%s_relationships", strings.ToLower(table.Name)),
+		RuleType:      "RELATIONSHIP_CREATION",
+		SourceTable:   table.Name,
+		CypherQuery:   cypher,
+		Description:   fmt.Sprintf("Creates %s relationships from %s junction table", relationshipType, table.Name),
 		AutoGenerated: true,
-		Confidence:  0.7,
+		Confidence:    0.7,
 	}
 }
 
@@ -368,14 +368,14 @@ func (s *SchemaAnalyzerService) generateRelationshipType(junctionTable, table1, 
 	// Remove common suffixes/prefixes and create meaningful relationship name
 	cleanJunction := strings.TrimSuffix(strings.ToUpper(junctionTable), "S")
 	cleanJunction = strings.ReplaceAll(cleanJunction, "_", "_")
-	
+
 	// If junction table name doesn't provide clear relationship name,
 	// generate one based on the connected tables
-	if !strings.Contains(cleanJunction, strings.ToUpper(table1)) && 
-	   !strings.Contains(cleanJunction, strings.ToUpper(table2)) {
+	if !strings.Contains(cleanJunction, strings.ToUpper(table1)) &&
+		!strings.Contains(cleanJunction, strings.ToUpper(table2)) {
 		return fmt.Sprintf("%s_TO_%s", strings.ToUpper(table1), strings.ToUpper(table2))
 	}
-	
+
 	return cleanJunction
 }
 

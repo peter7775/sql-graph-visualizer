@@ -15,9 +15,9 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"strings"
 	"sql-graph-visualizer/internal/domain/models"
 	"sql-graph-visualizer/internal/domain/repository"
+	"strings"
 	"time"
 
 	_ "github.com/go-sql-driver/mysql"
@@ -113,7 +113,7 @@ func (r *MySQLDatabaseRepository) GetTables(ctx context.Context, filters models.
 	}
 
 	query := "SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_TYPE = 'BASE TABLE'"
-	
+
 	rows, err := r.db.QueryContext(ctx, query)
 	if err != nil {
 		return nil, err
@@ -163,7 +163,7 @@ func (r *MySQLDatabaseRepository) GetColumns(ctx context.Context, tableName stri
 	for rows.Next() {
 		var col models.ColumnInfo
 		var defaultVal sql.NullString
-		
+
 		err := rows.Scan(
 			&col.Name,
 			&col.DataType,

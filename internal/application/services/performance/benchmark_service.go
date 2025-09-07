@@ -15,68 +15,68 @@ import (
 // BenchmarkService provides performance benchmarking capabilities
 type BenchmarkService struct {
 	// Dependencies
-	mysqlRepo     ports.MySQLPort
-	postgresqlRepo ports.PostgreSQLPort  
-	neo4jRepo     ports.Neo4jPort
-	analyzer      ports.PerformanceAnalyzerPort
-	logger        *logrus.Logger
+	mysqlRepo      ports.MySQLPort
+	postgresqlRepo ports.PostgreSQLPort
+	neo4jRepo      ports.Neo4jPort
+	analyzer       ports.PerformanceAnalyzerPort
+	logger         *logrus.Logger
 
 	// Benchmark tools
-	tools         map[string]ports.BenchmarkToolPort
-	toolsMutex    sync.RWMutex
+	tools      map[string]ports.BenchmarkToolPort
+	toolsMutex sync.RWMutex
 
 	// State management
-	activeRuns    map[string]*BenchmarkExecution
-	runsMutex     sync.RWMutex
-	
+	activeRuns map[string]*BenchmarkExecution
+	runsMutex  sync.RWMutex
+
 	// Configuration
-	config        *BenchmarkServiceConfig
+	config *BenchmarkServiceConfig
 }
 
 // BenchmarkServiceConfig contains service configuration
 type BenchmarkServiceConfig struct {
 	// Execution limits
-	MaxConcurrentRuns   int           `yaml:"max_concurrent_runs" json:"max_concurrent_runs"`
-	DefaultTimeout      time.Duration `yaml:"default_timeout" json:"default_timeout"`
-	CleanupInterval     time.Duration `yaml:"cleanup_interval" json:"cleanup_interval"`
-	
+	MaxConcurrentRuns int           `yaml:"max_concurrent_runs" json:"max_concurrent_runs"`
+	DefaultTimeout    time.Duration `yaml:"default_timeout" json:"default_timeout"`
+	CleanupInterval   time.Duration `yaml:"cleanup_interval" json:"cleanup_interval"`
+
 	// Storage settings
-	RetainResults       time.Duration `yaml:"retain_results" json:"retain_results"`
-	MaxResultsInMemory  int           `yaml:"max_results_in_memory" json:"max_results_in_memory"`
-	
+	RetainResults      time.Duration `yaml:"retain_results" json:"retain_results"`
+	MaxResultsInMemory int           `yaml:"max_results_in_memory" json:"max_results_in_memory"`
+
 	// Safety limits
-	MaxTableSize        int           `yaml:"max_table_size" json:"max_table_size"`
-	MaxDuration         time.Duration `yaml:"max_duration" json:"max_duration"`
-	MaxThreads          int           `yaml:"max_threads" json:"max_threads"`
-	
+	MaxTableSize int           `yaml:"max_table_size" json:"max_table_size"`
+	MaxDuration  time.Duration `yaml:"max_duration" json:"max_duration"`
+	MaxThreads   int           `yaml:"max_threads" json:"max_threads"`
+
 	// Tool configurations
-	EnabledTools        []string      `yaml:"enabled_tools" json:"enabled_tools"`
-	ToolConfigurations  map[string]interface{} `yaml:"tool_configurations" json:"tool_configurations"`
+	EnabledTools       []string               `yaml:"enabled_tools" json:"enabled_tools"`
+	ToolConfigurations map[string]interface{} `yaml:"tool_configurations" json:"tool_configurations"`
 }
 
 // BenchmarkExecution tracks a running benchmark
 type BenchmarkExecution struct {
-	ID          string
-	Config      ports.BenchmarkConfig
-	StartTime   time.Time
-	Status      ports.BenchmarkStatus
-	Tool        ports.BenchmarkToolPort
-	Context     context.Context
-	CancelFunc  context.CancelFunc
-	Result      *ports.BenchmarkResult
-	Progress    *BenchmarkProgress
-	mutex       sync.RWMutex
+	ID         string
+	Config     ports.BenchmarkConfig
+	StartTime  time.Time
+	Status     ports.BenchmarkStatus
+	Tool       ports.BenchmarkToolPort
+	Context    context.Context
+	CancelFunc context.CancelFunc
+	Result     *ports.BenchmarkResult
+	Progress   *BenchmarkProgress
+	mutex      sync.RWMutex
 }
 
 // BenchmarkProgress tracks execution progress
 type BenchmarkProgress struct {
-	CurrentPhase    string    `json:"current_phase"`
-	CompletedSteps  int       `json:"completed_steps"`
-	TotalSteps      int       `json:"total_steps"`
-	ElapsedTime     time.Duration `json:"elapsed_time"`
+	CurrentPhase       string        `json:"current_phase"`
+	CompletedSteps     int           `json:"completed_steps"`
+	TotalSteps         int           `json:"total_steps"`
+	ElapsedTime        time.Duration `json:"elapsed_time"`
 	EstimatedRemaining time.Duration `json:"estimated_remaining"`
-	LastUpdate      time.Time `json:"last_update"`
-	Messages        []string  `json:"messages"`
+	LastUpdate         time.Time     `json:"last_update"`
+	Messages           []string      `json:"messages"`
 }
 
 // NewBenchmarkService creates a new benchmark service instance
@@ -95,12 +95,12 @@ func NewBenchmarkService(
 	service := &BenchmarkService{
 		mysqlRepo:      mysqlRepo,
 		postgresqlRepo: postgresqlRepo,
-		neo4jRepo:     neo4jRepo,
-		analyzer:      analyzer,
-		logger:        logger,
-		config:        config,
-		tools:         make(map[string]ports.BenchmarkToolPort),
-		activeRuns:    make(map[string]*BenchmarkExecution),
+		neo4jRepo:      neo4jRepo,
+		analyzer:       analyzer,
+		logger:         logger,
+		config:         config,
+		tools:          make(map[string]ports.BenchmarkToolPort),
+		activeRuns:     make(map[string]*BenchmarkExecution),
 	}
 
 	// Start cleanup routine
@@ -120,7 +120,7 @@ func (s *BenchmarkService) RegisterBenchmarkTool(name string, tool ports.Benchma
 
 	s.tools[name] = tool
 	s.logger.WithField("tool", name).Info("Registered benchmark tool")
-	
+
 	return nil
 }
 
@@ -135,7 +135,7 @@ func (s *BenchmarkService) GetAvailableTools() []string {
 			tools = append(tools, name)
 		}
 	}
-	
+
 	return tools
 }
 
@@ -236,9 +236,9 @@ func (s *BenchmarkService) executeAsync(execution *BenchmarkExecution) {
 
 	// Log completion
 	s.logger.WithFields(logrus.Fields{
-		"execution_id":   execution.ID,
-		"status":         result.Status,
-		"duration":       result.Duration,
+		"execution_id": execution.ID,
+		"status":       result.Status,
+		"duration":     result.Duration,
 		"queries_per_sec": func() float64 {
 			if result.Metrics != nil {
 				return result.Metrics.QueriesPerSecond
@@ -288,7 +288,7 @@ func (s *BenchmarkService) GetBenchmarkProgress(executionID string) (*BenchmarkP
 
 	// Update elapsed time
 	execution.Progress.ElapsedTime = time.Since(execution.StartTime)
-	
+
 	return execution.Progress, nil
 }
 
@@ -351,11 +351,11 @@ func (s *BenchmarkService) validateConfig(config ports.BenchmarkConfig) error {
 	if config.Duration > s.config.MaxDuration {
 		return fmt.Errorf("duration %v exceeds maximum allowed %v", config.Duration, s.config.MaxDuration)
 	}
-	
+
 	if config.Threads > s.config.MaxThreads {
 		return fmt.Errorf("threads %d exceeds maximum allowed %d", config.Threads, s.config.MaxThreads)
 	}
-	
+
 	if config.TableSize > s.config.MaxTableSize {
 		return fmt.Errorf("table size %d exceeds maximum allowed %d", config.TableSize, s.config.MaxTableSize)
 	}
@@ -458,8 +458,8 @@ func (s *BenchmarkService) cleanupOldExecutions() {
 	for id, execution := range s.activeRuns {
 		execution.mutex.RLock()
 		isOld := execution.StartTime.Before(cutoff)
-		isCompleted := execution.Status == ports.BenchmarkStatusCompleted || 
-			execution.Status == ports.BenchmarkStatusFailed || 
+		isCompleted := execution.Status == ports.BenchmarkStatusCompleted ||
+			execution.Status == ports.BenchmarkStatusFailed ||
 			execution.Status == ports.BenchmarkStatusCancelled
 		execution.mutex.RUnlock()
 
@@ -520,7 +520,7 @@ func (s *BenchmarkService) CreatePerformanceGraph(ctx context.Context, benchmark
 
 	// Build nodes and edges with performance data
 	nodeMap := make(map[string]*PerformanceNode)
-	
+
 	for _, queryResult := range benchmarkResult.QueryResults {
 		// Create nodes for source tables
 		for _, tableName := range queryResult.SourceTables {
@@ -542,12 +542,12 @@ func (s *BenchmarkService) CreatePerformanceGraph(ctx context.Context, benchmark
 
 // Performance graph data structures
 type PerformanceEnhancedGraph struct {
-	ID            string                     `json:"id"`
-	BenchmarkID   string                     `json:"benchmark_id"`
-	GeneratedAt   time.Time                  `json:"generated_at"`
-	GlobalMetrics *ports.PerformanceMetrics  `json:"global_metrics"`
-	Nodes         []PerformanceNode          `json:"nodes"`
-	Edges         []PerformanceEdge          `json:"edges"`
+	ID            string                    `json:"id"`
+	BenchmarkID   string                    `json:"benchmark_id"`
+	GeneratedAt   time.Time                 `json:"generated_at"`
+	GlobalMetrics *ports.PerformanceMetrics `json:"global_metrics"`
+	Nodes         []PerformanceNode         `json:"nodes"`
+	Edges         []PerformanceEdge         `json:"edges"`
 }
 
 type PerformanceNode struct {
@@ -575,7 +575,7 @@ type PerformanceEdge struct {
 // Helper methods for graph creation
 func (s *BenchmarkService) extractTableRelationships(queryResults []ports.QueryPerformance) ([]TableRelationship, error) {
 	relationships := make([]TableRelationship, 0)
-	
+
 	for _, query := range queryResults {
 		if len(query.JoinedTables) > 0 {
 			for _, sourceTable := range query.SourceTables {
@@ -591,7 +591,7 @@ func (s *BenchmarkService) extractTableRelationships(queryResults []ports.QueryP
 			}
 		}
 	}
-	
+
 	return relationships, nil
 }
 
@@ -687,12 +687,12 @@ func (s *BenchmarkService) updateNodeMetrics(node *PerformanceNode, query *ports
 	// Update aggregated metrics
 	node.TotalQueries += query.ExecutionCount
 	node.RowsProcessed += query.RowsExamined
-	
+
 	// Recalculate averages
-	totalLatency := (node.AvgLatency * float64(node.TotalQueries-query.ExecutionCount)) + 
+	totalLatency := (node.AvgLatency * float64(node.TotalQueries-query.ExecutionCount)) +
 		float64(query.TotalTime.Milliseconds())
 	node.AvgLatency = totalLatency / float64(node.TotalQueries)
-	
+
 	// Update derived metrics
 	node.HotspotScore = s.calculateHotspotScore(query)
 	node.IndexEfficiency = s.calculateIndexEfficiency(query)
@@ -732,9 +732,9 @@ func (s *BenchmarkService) calculateIndexEfficiency(query *ports.QueryPerformanc
 
 func (s *BenchmarkService) calculateHotspotScore(query *ports.QueryPerformance) float64 {
 	// Simple hotspot calculation based on frequency and latency
-	frequencyScore := float64(query.ExecutionCount) / 1000.0 // normalize
+	frequencyScore := float64(query.ExecutionCount) / 1000.0          // normalize
 	latencyScore := float64(query.AverageTime.Milliseconds()) / 100.0 // normalize
-	
+
 	score := (frequencyScore * 0.6) + (latencyScore * 0.4)
 	if score > 100.0 {
 		return 100.0
@@ -744,12 +744,12 @@ func (s *BenchmarkService) calculateHotspotScore(query *ports.QueryPerformance) 
 
 func (s *BenchmarkService) calculateLoadFactor(query *ports.QueryPerformance) float64 {
 	// Calculate load based on frequency and resource usage
-	return float64(query.ExecutionCount * query.RowsExamined) / 10000.0
+	return float64(query.ExecutionCount*query.RowsExamined) / 10000.0
 }
 
 func (s *BenchmarkService) calculatePerformanceRank(query *ports.QueryPerformance) string {
 	avgLatencyMs := float64(query.AverageTime.Milliseconds())
-	
+
 	if avgLatencyMs < 50 {
 		return "FAST"
 	} else if avgLatencyMs < 200 {

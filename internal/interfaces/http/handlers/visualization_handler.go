@@ -9,15 +9,14 @@
  * and graph visualization. Commercial use requires separate licensing.
  */
 
-
 package handlers
 
 import (
 	"encoding/json"
 	"log"
+	"net/http"
 	"sql-graph-visualizer/internal/application/services/visualization"
 	"sql-graph-visualizer/internal/domain/valueobjects"
-	"net/http"
 )
 
 type VisualizationHandler struct {

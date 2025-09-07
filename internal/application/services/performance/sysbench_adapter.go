@@ -16,9 +16,9 @@ import (
 
 // SysbenchAdapter implements BenchmarkToolPort for sysbench
 type SysbenchAdapter struct {
-	logger   *logrus.Logger
-	config   *SysbenchConfig
-	
+	logger *logrus.Logger
+	config *SysbenchConfig
+
 	// Cached sysbench availability
 	isAvailable bool
 	version     string
@@ -27,17 +27,17 @@ type SysbenchAdapter struct {
 // SysbenchConfig contains sysbench-specific configuration
 type SysbenchConfig struct {
 	// Sysbench binary path (empty means use PATH)
-	BinaryPath      string `yaml:"binary_path" json:"binary_path"`
-	
+	BinaryPath string `yaml:"binary_path" json:"binary_path"`
+
 	// Default test parameters
-	DefaultTableSize   int           `yaml:"default_table_size" json:"default_table_size"`
-	DefaultTables      int           `yaml:"default_tables" json:"default_tables"`
-	DefaultWarmupTime  time.Duration `yaml:"default_warmup_time" json:"default_warmup_time"`
-	
+	DefaultTableSize  int           `yaml:"default_table_size" json:"default_table_size"`
+	DefaultTables     int           `yaml:"default_tables" json:"default_tables"`
+	DefaultWarmupTime time.Duration `yaml:"default_warmup_time" json:"default_warmup_time"`
+
 	// MySQL-specific settings
-	MySQLDefaults      MySQLSysbenchDefaults `yaml:"mysql_defaults" json:"mysql_defaults"`
+	MySQLDefaults      MySQLSysbenchDefaults      `yaml:"mysql_defaults" json:"mysql_defaults"`
 	PostgreSQLDefaults PostgreSQLSysbenchDefaults `yaml:"postgresql_defaults" json:"postgresql_defaults"`
-	
+
 	// Test scenarios configuration
 	TestScenarios map[string]SysbenchScenario `yaml:"test_scenarios" json:"test_scenarios"`
 }
@@ -55,13 +55,13 @@ type PostgreSQLSysbenchDefaults struct {
 
 // SysbenchScenario defines a predefined test scenario
 type SysbenchScenario struct {
-	TestType     string        `yaml:"test_type" json:"test_type"`
-	Description  string        `yaml:"description" json:"description"`
-	TableSize    int           `yaml:"table_size" json:"table_size"`
-	Tables       int           `yaml:"tables" json:"tables"`
-	Duration     time.Duration `yaml:"duration" json:"duration"`
-	Threads      []int         `yaml:"threads" json:"threads"`
-	WarmupTime   time.Duration `yaml:"warmup_time" json:"warmup_time"`
+	TestType     string            `yaml:"test_type" json:"test_type"`
+	Description  string            `yaml:"description" json:"description"`
+	TableSize    int               `yaml:"table_size" json:"table_size"`
+	Tables       int               `yaml:"tables" json:"tables"`
+	Duration     time.Duration     `yaml:"duration" json:"duration"`
+	Threads      []int             `yaml:"threads" json:"threads"`
+	WarmupTime   time.Duration     `yaml:"warmup_time" json:"warmup_time"`
 	CustomParams map[string]string `yaml:"custom_params" json:"custom_params"`
 }
 
@@ -131,10 +131,10 @@ func (s *SysbenchAdapter) Execute(ctx context.Context, config ports.BenchmarkCon
 	}
 
 	s.logger.WithFields(logrus.Fields{
-		"duration":         duration,
-		"queries_per_sec":  metrics.QueriesPerSecond,
-		"avg_latency":      metrics.AverageLatency,
-		"95p_latency":      metrics.Percentile95,
+		"duration":        duration,
+		"queries_per_sec": metrics.QueriesPerSecond,
+		"avg_latency":     metrics.AverageLatency,
+		"95p_latency":     metrics.Percentile95,
 	}).Info("Sysbench benchmark completed")
 
 	return result, nil
@@ -151,7 +151,7 @@ func (s *SysbenchAdapter) Validate(config ports.BenchmarkConfig) error {
 			break
 		}
 	}
-	
+
 	if !isSupported {
 		return fmt.Errorf("unsupported test type: %s", config.TestType)
 	}
@@ -165,7 +165,7 @@ func (s *SysbenchAdapter) Validate(config ports.BenchmarkConfig) error {
 	if config.Threads <= 0 {
 		return fmt.Errorf("threads must be positive")
 	}
-	
+
 	if config.Duration <= 0 {
 		return fmt.Errorf("duration must be positive")
 	}
@@ -188,7 +188,7 @@ func (s *SysbenchAdapter) Validate(config ports.BenchmarkConfig) error {
 func (s *SysbenchAdapter) GetSupportedTests() []string {
 	return []string{
 		"oltp_read_write",
-		"oltp_read_only", 
+		"oltp_read_only",
 		"oltp_write_only",
 		"oltp_point_select",
 		"oltp_insert",
@@ -258,23 +258,23 @@ func (s *SysbenchAdapter) buildCommand(config ports.BenchmarkConfig) (*exec.Cmd,
 
 	// Build command arguments
 	args := []string{binaryPath}
-	
+
 	// Add database connection parameters
 	args = append(args, dbParams...)
 
 	// Add test-specific parameters
 	switch config.TestType {
-	case "oltp_read_write", "oltp_read_only", "oltp_write_only", 
-		 "oltp_point_select", "oltp_insert", "oltp_update_index", 
-		 "oltp_update_non_index", "oltp_delete":
-		
+	case "oltp_read_write", "oltp_read_only", "oltp_write_only",
+		"oltp_point_select", "oltp_insert", "oltp_update_index",
+		"oltp_update_non_index", "oltp_delete":
+
 		// Table configuration
 		if config.Tables > 0 {
 			args = append(args, fmt.Sprintf("--tables=%d", config.Tables))
 		} else {
 			args = append(args, fmt.Sprintf("--tables=%d", s.config.DefaultTables))
 		}
-		
+
 		if config.TableSize > 0 {
 			args = append(args, fmt.Sprintf("--table-size=%d", config.TableSize))
 		} else {
@@ -299,7 +299,7 @@ func (s *SysbenchAdapter) buildCommand(config ports.BenchmarkConfig) (*exec.Cmd,
 	// Add common parameters
 	args = append(args, fmt.Sprintf("--threads=%d", config.Threads))
 	args = append(args, fmt.Sprintf("--time=%d", int(config.Duration.Seconds())))
-	
+
 	// Add warmup if specified
 	if config.WarmupTime > 0 {
 		args = append(args, fmt.Sprintf("--warmup-time=%d", int(config.WarmupTime.Seconds())))
@@ -325,7 +325,7 @@ func (s *SysbenchAdapter) parseDatabaseURL(dbURL, dbType string) ([]string, erro
 
 	// Simple URL parsing for MySQL and PostgreSQL
 	// Format: [db_type]://[user]:[pass]@[host]:[port]/[database]
-	
+
 	// Remove protocol prefix
 	if strings.Contains(dbURL, "://") {
 		parts := strings.SplitN(dbURL, "://", 2)
@@ -401,7 +401,7 @@ func (s *SysbenchAdapter) executeCommand(ctx context.Context, cmd *exec.Cmd) (st
 			"output":  string(output),
 			"error":   err.Error(),
 		}).Error("Sysbench command failed")
-		
+
 		return string(output), err
 	}
 
@@ -410,72 +410,72 @@ func (s *SysbenchAdapter) executeCommand(ctx context.Context, cmd *exec.Cmd) (st
 
 func (s *SysbenchAdapter) parseOutput(output string, config ports.BenchmarkConfig) (*ports.PerformanceMetrics, []ports.QueryPerformance, error) {
 	lines := strings.Split(output, "\n")
-	
+
 	metrics := &ports.PerformanceMetrics{}
 	queryResults := make([]ports.QueryPerformance, 0)
 
 	// Parse metrics from sysbench output
 	for _, line := range lines {
 		line = strings.TrimSpace(line)
-		
+
 		// Parse queries per second
 		if strings.Contains(line, "queries/sec") {
 			if qps := s.extractFloat(line, `([0-9]+\.?[0-9]*)\s*queries/sec`); qps > 0 {
 				metrics.QueriesPerSecond = qps
 			}
 		}
-		
+
 		// Parse transactions per second
 		if strings.Contains(line, "transactions/sec") {
 			if tps := s.extractFloat(line, `([0-9]+\.?[0-9]*)\s*transactions/sec`); tps > 0 {
 				metrics.TransactionsPerSec = tps
 			}
 		}
-		
+
 		// Parse latency metrics
 		if strings.Contains(line, "avg:") {
 			if avg := s.extractFloat(line, `avg:\s*([0-9]+\.?[0-9]*)`); avg > 0 {
 				metrics.AverageLatency = avg
 			}
 		}
-		
+
 		if strings.Contains(line, "min:") {
 			if min := s.extractFloat(line, `min:\s*([0-9]+\.?[0-9]*)`); min > 0 {
 				metrics.MinLatency = min
 			}
 		}
-		
+
 		if strings.Contains(line, "max:") {
 			if max := s.extractFloat(line, `max:\s*([0-9]+\.?[0-9]*)`); max > 0 {
 				metrics.MaxLatency = max
 			}
 		}
-		
+
 		if strings.Contains(line, "95th percentile:") {
 			if p95 := s.extractFloat(line, `95th percentile:\s*([0-9]+\.?[0-9]*)`); p95 > 0 {
 				metrics.Percentile95 = p95
 			}
 		}
-		
+
 		if strings.Contains(line, "99th percentile:") {
 			if p99 := s.extractFloat(line, `99th percentile:\s*([0-9]+\.?[0-9]*)`); p99 > 0 {
 				metrics.Percentile99 = p99
 			}
 		}
-		
+
 		// Parse read/write statistics
 		if strings.Contains(line, "reads/s:") {
 			if reads := s.extractFloat(line, `reads/s:\s*([0-9]+\.?[0-9]*)`); reads > 0 {
 				metrics.ReadQPS = reads
 			}
 		}
-		
+
 		if strings.Contains(line, "writes/s:") {
 			if writes := s.extractFloat(line, `writes/s:\s*([0-9]+\.?[0-9]*)`); writes > 0 {
 				metrics.WriteQPS = writes
 			}
 		}
-		
+
 		// Parse error information
 		if strings.Contains(line, "errors/s:") {
 			if errors := s.extractFloat(line, `errors/s:\s*([0-9]+\.?[0-9]*)`); errors > 0 {
@@ -503,66 +503,66 @@ func (s *SysbenchAdapter) extractFloat(text, pattern string) float64 {
 
 func (s *SysbenchAdapter) createQueryPerformanceData(config ports.BenchmarkConfig, metrics *ports.PerformanceMetrics) []ports.QueryPerformance {
 	queryResults := make([]ports.QueryPerformance, 0)
-	
+
 	// Create synthetic query performance data based on sysbench test type
 	switch config.TestType {
 	case "oltp_read_write":
 		// Mixed read/write workload
-		queryResults = append(queryResults, 
+		queryResults = append(queryResults,
 			s.createQueryPerformance("SELECT", "sbtest", metrics, 0.6),
 			s.createQueryPerformance("UPDATE", "sbtest", metrics, 0.2),
 			s.createQueryPerformance("INSERT", "sbtest", metrics, 0.1),
 			s.createQueryPerformance("DELETE", "sbtest", metrics, 0.1),
 		)
-		
+
 	case "oltp_read_only":
 		// Read-only workload
-		queryResults = append(queryResults, 
+		queryResults = append(queryResults,
 			s.createQueryPerformance("SELECT", "sbtest", metrics, 1.0),
 		)
-		
+
 	case "oltp_write_only":
 		// Write-only workload
-		queryResults = append(queryResults, 
+		queryResults = append(queryResults,
 			s.createQueryPerformance("UPDATE", "sbtest", metrics, 0.5),
 			s.createQueryPerformance("INSERT", "sbtest", metrics, 0.3),
 			s.createQueryPerformance("DELETE", "sbtest", metrics, 0.2),
 		)
-		
+
 	case "oltp_point_select":
 		queryResults = append(queryResults,
 			s.createQueryPerformance("SELECT", "sbtest", metrics, 1.0),
 		)
-		
+
 	default:
 		// Generic query performance
 		queryResults = append(queryResults,
 			s.createQueryPerformance("MIXED", "sbtest", metrics, 1.0),
 		)
 	}
-	
+
 	return queryResults
 }
 
 func (s *SysbenchAdapter) createQueryPerformance(queryType, tableName string, metrics *ports.PerformanceMetrics, weight float64) ports.QueryPerformance {
 	// Calculate query-specific metrics based on weight
 	execCount := int64(metrics.QueriesPerSecond * float64(60) * weight) // Assuming 60 second test
-	avgTime := time.Duration(metrics.AverageLatency * weight) * time.Millisecond
-	
+	avgTime := time.Duration(metrics.AverageLatency*weight) * time.Millisecond
+
 	return ports.QueryPerformance{
-		QueryPattern:    fmt.Sprintf("%s operation on %s", queryType, tableName),
-		QueryType:       queryType,
-		ExecutionCount:  execCount,
-		TotalTime:       avgTime * time.Duration(execCount),
-		AverageTime:     avgTime,
-		MinTime:         time.Duration(metrics.MinLatency * weight) * time.Millisecond,
-		MaxTime:         time.Duration(metrics.MaxLatency * weight) * time.Millisecond,
-		SourceTables:    []string{tableName},
-		RowsExamined:    execCount * 1, // Assume 1 row per query on average
-		RowsReturned:    execCount * 1,
-		IndexUsed:       true, // Sysbench typically uses indexes
-		IndexName:       "PRIMARY",
-		RelationshipType: "SINGLE_TABLE",
+		QueryPattern:      fmt.Sprintf("%s operation on %s", queryType, tableName),
+		QueryType:         queryType,
+		ExecutionCount:    execCount,
+		TotalTime:         avgTime * time.Duration(execCount),
+		AverageTime:       avgTime,
+		MinTime:           time.Duration(metrics.MinLatency*weight) * time.Millisecond,
+		MaxTime:           time.Duration(metrics.MaxLatency*weight) * time.Millisecond,
+		SourceTables:      []string{tableName},
+		RowsExamined:      execCount * 1, // Assume 1 row per query on average
+		RowsReturned:      execCount * 1,
+		IndexUsed:         true, // Sysbench typically uses indexes
+		IndexName:         "PRIMARY",
+		RelationshipType:  "SINGLE_TABLE",
 		PerformanceImpact: s.classifyPerformanceImpact(metrics.AverageLatency * weight),
 	}
 }
@@ -579,9 +579,9 @@ func (s *SysbenchAdapter) classifyPerformanceImpact(avgLatency float64) string {
 // defaultSysbenchConfig returns default sysbench configuration
 func defaultSysbenchConfig() *SysbenchConfig {
 	return &SysbenchConfig{
-		BinaryPath:       "", // Use system PATH
-		DefaultTableSize: 100000,
-		DefaultTables:    4,
+		BinaryPath:        "", // Use system PATH
+		DefaultTableSize:  100000,
+		DefaultTables:     4,
 		DefaultWarmupTime: 10 * time.Second,
 		MySQLDefaults: MySQLSysbenchDefaults{
 			Engine:        "innodb",

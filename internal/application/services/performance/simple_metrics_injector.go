@@ -13,12 +13,12 @@ import (
 
 // SimpleMetricsInjector injects simulated performance metrics as Neo4j relationships
 type SimpleMetricsInjector struct {
-	neo4jRepo       ports.Neo4jPort
-	logger          *logrus.Logger
-	config          *SimpleMetricsConfig
-	isRunning       bool
-	stopChan        chan struct{}
-	mutex           sync.RWMutex
+	neo4jRepo ports.Neo4jPort
+	logger    *logrus.Logger
+	config    *SimpleMetricsConfig
+	isRunning bool
+	stopChan  chan struct{}
+	mutex     sync.RWMutex
 }
 
 // SimpleMetricsConfig configuration for simple metrics injection
@@ -112,7 +112,7 @@ func (s *SimpleMetricsInjector) injectMetrics(ctx context.Context) error {
 			  WHERE n:Artist OR n:Album OR n:Track OR n:Genre OR n:Customer
 			  RETURN id(n) as node_id, labels(n) as labels, n.name as name
 			  LIMIT 20`
-	
+
 	results, err := s.neo4jRepo.ExecuteQuery(query, map[string]interface{}{})
 	if err != nil {
 		return fmt.Errorf("failed to get existing nodes: %w", err)
@@ -242,12 +242,12 @@ func (s *SimpleMetricsInjector) generateTrend() string {
 func (s *SimpleMetricsInjector) generateSeverity() string {
 	severities := []string{"low", "medium", "high", "critical"}
 	weights := []int{40, 30, 20, 10} // Probability distribution
-	
+
 	total := 0
 	for _, weight := range weights {
 		total += weight
 	}
-	
+
 	r := rand.Intn(total)
 	sum := 0
 	for i, weight := range weights {
@@ -256,14 +256,14 @@ func (s *SimpleMetricsInjector) generateSeverity() string {
 			return severities[i]
 		}
 	}
-	
+
 	return "low"
 }
 
 // cleanupOldMetrics removes old performance metric relationships
 func (s *SimpleMetricsInjector) cleanupOldMetrics(ctx context.Context) error {
 	cutoffTime := time.Now().Add(-s.config.MetricsRetention).Unix()
-	
+
 	metricTypes := []string{
 		"QUERIES_PER_SEC", "AVG_LATENCY_MS", "JOIN_FREQUENCY",
 		"INDEX_EFFICIENCY", "HOTSPOT_SCORE", "LOAD_FACTOR",

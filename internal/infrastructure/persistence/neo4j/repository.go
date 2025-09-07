@@ -9,7 +9,6 @@
  * and graph visualization. Commercial use requires separate licensing.
  */
 
-
 package neo4j
 
 import (
@@ -283,12 +282,12 @@ func (r *Neo4jRepository) ExecuteQuery(query string, params map[string]interface
 	for result.Next() {
 		record := result.Record()
 		row := make(map[string]interface{})
-		
+
 		// Extract all values from the record
 		for i, key := range record.Keys {
 			row[key] = record.Values[i]
 		}
-		
+
 		results = append(results, row)
 	}
 

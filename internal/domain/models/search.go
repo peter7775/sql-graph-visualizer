@@ -9,7 +9,6 @@
  * and graph visualization. Commercial use requires separate licensing.
  */
 
-
 package models
 
 // SearchResult represents the result of a graph search operation.

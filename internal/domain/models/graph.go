@@ -9,7 +9,6 @@
  * and graph visualization. Commercial use requires separate licensing.
  */
 
-
 package models
 
 // Graph represents a graph structure with nodes and relationships.
