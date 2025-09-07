@@ -33,6 +33,10 @@ func Load() (*models.Config, error) {
 		} else {
 			configPath = filepath.Join(findProjectRoot(), envPath)
 		}
+	} else if os.Getenv("RAILWAY_ENVIRONMENT") != "" {
+		// Railway deployment detected - use cloud config
+		logrus.Info("Railway environment detected, using cloud-config.yml")
+		configPath = findProjectRoot() + "/config/cloud-config.yml"
 	} else {
 		configPath = findProjectRoot() + "/config/config.yml"
 	}

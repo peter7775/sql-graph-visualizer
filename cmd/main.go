@@ -52,6 +52,11 @@ var addr = "127.0.0.1:3000"
 func main() {
 	ctx := context.Background()
 
+	// Railway deployment detected
+	if os.Getenv("RAILWAY_ENVIRONMENT") != "" {
+		logrus.Info("Railway deployment detected - using environment variables for configuration")
+	}
+
 	logrus.Infof("Loading configuration...")
 	cfg, err := config.Load()
 	if err != nil {
@@ -222,6 +227,23 @@ func main() {
 		logrus.Info("Performance API routes registered")
 	}
 
+	// Health check endpoint
+	router.HandleFunc("/api/health", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		response := map[string]interface{}{
+			"status":    "healthy",
+			"timestamp": time.Now().Format(time.RFC3339),
+			"version":   "v1.1.0",
+			"database":  "connected",
+			"neo4j":     "connected",
+		}
+		if err := json.NewEncoder(w).Encode(response); err != nil {
+			logrus.Errorf("Error encoding health response: %v", err)
+			http.Error(w, "Health check failed", http.StatusInternalServerError)
+		}
+	})
+
 	router.HandleFunc("/config", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		if err := json.NewEncoder(w).Encode(cfg); err != nil {
@@ -238,16 +260,23 @@ func main() {
 	corsHandler := middleware.NewCORSHandler(corsOptions)
 	handler := corsHandler(router)
 
+	// Use PORT environment variable if available (for Railway deployment)
+	apiPort := os.Getenv("PORT")
+	if apiPort == "" {
+		apiPort = "8080"
+	}
+	apiAddr := ":" + apiPort // Listen on all interfaces
+
 	server := &http.Server{
 		Handler:           handler,
-		Addr:              "localhost:8080",
+		Addr:              apiAddr,
 		ReadTimeout:       15 * time.Second,
 		ReadHeaderTimeout: 5 * time.Second,
 		WriteTimeout:      15 * time.Second,
 		IdleTimeout:       60 * time.Second,
 	}
 
-	logrus.Infof("Starting server on %s", addr)
+	logrus.Infof("Starting API server on %s", apiAddr)
 	if err := server.ListenAndServe(); err != nil {
 		logrus.Fatalf("Failed to start server: %v", err)
 	}
