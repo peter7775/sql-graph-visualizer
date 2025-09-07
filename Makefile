@@ -1,7 +1,7 @@
 # Makefile for SQL Graph Visualizer
 # Requires Go 1.24+
 
-.PHONY: help install generate format test build run clean docker-up docker-down sec-scan ci-check dev quick
+.PHONY: help install generate format test build run clean docker-up docker-down sec-scan ci-check dev quick lint
 
 # Default target
 help:
@@ -11,6 +11,7 @@ help:
 	@echo "  install    - Install dependencies and tools"
 	@echo "  generate   - Generate GraphQL code"
 	@echo "  format     - Format Go code"
+	@echo "  lint       - Run golangci-lint"
 	@echo "  test       - Run tests"
 	@echo "  build      - Build the application"
 	@echo "  run        - Run the application"
@@ -28,6 +29,10 @@ install:
 	go mod tidy
 	@echo "Installing gqlgen..."
 	go install github.com/99designs/gqlgen@v0.17.78
+	@echo "Installing golangci-lint..."
+	@if [ ! -f $(HOME)/go/bin/golangci-lint ]; then \
+		curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(HOME)/go/bin v1.55.2; \
+	fi
 	@echo "Installation complete"
 
 # Generate GraphQL code
@@ -89,6 +94,12 @@ docker-down:
 	docker-compose down
 	@echo "Docker services stopped"
 
+# Run golangci-lint
+lint:
+	@echo "Running golangci-lint..."
+	$(HOME)/go/bin/golangci-lint run --timeout=10m
+	@echo "Lint completed"
+
 # Run CI checks locally
 ci-check: install generate format
 	@echo "Running CI checks locally..."
@@ -107,6 +118,8 @@ ci-check: install generate format
 	fi
 	@echo "Running go vet..."
 	go vet ./...
+	@echo "Running golangci-lint..."
+	$(HOME)/go/bin/golangci-lint run --timeout=10m
 	@echo "Building..."
 	go build -v ./...
 	@echo "Running tests..."

@@ -1,10 +1,9 @@
 run:
-  timeout: 5m
+  timeout: 10m
   tests: true
   skip-dirs:
     - vendor
   skip-files:
-    - ".*_test.go"
     - ".*/generated/.*"
 
 linters-settings:
@@ -26,3 +25,12 @@ linters:
 
 issues:
   exclude-use-default: false
+  exclude-rules:
+    # Exclude mock and test specific issues
+    - path: _test\.go
+      linters:
+        - typecheck
+        - deadcode
+        - unused
+        - structcheck
+        - varcheck

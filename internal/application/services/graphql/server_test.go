@@ -31,8 +31,8 @@ type MockNeo4jPort struct {
 }
 
 func (m *MockNeo4jPort) ExecuteQuery(query string, params map[string]interface{}) ([]map[string]interface{}, error) {
-	//TODO implement me
-	panic("implement me")
+	args := m.Called(query, params)
+	return args.Get(0).([]map[string]interface{}), args.Error(1)
 }
 
 func (m *MockNeo4jPort) StoreGraph(g *graph.GraphAggregate) error {
