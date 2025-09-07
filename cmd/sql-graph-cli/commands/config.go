@@ -17,7 +17,7 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
-	"gopkg.in/yaml.v2"
+	yaml "gopkg.in/yaml.v2"
 )
 
 // NewConfigCmd creates the config command
