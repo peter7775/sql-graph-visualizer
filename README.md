@@ -4,8 +4,10 @@
 
 [![License: Dual](https://img.shields.io/badge/License-AGPL%2BCommercial-blue.svg)](LICENSE-DUAL.md)
 [![Go Version](https://img.shields.io/github/go-mod/go-version/peter7775/sql-graph-visualizer)](https://golang.org/)
+[![CI/CD](https://github.com/peter7775/sql-graph-visualizer/actions/workflows/go.yml/badge.svg)](https://github.com/peter7775/sql-graph-visualizer/actions/workflows/go.yml)
 [![Release](https://img.shields.io/github/v/release/peter7775/sql-graph-visualizer)](https://github.com/peter7775/sql-graph-visualizer/releases)
 [![Stars](https://img.shields.io/github/stars/peter7775/sql-graph-visualizer?style=social)](https://github.com/peter7775/sql-graph-visualizer/stargazers)
+[![Discussions](https://img.shields.io/github/discussions/peter7775/sql-graph-visualizer)](https://github.com/peter7775/sql-graph-visualizer/discussions)
 
 [![MySQL](https://img.shields.io/badge/MySQL-8.0+-4479A1?logo=mysql&logoColor=white)](https://mysql.com/)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-13+-336791?logo=postgresql&logoColor=white)](https://postgresql.org/)
@@ -153,7 +155,7 @@ sql-graph-visualizer/
 
 ### 1. Clone and Setup
 ```bash
-git clone https://github.com/yourusername/sql-graph-visualizer.git
+git clone https://github.com/peter7775/sql-graph-visualizer.git
 cd sql-graph-visualizer
 go mod tidy
 ```
@@ -189,7 +191,7 @@ go build -o sql-graph-visualizer cmd/main.go
 
 ### From Source
 ```bash
-git clone https://github.com/yourusername/sql-graph-visualizer.git
+git clone https://github.com/peter7775/sql-graph-visualizer.git
 cd sql-graph-visualizer
 go build -o sql-graph-visualizer cmd/main.go
 ```
@@ -936,6 +938,26 @@ This software contains breakthrough innovations in:
 
 See [LICENSE](LICENSE) for complete terms.
 
+## Community & Support
+
+### Connect With Us
+- **Discussions**: [GitHub Discussions](https://github.com/peter7775/sql-graph-visualizer/discussions) - Ask questions, share ideas
+- **Email**: [petrstepanek99@gmail.com](mailto:petrstepanek99@gmail.com) - Direct contact & partnerships  
+- **LinkedIn**: Connect for professional networking
+- **Twitter**: Follow for updates and announcements
+
+### Community Updates
+- **Newsletter**: Monthly development updates and feature releases
+- **Blog**: Technical deep-dives and case studies
+- **Webinars**: Live demos and Q&A sessions
+
+### Show Your Support
+If this project helps you, consider:
+- **Star** this repository
+- **Fork** and contribute
+- **Share** with your network
+- **Sponsor** development efforts
+
 ## Acknowledgments
 
 - [Neo4j](https://neo4j.com/) for the excellent graph database
@@ -945,4 +967,12 @@ See [LICENSE](LICENSE) for complete terms.
 
 ---
 
-<p align="center">Made with love by the SQL Graph Visualizer Team</p>
+<div align="center">
+
+**Made with love by the SQL Graph Visualizer Team**
+
+[![GitHub Stars](https://img.shields.io/github/stars/peter7775/sql-graph-visualizer?style=social)](https://github.com/peter7775/sql-graph-visualizer/stargazers)
+[![GitHub Forks](https://img.shields.io/github/forks/peter7775/sql-graph-visualizer?style=social)](https://github.com/peter7775/sql-graph-visualizer/network/members)
+[![GitHub Watchers](https://img.shields.io/github/watchers/peter7775/sql-graph-visualizer?style=social)](https://github.com/peter7775/sql-graph-visualizer/watchers)
+
+</div>
