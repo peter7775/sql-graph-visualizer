@@ -52,13 +52,17 @@ var addr = "127.0.0.1:3000"
 func main() {
 	ctx := context.Background()
 
-	// Railway deployment detected
+	// Railway deployment detected - start in simplified mode
 	if os.Getenv("RAILWAY_ENVIRONMENT") != "" {
-		logrus.Info("Railway deployment detected - using environment variables for configuration")
+		logrus.Info("Railway deployment detected - starting in demo mode")
 		logrus.Infof("Railway environment: %s", os.Getenv("RAILWAY_ENVIRONMENT"))
 		logrus.Infof("PORT env var: %s", os.Getenv("PORT"))
 		logrus.Infof("NEO4J_URI set: %t", os.Getenv("NEO4J_URI") != "")
 		logrus.Infof("MYSQL_HOST set: %t", os.Getenv("MYSQL_HOST") != "")
+		
+		// Start simplified Railway server without database dependencies
+		startRailwayDemoServer()
+		return
 	}
 
 	logrus.Infof("Loading configuration...")
@@ -481,6 +485,141 @@ func findProjectRoot() string {
 	}
 }
 
+// startRailwayDemoServer starts a simplified server for Railway deployment without database dependencies
+func startRailwayDemoServer() {
+	logrus.Info("Starting Railway demo server...")
+	
+	router := mux.NewRouter()
+	
+	// Health check endpoint - essential for Railway deployment
+	router.HandleFunc("/api/health", func(w http.ResponseWriter, r *http.Request) {
+		logrus.Info("Health check requested")
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		
+		response := map[string]interface{}{
+			"status":    "healthy",
+			"timestamp": time.Now().Format(time.RFC3339),
+			"version":   "v1.1.0-railway",
+			"mode":      "demo",
+			"database":  "demo_mode",
+			"neo4j":     "demo_mode",
+			"environment": map[string]string{
+				"railway":    getEnvOrDefault("RAILWAY_ENVIRONMENT", "not_set"),
+				"port":       getEnvOrDefault("PORT", "not_set"),
+				"mysql_host": getEnvOrDefault("MYSQL_HOST", "not_set"),
+				"neo4j_uri":  "demo_mode",
+			},
+		}
+		
+		if err := json.NewEncoder(w).Encode(response); err != nil {
+			logrus.Errorf("Error encoding health response: %v", err)
+			http.Error(w, "Health check failed", http.StatusInternalServerError)
+		}
+	}).Methods("GET")
+	
+	// Demo API endpoints
+	router.HandleFunc("/api/demo", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		response := map[string]interface{}{
+			"message": "SQL Graph Visualizer Demo",
+			"status":  "demo_mode",
+			"info":    "This is a demo version running on Railway without database connections",
+		}
+		if err := json.NewEncoder(w).Encode(response); err != nil {
+			logrus.Errorf("Error encoding demo response: %v", err)
+		}
+	}).Methods("GET")
+	
+	// Static demo page
+	router.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html")
+		html := `<!DOCTYPE html>
+<html>
+<head>
+    <title>SQL Graph Visualizer - Demo</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; background: #f5f5f5; }
+        .container { max-width: 800px; margin: 0 auto; background: white; padding: 40px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .header { text-align: center; margin-bottom: 40px; }
+        .status { background: #e8f5e8; padding: 20px; border-radius: 4px; margin: 20px 0; }
+        .api-endpoints { background: #f8f9fa; padding: 20px; border-radius: 4px; }
+        .endpoint { margin: 10px 0; }
+        .endpoint a { color: #0066cc; text-decoration: none; }
+        .endpoint a:hover { text-decoration: underline; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚀 SQL Graph Visualizer</h1>
+            <p>Database transformation and visualization tool</p>
+        </div>
+        
+        <div class="status">
+            <h3>✅ Demo Mode Active</h3>
+            <p>The application is running in demo mode on Railway. Database connections are simulated.</p>
+        </div>
+        
+        <div class="api-endpoints">
+            <h3>Available Endpoints:</h3>
+            <div class="endpoint">🔍 <a href="/api/health">Health Check</a> - Application status</div>
+            <div class="endpoint">📊 <a href="/api/demo">Demo API</a> - Demo information</div>
+        </div>
+        
+        <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #ddd; text-align: center; color: #666;">
+            <p>For full functionality with database connections, please run locally or deploy with proper database configuration.</p>
+            <p><a href="https://github.com/peter7775/sql-graph-visualizer" style="color: #0066cc;">View on GitHub</a></p>
+        </div>
+    </div>
+</body>
+</html>`
+		w.Write([]byte(html))
+	}).Methods("GET")
+	
+	// CORS middleware for Railway
+	corsOptions := middleware.CORSOptions{
+		AllowedOrigins:   []string{"*"},
+		AllowedMethods:   []string{"GET", "POST", "OPTIONS"},
+		AllowedHeaders:   []string{"Content-Type", "Authorization"},
+		AllowCredentials: false,
+	}
+	corsHandler := middleware.NewCORSHandler(corsOptions)
+	handler := corsHandler(router)
+	
+	// Use PORT environment variable (required for Railway)
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
+	}
+	addr := ":" + port
+	
+	server := &http.Server{
+		Handler:           handler,
+		Addr:              addr,
+		ReadTimeout:       15 * time.Second,
+		ReadHeaderTimeout: 5 * time.Second,
+		WriteTimeout:      15 * time.Second,
+		IdleTimeout:       60 * time.Second,
+	}
+	
+	logrus.Infof("🚀 Railway demo server starting on %s", addr)
+	logrus.Infof("Health check available at: /api/health")
+	logrus.Infof("Demo page available at: /")
+	
+	if err := server.ListenAndServe(); err != nil {
+		logrus.Fatalf("Failed to start Railway demo server: %v", err)
+	}
+}
+
+// getEnvOrDefault returns environment variable value or default if not set
+func getEnvOrDefault(key, defaultValue string) string {
+	if value := os.Getenv(key); value != "" {
+		return value
+	}
+	return defaultValue
+}
+
 func init() {
 	level, err := logrus.ParseLevel(os.Getenv("LOG_LEVEL"))
 	if err != nil {
@@ -702,13 +841,6 @@ func createMinimalRailwayConfig() *models.Config {
 			},
 		},
 	}
-}
-
-func getEnvOrDefault(key, defaultValue string) string {
-	if value := os.Getenv(key); value != "" {
-		return value
-	}
-	return defaultValue
 }
 
 func createBenchmarkConfig(cfg *models.Config) *performance.BenchmarkServiceConfig {
