@@ -24,11 +24,11 @@ A powerful Go application that transforms SQL database structures (MySQL, Postgr
 
 <div align="center">
 
-**[📚 Quick Start](#quick-start)** • 
-**[🚀 Live Demo](https://demo.example.com)** • 
-**[📖 Documentation](https://docs.example.com)** • 
-**[💬 Discussions](https://github.com/peter7775/sql-graph-visualizer/discussions)** • 
-**[🐛 Issues](https://github.com/peter7775/sql-graph-visualizer/issues)**
+**[Quick Start](#quick-start)** • 
+**[Live Demo](https://demo.example.com)** • 
+**[Documentation](https://docs.example.com)** • 
+**[Discussions](https://github.com/peter7775/sql-graph-visualizer/discussions)** • 
+**[Issues](https://github.com/peter7775/sql-graph-visualizer/issues)**
 
 </div>
 
@@ -36,11 +36,11 @@ A powerful Go application that transforms SQL database structures (MySQL, Postgr
 
 <div align="center">
 
-**[📚 Quick Start](#quick-start)** • 
-**[🚀 Live Demo](https://sql-graph-visualizer-demo.railway.app)** • 
-**[📖 Documentation](https://github.com/peter7775/sql-graph-visualizer/wiki)** • 
-**[💬 Discussions](https://github.com/peter7775/sql-graph-visualizer/discussions)** • 
-**[🐛 Issues](https://github.com/peter7775/sql-graph-visualizer/issues)**
+**[Quick Start](#quick-start)** • 
+**[Live Demo](https://sql-graph-visualizer-demo.railway.app)** • 
+**[Documentation](https://github.com/peter7775/sql-graph-visualizer/wiki)** • 
+**[Discussions](https://github.com/peter7775/sql-graph-visualizer/discussions)** • 
+**[Issues](https://github.com/peter7775/sql-graph-visualizer/issues)**
 
 </div>
 
@@ -697,7 +697,7 @@ We provide issue templates for:
 
 ## Roadmap
 
-### Completed ✅
+### Completed 
 - [x] Basic MySQL to Neo4j transformation
 - [x] **PostgreSQL support** with full feature parity
 - [x] Rule-based configuration system
@@ -710,13 +710,13 @@ We provide issue templates for:
 - [x] **Robust connection management** with pooling and failover
 - [x] **Multi-database connection** support
 
-### In Progress 🚧
+### In Progress
 - [ ] **Real-time performance monitoring** dashboard
 - [ ] **Advanced visualization features** with performance overlays
 - [ ] **Trend analysis** and predictive performance insights
 - [ ] **Enterprise authentication** and authorization
 
-### Future Plans 🚀
+### Future Plans 
 - [ ] **Oracle Database Support**: Enterprise database integration
 - [ ] **SQL Server Support**: Microsoft ecosystem compatibility
 - [ ] **Reverse Transformation**: Neo4j to SQL conversion

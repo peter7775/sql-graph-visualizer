@@ -9,10 +9,10 @@ This software is available under two different licensing options:
 For open source projects, educational use, and non-commercial applications, this software is licensed under **GNU Affero General Public License v3 (AGPL-3.0)**.
 
 **Key Requirements:**
-- ✅ Free for open source projects
-- ✅ Free for educational/research use
-- ✅ Source code must remain open source
-- ✅ Network use triggers copyleft (SaaS must be open source)
+- Free for open source projects
+- Free for educational/research use
+- Source code must remain open source
+- Network use triggers copyleft (SaaS must be open source)
 - ❌ Cannot be used in closed-source commercial products
 
 [View AGPL-3.0 License Terms](https://www.gnu.org/licenses/agpl-3.0.en.html)
@@ -22,11 +22,11 @@ For open source projects, educational use, and non-commercial applications, this
 For commercial use, enterprise deployments, and proprietary applications, a **Commercial License** is required.
 
 **Commercial License Includes:**
-- ✅ Proprietary/closed-source usage rights
-- ✅ Commercial distribution rights
-- ✅ Enterprise support and warranties
-- ✅ Custom feature development
-- ✅ No copyleft requirements
+- Proprietary/closed-source usage rights
+- Commercial distribution rights
+- Enterprise support and warranties
+- Custom feature development
+- No copyleft requirements
 
 **Commercial License Required For:**
 - SaaS platforms using this software

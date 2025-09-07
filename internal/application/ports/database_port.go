@@ -15,7 +15,6 @@ package ports
 // This interface abstracts the common database operations needed for data transformation,
 // regardless of the underlying database type (MySQL, PostgreSQL, etc.)
 type DatabasePort interface {
-	// Basic data operations
 	FetchData() ([]map[string]any, error)
 	ExecuteQuery(query string) ([]map[string]any, error)
 	Close() error

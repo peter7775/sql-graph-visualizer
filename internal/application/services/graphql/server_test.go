@@ -9,7 +9,6 @@
  * and graph visualization. Commercial use requires separate licensing.
  */
 
-
 package graphql
 
 import (
@@ -29,6 +28,11 @@ import (
 // MockNeo4jPort for server tests
 type MockNeo4jPort struct {
 	mock.Mock
+}
+
+func (m *MockNeo4jPort) ExecuteQuery(query string, params map[string]interface{}) ([]map[string]interface{}, error) {
+	//TODO implement me
+	panic("implement me")
 }
 
 func (m *MockNeo4jPort) StoreGraph(g *graph.GraphAggregate) error {

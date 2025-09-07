@@ -9,10 +9,10 @@
  * and graph visualization. Commercial use requires separate licensing.
  */
 
-
 package graphql
 
 import (
+	"errors"
 	"net/http"
 	"time"
 
@@ -94,7 +94,7 @@ func StartGraphQLServer(neo4jRepo ports.Neo4jPort, config *models.Config) *Serve
 	server := NewServer(neo4jRepo, config)
 
 	go func() {
-		if err := server.Start("localhost:8081"); err != nil && err != http.ErrServerClosed {
+		if err := server.Start("localhost:8081"); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			logrus.Errorf("GraphQL server failed: %v", err)
 		}
 	}()
