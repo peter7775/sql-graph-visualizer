@@ -243,7 +243,7 @@ func main() {
 		logrus.Info("Health check requested")
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		
+
 		// Test database connectivity
 		dbStatus := "unknown"
 		if db != nil {
@@ -255,18 +255,18 @@ func main() {
 		} else {
 			dbStatus = "not_initialized"
 		}
-		
+
 		response := map[string]interface{}{
-			"status":      "healthy",
-			"timestamp":   time.Now().Format(time.RFC3339),
-			"version":     "v1.1.0",
-			"database":    dbStatus,
-			"neo4j":       "connected", // TODO: Add real Neo4j health check
+			"status":    "healthy",
+			"timestamp": time.Now().Format(time.RFC3339),
+			"version":   "v1.1.0",
+			"database":  dbStatus,
+			"neo4j":     "connected", // TODO: Add real Neo4j health check
 			"environment": map[string]string{
 				"railway":    getEnvOrDefault("RAILWAY_ENVIRONMENT", "not_set"),
 				"port":       getEnvOrDefault("PORT", "not_set"),
 				"mysql_host": getEnvOrDefault("MYSQL_HOST", "not_set"),
-				"neo4j_uri":  func() string {
+				"neo4j_uri": func() string {
 					if uri := os.Getenv("NEO4J_URI"); uri != "" {
 						return "set"
 					}
@@ -672,7 +672,7 @@ func createRealtimeConfig(cfg *models.Config) *performance.RealtimeMonitorConfig
 // createMinimalRailwayConfig creates a basic config when YAML loading fails on Railway
 func createMinimalRailwayConfig() *models.Config {
 	logrus.Info("Creating minimal Railway configuration from environment variables...")
-	
+
 	return &models.Config{
 		MySQL: models.MySQLConfig{
 			Host:     os.Getenv("MYSQL_HOST"),
@@ -686,11 +686,11 @@ func createMinimalRailwayConfig() *models.Config {
 			User:     getEnvOrDefault("NEO4J_USER", "neo4j"),
 			Password: os.Getenv("NEO4J_PASSWORD"),
 		},
-		TransformRules: []models.TransformRule{
+		TransformRules: []models.TransformationConfig{
 			{
 				Name:     "demo_rule",
 				RuleType: "node",
-				Source: models.TransformSource{
+				Source: models.SourceConfig{
 					Type:  "query",
 					Value: "SELECT 'Railway Demo' as name, 'demo' as type",
 				},
