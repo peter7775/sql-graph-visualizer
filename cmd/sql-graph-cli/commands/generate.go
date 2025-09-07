@@ -71,7 +71,7 @@ func runGenerate(opts generateOptions) error {
 	fmt.Println("==================================================")
 
 	// Create output directory if it doesn't exist
-	if err := os.MkdirAll(opts.OutputDir, 0755); err != nil {
+	if err := os.MkdirAll(opts.OutputDir, 0750); err != nil {
 		return fmt.Errorf("failed to create output directory: %w", err)
 	}
 
@@ -454,7 +454,7 @@ func writeConfigFile(filename, content string, force bool, description string) e
 	}
 
 	// Write file
-	err := os.WriteFile(filename, []byte(content), 0644)
+	err := os.WriteFile(filename, []byte(content), 0600)
 	if err != nil {
 		return fmt.Errorf("failed to write %s: %w", filename, err)
 	}

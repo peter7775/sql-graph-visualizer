@@ -2,8 +2,9 @@ package performance
 
 import (
 	"context"
+	"crypto/rand"
 	"fmt"
-	"math/rand"
+	"math/big"
 	"sync"
 	"time"
 
@@ -160,7 +161,7 @@ func (s *SimpleMetricsInjector) createPerformanceMetric(ctx context.Context, sou
 		"LOAD_FACTOR",
 	}
 
-	metricType := metricTypes[rand.Intn(len(metricTypes))]
+	metricType := metricTypes[cryptoRandInt(len(metricTypes))]
 	value := s.generateMetricValue(metricType)
 	timestamp := time.Now().Unix()
 	trend := s.generateTrend()
@@ -212,30 +213,53 @@ func (s *SimpleMetricsInjector) createPerformanceMetric(ctx context.Context, sou
 	return err
 }
 
+// cryptoRandInt generates a cryptographically secure random integer in range [0, n)
+func cryptoRandInt(n int) int {
+	if n <= 0 {
+		return 0
+	}
+	nBig, err := rand.Int(rand.Reader, big.NewInt(int64(n)))
+	if err != nil {
+		// Fallback to a deterministic value if crypto/rand fails
+		return 0
+	}
+	return int(nBig.Int64())
+}
+
+// cryptoRandFloat64 generates a cryptographically secure random float64 in range [0, 1)
+func cryptoRandFloat64() float64 {
+	nBig, err := rand.Int(rand.Reader, big.NewInt(1<<53))
+	if err != nil {
+		// Fallback to a deterministic value if crypto/rand fails
+		return 0.5
+	}
+	return float64(nBig.Int64()) / float64(1<<53)
+}
+
 // generateMetricValue generates realistic values for different metric types
 func (s *SimpleMetricsInjector) generateMetricValue(metricType string) float64 {
 	switch metricType {
 	case "QUERIES_PER_SEC":
-		return float64(rand.Intn(100) + 10) // 10-110 QPS
+		return float64(cryptoRandInt(100) + 10) // 10-110 QPS
 	case "AVG_LATENCY_MS":
-		return float64(rand.Intn(500) + 20) // 20-520ms
+		return float64(cryptoRandInt(500) + 20) // 20-520ms
 	case "JOIN_FREQUENCY":
-		return float64(rand.Intn(1000) + 50) // 50-1050 joins
+		return float64(cryptoRandInt(1000) + 50) // 50-1050 joins
 	case "INDEX_EFFICIENCY":
-		return rand.Float64() // 0.0-1.0
+		return cryptoRandFloat64() // 0.0-1.0
 	case "HOTSPOT_SCORE":
-		return rand.Float64() * 100 // 0-100 score
+		return cryptoRandFloat64() * 100 // 0-100 score
 	case "LOAD_FACTOR":
-		return rand.Float64() * 2.0 // 0.0-2.0 load
+		return cryptoRandFloat64() * 2.0 // 0.0-2.0 load
 	default:
-		return rand.Float64() * 100
+		return cryptoRandFloat64() * 100
 	}
 }
 
 // generateTrend generates trend information
 func (s *SimpleMetricsInjector) generateTrend() string {
 	trends := []string{"increasing", "decreasing", "stable", "volatile"}
-	return trends[rand.Intn(len(trends))]
+	return trends[cryptoRandInt(len(trends))]
 }
 
 // generateSeverity generates severity level
@@ -248,7 +272,7 @@ func (s *SimpleMetricsInjector) generateSeverity() string {
 		total += weight
 	}
 
-	r := rand.Intn(total)
+	r := cryptoRandInt(total)
 	sum := 0
 	for i, weight := range weights {
 		sum += weight

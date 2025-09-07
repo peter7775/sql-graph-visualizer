@@ -473,6 +473,7 @@ func (r *PostgreSQLDatabaseRepository) GetTableRowCount(ctx context.Context, tab
 	err := r.db.QueryRowContext(ctx, query, tableName).Scan(&rowCount)
 	if err != nil {
 		// If pg_stat_user_tables doesn't have the data, fall back to COUNT(*)
+		// #nosec G201 - tableName is escaped using EscapeIdentifier
 		countQuery := fmt.Sprintf("SELECT COUNT(*) FROM %s", r.EscapeIdentifier(tableName))
 		err = r.db.QueryRowContext(ctx, countQuery).Scan(&rowCount)
 		if err != nil {

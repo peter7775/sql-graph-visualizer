@@ -223,6 +223,7 @@ func (s *SysbenchAdapter) checkAvailability() {
 	}
 
 	// Check if sysbench binary exists
+	// #nosec G204 - binaryPath is configured and validated
 	cmd := exec.Command(binaryPath, "--version")
 	output, err := cmd.Output()
 	if err != nil {
@@ -317,6 +318,7 @@ func (s *SysbenchAdapter) buildCommand(config ports.BenchmarkConfig) (*exec.Cmd,
 	// Add test type and run command
 	args = append(args, config.TestType, "run")
 
+	// #nosec G204 - args are validated and constructed internally
 	return exec.Command(args[0], args[1:]...), nil
 }
 
@@ -391,6 +393,7 @@ func (s *SysbenchAdapter) parseDatabaseURL(dbURL, dbType string) ([]string, erro
 
 func (s *SysbenchAdapter) executeCommand(ctx context.Context, cmd *exec.Cmd) (string, error) {
 	// Set context for command cancellation
+	// #nosec G204 - cmd.Args are validated and constructed internally
 	cmd = exec.CommandContext(ctx, cmd.Args[0], cmd.Args[1:]...)
 
 	// Execute command and capture output

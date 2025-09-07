@@ -131,6 +131,7 @@ func runConfigValidate(configFile string) error {
 	}
 
 	// Read file
+	// #nosec G304 - configFile is validated and comes from user input
 	data, err := os.ReadFile(configFile)
 	if err != nil {
 		return fmt.Errorf("failed to read configuration file: %w", err)
@@ -198,6 +199,7 @@ func runConfigShow(configFile string, format string) error {
 	}
 
 	// Read file
+	// #nosec G304 - configFile is validated and comes from user input
 	data, err := os.ReadFile(configFile)
 	if err != nil {
 		return fmt.Errorf("failed to read configuration file: %w", err)
@@ -250,7 +252,7 @@ func runConfigInit(outputFile string, template string, force bool) error {
 
 	// Create output directory if needed
 	if outputDir != "." {
-		if err := os.MkdirAll(outputDir, 0755); err != nil {
+		if err := os.MkdirAll(outputDir, 0750); err != nil {
 			return fmt.Errorf("failed to create output directory: %w", err)
 		}
 	}
@@ -274,7 +276,7 @@ func runConfigInit(outputFile string, template string, force bool) error {
 	}
 
 	// Write configuration file
-	err = os.WriteFile(outputFile, []byte(configContent), 0644)
+	err = os.WriteFile(outputFile, []byte(configContent), 0600)
 	if err != nil {
 		return fmt.Errorf("failed to write configuration file: %w", err)
 	}

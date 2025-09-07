@@ -85,6 +85,11 @@ func (r *PostgreSQLRepository) ExecuteQuery(query string) ([]map[string]any, err
 	return results, nil
 }
 
+// EscapeIdentifier escapes PostgreSQL identifiers (table names, column names)
+func (r *PostgreSQLRepository) EscapeIdentifier(identifier string) string {
+	return fmt.Sprintf(`"%s"`, strings.Replace(identifier, `"`, `""`, -1))
+}
+
 // ConnectToExisting creates a new connection to existing PostgreSQL database
 func (r *PostgreSQLRepository) ConnectToExisting(ctx context.Context, config *models.PostgreSQLConfig) (*sql.DB, error) {
 	// Use Username if set, otherwise fallback to User
@@ -455,7 +460,8 @@ func (r *PostgreSQLRepository) getTableRowCount(ctx context.Context, db *sql.DB,
 	if err != nil {
 		// If pg_stat_user_tables doesn't have the data, fall back to COUNT(*)
 		// This is slower but more accurate
-		countQuery := fmt.Sprintf("SELECT COUNT(*) FROM %s", tableName)
+		// #nosec G201 - tableName is escaped using EscapeIdentifier
+		countQuery := fmt.Sprintf("SELECT COUNT(*) FROM %s", r.EscapeIdentifier(tableName))
 		err = db.QueryRowContext(ctx, countQuery).Scan(&rowCount)
 		if err != nil {
 			return 0, err

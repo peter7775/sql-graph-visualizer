@@ -455,7 +455,7 @@ func writeOutput(content string, outputFile string) error {
 		return nil
 	}
 
-	err := os.WriteFile(outputFile, []byte(content), 0644)
+	err := os.WriteFile(outputFile, []byte(content), 0600)
 	if err != nil {
 		return fmt.Errorf("failed to write output file: %w", err)
 	}
