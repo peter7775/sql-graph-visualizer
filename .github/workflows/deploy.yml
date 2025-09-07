@@ -1,5 +1,10 @@
 name: Deploy
 
+# NOTE: This deployment workflow is configured for demonstration purposes.
+# The health checks are set to skip placeholder URLs (*.example.com) to prevent
+# build failures when actual deployment infrastructure is not yet configured.
+# Replace the example.com URLs with your actual deployment URLs when ready.
+
 on:
   workflow_run:
     workflows: ["CI/CD Pipeline"]
@@ -247,11 +252,14 @@ jobs:
           # Test staging endpoints
           STAGING_URL="https://sql-graph-visualizer-staging.example.com"
           
-          # Basic connectivity test
-          if curl -f "$STAGING_URL/api/health" > /dev/null 2>&1; then
+          # Basic connectivity test (skip for placeholder URL)
+          if [[ "$STAGING_URL" == *"example.com"* ]]; then
+            echo "Skipping health check for placeholder URL: $STAGING_URL"
+            echo "Staging health check skipped (placeholder URL)"
+          elif curl -f "$STAGING_URL/api/health" > /dev/null 2>&1; then
             echo "Staging health check passed"
           else
-            echo "Staging health check failed (this might be expected if URL is not configured)"
+            echo "Staging health check failed - URL might not be configured yet"
           fi
           
           echo "Staging deployment verification completed"
@@ -380,8 +388,11 @@ jobs:
           # Comprehensive health checks
           echo "Running comprehensive health checks..."
           
-          # API health check
-          if curl -f "$PRODUCTION_URL/api/health" > /dev/null 2>&1; then
+          # API health check (skip for placeholder URL)
+          if [[ "$PRODUCTION_URL" == *"example.com"* ]]; then
+            echo "Skipping health check for placeholder URL: $PRODUCTION_URL"
+            echo "Production API health check skipped (placeholder URL)"
+          elif curl -f "$PRODUCTION_URL/api/health" > /dev/null 2>&1; then
             echo "Production API health check passed"
           else
             echo "Production API health check failed"
