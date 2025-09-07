@@ -35,10 +35,11 @@ func NewMySQLDatabaseRepository() repository.DatabaseRepository {
 }
 
 // Connect establishes connection to MySQL database
+// Connect establishes connection to MySQL database
 func (r *MySQLDatabaseRepository) Connect(ctx context.Context, config models.DatabaseConfig) (*sql.DB, error) {
-	mysqlConfig, ok := config.(*models.MySQLConfig)
+	mysqlConfig, ok := config.GetEffectiveConfig().(*models.MySQLConfig)
 	if !ok {
-		return nil, fmt.Errorf("expected MySQLConfig, got %T", config)
+		return nil, fmt.Errorf("expected MySQLConfig, got %T", config.GetEffectiveConfig())
 	}
 
 	// Use Username if set, otherwise fallback to User

@@ -95,6 +95,7 @@ type SecurityConfig struct {
 // SSLConfig represents SSL/TLS configuration for database connections
 type SSLConfig struct {
 	Enabled            bool   `yaml:"enabled"`
+	Mode               string `yaml:"mode,omitempty"` // PostgreSQL SSL mode
 	CertFile           string `yaml:"cert_file,omitempty"`
 	KeyFile            string `yaml:"key_file,omitempty"`
 	CAFile             string `yaml:"ca_file,omitempty"`
@@ -190,7 +191,10 @@ func (c *Config) GetDatabaseConfig() DatabaseConfig {
 	}
 
 	// Fall back to legacy MySQL config for backward compatibility
-	return &c.MySQL
+	return DatabaseConfig{
+		Type:  DatabaseTypeMySQL,
+		MySQL: &c.MySQL,
+	}
 }
 
 // GetDatabaseType returns the active database type
@@ -348,4 +352,45 @@ type AnimationConfig struct {
 	SpeedBasedOn   string  `yaml:"speed_based_on"`
 	AnimationSpeed float64 `yaml:"animation_speed"`
 	ParticleCount  int     `yaml:"particle_count"`
+}
+
+// GetUsername returns the username, preferring Username field over User field
+func (c *MySQLConfig) GetUsername() string {
+	if c.Username != "" {
+		return c.Username
+	}
+	return c.User
+}
+
+// GetPassword returns the password
+func (c *MySQLConfig) GetPassword() string {
+	return c.Password
+}
+
+// GetHost returns the host
+func (c *MySQLConfig) GetHost() string {
+	return c.Host
+}
+
+// GetPort returns the port
+func (c *MySQLConfig) GetPort() int {
+	return c.Port
+}
+
+// GetDatabase returns the database name
+func (c *MySQLConfig) GetDatabase() string {
+	return c.Database
+}
+
+// GetUsername returns the username, preferring Username field over User field
+func (c *PostgreSQLConfig) GetUsername() string {
+	if c.Username != "" {
+		return c.Username
+	}
+	return c.User
+}
+
+// GetPassword returns the password
+func (c *PostgreSQLConfig) GetPassword() string {
+	return c.Password
 }
