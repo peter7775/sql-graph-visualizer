@@ -52,14 +52,14 @@ var addr = "127.0.0.1:3000"
 func main() {
 	ctx := context.Background()
 
-	// Railway deployment detected - start in simplified mode
-	if os.Getenv("RAILWAY_ENVIRONMENT") != "" {
-		logrus.Info("Railway deployment detected - starting in demo mode")
+	// Check for explicit demo mode instead of Railway environment
+	if os.Getenv("DEMO_MODE") == "railway_demo" {
+		logrus.Info("Railway demo mode requested - starting in demo mode")
 		logrus.Infof("Railway environment: %s", os.Getenv("RAILWAY_ENVIRONMENT"))
 		logrus.Infof("PORT env var: %s", os.Getenv("PORT"))
 		logrus.Infof("NEO4J_URI set: %t", os.Getenv("NEO4J_URI") != "")
 		logrus.Infof("MYSQL_HOST set: %t", os.Getenv("MYSQL_HOST") != "")
-		
+
 		// Start simplified Railway server without database dependencies
 		startRailwayDemoServer()
 		return
@@ -488,15 +488,15 @@ func findProjectRoot() string {
 // startRailwayDemoServer starts a simplified server for Railway deployment without database dependencies
 func startRailwayDemoServer() {
 	logrus.Info("Starting Railway demo server...")
-	
+
 	router := mux.NewRouter()
-	
+
 	// Health check endpoint - essential for Railway deployment
 	router.HandleFunc("/api/health", func(w http.ResponseWriter, r *http.Request) {
 		logrus.Info("Health check requested")
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		
+
 		response := map[string]interface{}{
 			"status":    "healthy",
 			"timestamp": time.Now().Format(time.RFC3339),
@@ -511,13 +511,13 @@ func startRailwayDemoServer() {
 				"neo4j_uri":  "demo_mode",
 			},
 		}
-		
+
 		if err := json.NewEncoder(w).Encode(response); err != nil {
 			logrus.Errorf("Error encoding health response: %v", err)
 			http.Error(w, "Health check failed", http.StatusInternalServerError)
 		}
 	}).Methods("GET")
-	
+
 	// Demo API endpoints
 	router.HandleFunc("/api/demo", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -530,7 +530,7 @@ func startRailwayDemoServer() {
 			logrus.Errorf("Error encoding demo response: %v", err)
 		}
 	}).Methods("GET")
-	
+
 	// Static demo page
 	router.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html")
@@ -576,7 +576,7 @@ func startRailwayDemoServer() {
 </html>`
 		w.Write([]byte(html))
 	}).Methods("GET")
-	
+
 	// CORS middleware for Railway
 	corsOptions := middleware.CORSOptions{
 		AllowedOrigins:   []string{"*"},
@@ -586,14 +586,14 @@ func startRailwayDemoServer() {
 	}
 	corsHandler := middleware.NewCORSHandler(corsOptions)
 	handler := corsHandler(router)
-	
+
 	// Use PORT environment variable (required for Railway)
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8080"
 	}
 	addr := ":" + port
-	
+
 	server := &http.Server{
 		Handler:           handler,
 		Addr:              addr,
@@ -602,11 +602,11 @@ func startRailwayDemoServer() {
 		WriteTimeout:      15 * time.Second,
 		IdleTimeout:       60 * time.Second,
 	}
-	
+
 	logrus.Infof("🚀 Railway demo server starting on %s", addr)
 	logrus.Infof("Health check available at: /api/health")
 	logrus.Infof("Demo page available at: /")
-	
+
 	if err := server.ListenAndServe(); err != nil {
 		logrus.Fatalf("Failed to start Railway demo server: %v", err)
 	}
