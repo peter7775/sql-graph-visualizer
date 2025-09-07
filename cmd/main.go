@@ -16,10 +16,8 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"net"
 	"net/http"
 	"os"
-	"os/exec"
 	"os/signal"
 	"path/filepath"
 	"time"
@@ -80,7 +78,7 @@ func main() {
 	var dbPort ports.DatabasePort
 	var db *sql.DB
 
-	// Check if we have new multi-database configuration or legacy MySQL
+	// Check if we have a new multi-database configuration or legacy MySQL
 	if cfg.Database != nil && cfg.Database.Type != "" {
 		logrus.Infof("Using new multi-database configuration: %s", cfg.Database.Type)
 
@@ -98,7 +96,7 @@ func main() {
 				logrus.Fatalf("Failed to connect to PostgreSQL: %v", err)
 			}
 
-			// Use PostgreSQL repository as DatabasePort
+			// Use PostgreSQL repository as a DatabasePort
 			dbPort = postgresqlrepo.NewPostgreSQLDatabasePort(db)
 			logrus.Infof("Successfully connected to PostgreSQL database")
 
@@ -221,7 +219,14 @@ func main() {
 	logrus.Infof("Data transformation successful")
 
 	logrus.Infof("Starting server...")
-	startVisualizationServer(neo4jRepo, cfg)
+	vizServer := startVisualizationServer(neo4jRepo, cfg)
+	defer func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		if err := vizServer.Shutdown(ctx); err != nil {
+			logrus.Errorf("Error shutting down visualization server: %v", err)
+		}
+	}()
 
 	router := mux.NewRouter()
 
@@ -290,11 +295,12 @@ func main() {
 	})
 
 	corsOptions := middleware.CORSOptions{
-		AllowedOrigins:   []string{"http://localhost:3000"},
-		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE"},
-		AllowedHeaders:   []string{"Content-Type"},
+		AllowedOrigins:   []string{"*"},
+		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		AllowedHeaders:   []string{"Content-Type", "Authorization", "Accept"},
 		AllowCredentials: true,
 	}
+
 	corsHandler := middleware.NewCORSHandler(corsOptions)
 	handler := corsHandler(router)
 
@@ -313,6 +319,28 @@ func main() {
 		WriteTimeout:      15 * time.Second,
 		IdleTimeout:       60 * time.Second,
 	}
+
+	// Handle graceful shutdown
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, os.Interrupt)
+
+	go func() {
+		<-quit
+		logrus.Println("Shutting down servers...")
+
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+
+		if err := server.Shutdown(ctx); err != nil {
+			logrus.Errorf("Error shutting down API server: %v", err)
+		}
+
+		if err := vizServer.Shutdown(ctx); err != nil {
+			logrus.Errorf("Error shutting down visualization server: %v", err)
+		}
+
+		logrus.Println("Servers successfully shut down")
+	}()
 
 	logrus.Infof("Starting API server on %s", apiAddr)
 	if err := server.ListenAndServe(); err != nil {
@@ -419,22 +447,16 @@ func startVisualizationServer(neo4jRepo ports.Neo4jPort, cfg *models.Config) *ht
 		http.ServeFile(w, r, filepath.Join(webRoot, "templates", "visualization.html"))
 	})
 
-	listener, err := net.Listen("tcp", addr)
-	if err != nil {
-		logrus.Warnf("Port %s is occupied: %v", addr, err)
-		if err := exec.Command("fuser", "-k", "3000/tcp").Run(); err != nil {
-			logrus.Warnf("Error killing processes on port 3000: %v", err)
-		}
-		time.Sleep(time.Second)
-		listener, err = net.Listen("tcp", addr)
-		if err != nil {
-			logrus.Fatalf("Cannot create listener: %v", err)
-		}
+	// Use PORT environment variable if available (for Railway deployment)
+	vizPort := os.Getenv("PORT")
+	if vizPort == "" {
+		vizPort = "3000"
 	}
-	logrus.Infof("Listener created on %s", addr)
+	vizAddr := ":" + vizPort // Listen on all interfaces
 
 	server := &http.Server{
 		Handler:           mux,
+		Addr:              vizAddr,
 		ReadTimeout:       15 * time.Second,
 		ReadHeaderTimeout: 5 * time.Second,
 		WriteTimeout:      15 * time.Second,
@@ -442,25 +464,13 @@ func startVisualizationServer(neo4jRepo ports.Neo4jPort, cfg *models.Config) *ht
 	}
 
 	go func() {
-		logrus.Warnf("Starting server on %s", addr)
-		if err := server.Serve(listener); err != nil && err != http.ErrServerClosed {
-			logrus.Fatalf("Server terminated with error: %v", err)
+		logrus.Warnf("Starting visualization server on %s", vizAddr)
+		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			logrus.Fatalf("Visualization server terminated with error: %v", err)
 		}
 	}()
 
-	quit := make(chan os.Signal, 1)
-	signal.Notify(quit, os.Interrupt)
-	<-quit
-	logrus.Println("Shutting down server...")
-
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-	if err := server.Shutdown(ctx); err != nil {
-		logrus.Fatalf("Error shutting down server: %v", err)
-	}
-	logrus.Println("Server successfully shut down")
-
-	logrus.Infof("Visualization is available at http://localhost:3000")
+	logrus.Infof("Visualization is available at http://localhost:%s", vizPort)
 	return server
 }
 
