@@ -59,6 +59,7 @@ A powerful Go application that transforms SQL database structures (MySQL, Postgr
 - [Testing](#testing)
 - [Docker](#docker)
 - [Contributing](#contributing)
+- [Equity Program](#-equity-program) 
 - [Roadmap](#roadmap)
 - [License](#license)
 
@@ -694,6 +695,56 @@ We provide issue templates for:
 - [Feature Requests](.github/ISSUE_TEMPLATE/feature_request.yml)
 - [Database Connection Issues](.github/ISSUE_TEMPLATE/database_connection.yml)
 - [Performance Issues](.github/ISSUE_TEMPLATE/performance.yml)
+
+## Equity Program for Contributors
+
+**Join the commercial success! We offer equity sharing for qualified contributors.**
+
+This project has significant commercial potential and we believe in sharing success with those who help build it.
+
+### How It Works
+
+**Contribute meaningfully → Earn equity stake → Share in commercial licensing revenue**
+
+- **Equity Tiers**: 0.1% - 2.0% based on contribution impact
+- **Revenue Sharing**: From commercial licensing and enterprise deployments
+- **Vesting**: 50% after 6 months of active contribution, 50% after 12 months
+- **High-Impact Areas**: Core algorithms, enterprise features, performance optimization
+
+### Qualification Criteria
+
+**Automatic Qualification** (0.1% - 0.5% equity):
+- Merge 3+ significant PRs (marked with `equity-eligible` label)
+- Resolve complex issues (marked with `high-impact` label)
+- Maintain active contribution for 3+ months
+
+**High-Impact Qualification** (0.5% - 2.0% equity):
+- Lead major feature development
+- Contribute breakthrough innovations
+- Drive adoption and community growth
+- Enterprise client development
+
+### Commercial Licensing Context
+
+This project operates under a **Dual License model**:
+- **Open Source**: Free for non-commercial use (AGPL-3.0)
+- **Commercial**: Paid licensing for enterprise use ($2,500+/year)
+
+**Revenue Sources**:
+- Enterprise software licensing
+- SaaS platform integrations
+- Custom development contracts
+- Support and consulting services
+
+### Express Your Interest
+
+Ready to contribute and earn equity? **[Create a Contributor Intent Issue](https://github.com/petrstepanov/sql-graph-visualizer/issues/new?assignees=&labels=contributor-intent&template=contributor_intent.yml)**
+
+**Or contact directly**: petrstepanek99@gmail.com
+
+---
+
+**Important**: See [CONTRIBUTORS.md](CONTRIBUTORS.md) for complete equity program terms and legal framework.
 
 ## Roadmap
 
