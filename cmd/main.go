@@ -580,6 +580,93 @@ func startRailwayDemoServer() {
 		}
 	}).Methods("GET")
 
+	// Root endpoint for Railway demo
+	router.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		logrus.Info("Root endpoint requested in demo mode")
+		w.Header().Set("Content-Type", "text/html")
+		w.WriteHeader(http.StatusOK)
+		
+		html := `<!DOCTYPE html>
+<html>
+<head>
+    <title>SQL Graph Visualizer - Railway Demo</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 800px; margin: 50px auto; padding: 20px; background: #f5f5f5; }
+        .container { background: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        h1 { color: #333; text-align: center; }
+        .status { background: #e8f5e8; padding: 15px; border-left: 4px solid #4CAF50; margin: 20px 0; }
+        .info { background: #e3f2fd; padding: 15px; border-left: 4px solid #2196F3; margin: 20px 0; }
+        a { color: #2196F3; text-decoration: none; }
+        a:hover { text-decoration: underline; }
+        code { background: #f5f5f5; padding: 2px 5px; border-radius: 3px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 SQL Graph Visualizer</h1>
+        <h2>Railway Demo Mode</h2>
+        
+        <div class="status">
+            <strong>✅ Status:</strong> Demo mode is running successfully on Railway!
+        </div>
+        
+        <div class="info">
+            <strong>ℹ️ Demo Mode:</strong> This application is running in demonstration mode because database connections are not available.
+            <br><br>
+            <strong>Available endpoints:</strong>
+            <ul>
+                <li><code><a href="/api/health">/api/health</a></code> - Health check endpoint</li>
+                <li><code>/api/graph</code> - Graph data endpoint (demo data)</li>
+            </ul>
+        </div>
+        
+        <div class="info">
+            <strong>🔗 Links:</strong>
+            <ul>
+                <li><a href="https://github.com/peter7775/sql-graph-visualizer">GitHub Repository</a></li>
+                <li><a href="/api/health">Health Status</a></li>
+            </ul>
+        </div>
+        
+        <p style="text-align: center; color: #666; margin-top: 30px;">
+            SQL Graph Visualizer v1.1.0-railway | Deployed on Railway
+        </p>
+    </div>
+</body>
+</html>`
+		
+		if _, err := w.Write([]byte(html)); err != nil {
+			logrus.Errorf("Error writing response: %v", err)
+		}
+	}).Methods("GET")
+
+	// Demo graph data endpoint
+	router.HandleFunc("/api/graph", func(w http.ResponseWriter, r *http.Request) {
+		logrus.Info("Graph endpoint requested in demo mode")
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		
+		// Return demo graph data
+		demoData := map[string]interface{}{
+			"nodes": []map[string]interface{}{
+				{"id": "demo1", "label": "DemoNode", "properties": map[string]interface{}{"name": "Railway Demo", "type": "demo"}},
+				{"id": "demo2", "label": "StatusNode", "properties": map[string]interface{}{"name": "Healthy", "status": "running"}},
+			},
+			"relationships": []map[string]interface{}{
+				{"from": "demo1", "to": "demo2", "type": "CONNECTS_TO", "properties": map[string]interface{}{"demo": true}},
+			},
+			"meta": map[string]interface{}{
+				"mode": "demo",
+				"message": "This is demo data for Railway deployment",
+			},
+		}
+		
+		if err := json.NewEncoder(w).Encode(demoData); err != nil {
+			logrus.Errorf("Error encoding demo graph data: %v", err)
+			http.Error(w, "Failed to encode demo data", http.StatusInternalServerError)
+		}
+	}).Methods("GET")
+
 	// Use PORT environment variable if available (for Railway deployment)
 	apiPort := os.Getenv("PORT")
 	if apiPort == "" {
