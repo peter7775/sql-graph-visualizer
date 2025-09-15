@@ -220,6 +220,12 @@ func main() {
 
 	_, err = session.Run("MATCH (n) DETACH DELETE n", nil)
 	if err != nil {
+		if os.Getenv("RAILWAY_ENVIRONMENT") != "" {
+			logrus.Warnf("Neo4j operation failed in Railway environment: %v", err)
+			logrus.Info("Neo4j database appears to be unreachable, falling back to Railway demo mode...")
+			startRailwayDemoServer()
+			return
+		}
 		logrus.Fatalf("Error deleting data in Neo4j: %v", err)
 	}
 	logrus.Infof("All data in Neo4j deleted")
