@@ -4,18 +4,17 @@
 database:
   type: "mysql"
   mysql:
-    host: "sql.freedb.tech"      # Free public MySQL database
-    port: 3306
-    user: "freedb_demo_user"     # Will be overridden by Railway env vars if available
-    password: "demo123"          # Will be overridden by Railway env vars if available  
-    database: "freedb_sakila"    # Will be overridden by Railway env vars if available
+    host: "demo.host"             # Fallback - will be overridden by Railway MYSQLHOST
+    port: 3306                     # Will be overridden by Railway MYSQLPORT  
+    user: "demo"                   # Will be overridden by Railway MYSQLUSER
+    password: "demo"               # Will be overridden by Railway MYSQLPASSWORD  
+    database: "demo"               # Will be overridden by Railway MYSQL_DATABASE
     connection_mode: "existing"
     data_filtering:
       schema_discovery: true
       row_limit_per_table: 1000
-      table_whitelist: ["actor", "film", "category", "customer", "rental", "inventory"]
     security:
-      read_only: true
+      read_only: false             # Allow writes for demo data creation
       connection_timeout: 30
       query_timeout: 30
       max_connections: 10

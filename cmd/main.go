@@ -20,6 +20,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"strconv"
 	"time"
 
 	"github.com/gorilla/mux"
@@ -96,6 +97,8 @@ func main() {
 	// Override configuration with environment variables if available (Railway deployment)
 	if os.Getenv("RAILWAY_ENVIRONMENT") != "" {
 		logrus.Info("Overriding configuration with Railway environment variables...")
+		
+		// Override Neo4j configuration
 		if uri := os.Getenv("NEO4J_URI"); uri != "" && uri != "${NEO4J_URI}" {
 			cfg.Neo4j.URI = uri
 			logrus.Infof("Neo4j URI overridden: %s", uri)
@@ -107,6 +110,32 @@ func main() {
 		if password := os.Getenv("NEO4J_PASSWORD"); password != "" && password != "${NEO4J_PASSWORD}" {
 			cfg.Neo4j.Password = password
 			logrus.Info("Neo4j password overridden")
+		}
+		
+		// Override MySQL configuration with Railway env vars
+		if cfg.Database != nil && cfg.Database.MySQL != nil {
+			if host := os.Getenv("MYSQLHOST"); host != "" {
+				cfg.Database.MySQL.Host = host
+				logrus.Infof("MySQL host overridden: %s", host)
+			}
+			if user := os.Getenv("MYSQLUSER"); user != "" {
+				cfg.Database.MySQL.User = user
+				logrus.Infof("MySQL user overridden: %s", user)
+			}
+			if password := os.Getenv("MYSQLPASSWORD"); password != "" {
+				cfg.Database.MySQL.Password = password
+				logrus.Info("MySQL password overridden")
+			}
+			if database := os.Getenv("MYSQL_DATABASE"); database != "" {
+				cfg.Database.MySQL.Database = database
+				logrus.Infof("MySQL database overridden: %s", database)
+			}
+			if port := os.Getenv("MYSQLPORT"); port != "" {
+				if portNum := parseInt(port); portNum > 0 {
+					cfg.Database.MySQL.Port = portNum
+					logrus.Infof("MySQL port overridden: %d", portNum)
+				}
+			}
 		}
 	}
 
@@ -970,6 +999,14 @@ func getEnvOrDefault(key, defaultValue string) string {
 		return value
 	}
 	return defaultValue
+}
+
+// parseInt safely parses string to int, returns 0 if invalid
+func parseInt(s string) int {
+	if i, err := strconv.Atoi(s); err == nil {
+		return i
+	}
+	return 0
 }
 
 func init() {
