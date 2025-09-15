@@ -20,19 +20,19 @@ database:
       query_timeout: 30
       max_connections: 10
 
-# Neo4j AuraDB (Cloud managed)
+# Neo4j AuraDB (Cloud managed) - will be overridden by env vars in code
 neo4j:
-  uri: ${NEO4J_URI}
-  user: ${NEO4J_USER:-neo4j}
-  password: ${NEO4J_PASSWORD}
+  uri: "bolt://demo:7687"  # Default fallback - will be overridden by NEO4J_URI env var
+  user: "neo4j"            # Default fallback - will be overridden by NEO4J_USER env var  
+  password: "demo"         # Default fallback - will be overridden by NEO4J_PASSWORD env var
   max_connection_pool_size: 50
   connection_timeout: 10s
   max_transaction_retry_time: 15s
 
 # Demo settings
 demo:
-  enabled: ${DEMO_MODE:-true}
-  auto_transform_on_start: ${AUTO_TRANSFORM:-true}
+  enabled: true              # Default fallback - will be overridden by DEMO_MODE env var
+  auto_transform_on_start: true  # Default fallback - will be overridden by AUTO_TRANSFORM env var
   sample_data_loaded: false
   reset_on_restart: false
   show_demo_banner: true
@@ -66,7 +66,7 @@ processing:
 
 # Logging (cloud-friendly)
 logging:
-  level: ${LOG_LEVEL:-info}
+  level: info  # Default fallback - will be overridden by LOG_LEVEL env var
   format: json
   output: stdout
   enable_performance_logs: false

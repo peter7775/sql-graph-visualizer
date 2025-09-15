@@ -50,6 +50,13 @@ var addr = "127.0.0.1:3000"
 func main() {
 	ctx := context.Background()
 
+	// Always log startup information first
+	logrus.Info("=== SQL Graph Visualizer Starting ===")
+	logrus.Infof("Environment: %s", os.Getenv("RAILWAY_ENVIRONMENT"))
+	logrus.Infof("DEMO_MODE: %s", os.Getenv("DEMO_MODE"))
+	logrus.Infof("PORT: %s", os.Getenv("PORT"))
+	logrus.Infof("CONFIG_PATH: %s", os.Getenv("CONFIG_PATH"))
+
 	// Check for Railway environment or explicit demo mode
 	if os.Getenv("DEMO_MODE") == "railway_demo" || (os.Getenv("RAILWAY_ENVIRONMENT") != "" && os.Getenv("DEMO_MODE") == "true") {
 		logrus.Info("Railway demo mode requested - starting in demo mode")
@@ -76,16 +83,30 @@ func main() {
 	cfg, err := config.Load()
 	if err != nil {
 		logrus.Errorf("Failed to load configuration: %v", err)
-		// On Railway, try to continue with minimal config
+		// On Railway, always fallback to demo mode if config fails
 		if os.Getenv("RAILWAY_ENVIRONMENT") != "" {
-			logrus.Warn("Railway deployment - creating minimal config...")
-			cfg = createMinimalRailwayConfig()
-			if cfg == nil {
-				// createMinimalRailwayConfig already started demo server
-				return
-			}
+			logrus.Warn("Railway deployment - config failed, starting demo mode...")
+			startRailwayDemoServer()
+			return
 		} else {
 			logrus.Fatalf("Failed to load configuration and not on Railway: %v", err)
+		}
+	}
+
+	// Override configuration with environment variables if available (Railway deployment)
+	if os.Getenv("RAILWAY_ENVIRONMENT") != "" {
+		logrus.Info("Overriding configuration with Railway environment variables...")
+		if uri := os.Getenv("NEO4J_URI"); uri != "" && uri != "${NEO4J_URI}" {
+			cfg.Neo4j.URI = uri
+			logrus.Infof("Neo4j URI overridden: %s", uri)
+		}
+		if user := os.Getenv("NEO4J_USER"); user != "" && user != "${NEO4J_USER}" {
+			cfg.Neo4j.User = user
+			logrus.Infof("Neo4j user overridden: %s", user)
+		}
+		if password := os.Getenv("NEO4J_PASSWORD"); password != "" && password != "${NEO4J_PASSWORD}" {
+			cfg.Neo4j.Password = password
+			logrus.Info("Neo4j password overridden")
 		}
 	}
 
@@ -174,6 +195,12 @@ func main() {
 	logrus.Infof("Initializing Neo4j connection...")
 	neo4jRepo, err := neo4j.NewNeo4jRepository(cfg.Neo4j.URI, cfg.Neo4j.User, cfg.Neo4j.Password)
 	if err != nil {
+		if os.Getenv("RAILWAY_ENVIRONMENT") != "" {
+			logrus.Warnf("Neo4j connection failed in Railway environment: %v", err)
+			logrus.Info("Neo4j URI appears to be placeholder or invalid, falling back to Railway demo mode...")
+			startRailwayDemoServer()
+			return
+		}
 		logrus.Fatalf("Failed to create Neo4j repository: %v", err)
 	}
 	logrus.Infof("Neo4j connection successful")
