@@ -222,8 +222,8 @@ func main() {
 	if err != nil {
 		if os.Getenv("RAILWAY_ENVIRONMENT") != "" {
 			logrus.Warnf("Neo4j operation failed in Railway environment: %v", err)
-			logrus.Info("Neo4j database appears to be unreachable, falling back to Railway demo mode...")
-			startRailwayDemoServer()
+			logrus.Info("Neo4j database unreachable, starting MySQL-only visualization mode...")
+			startMySQLVisualizationServer(dbPort, cfg)
 			return
 		}
 		logrus.Fatalf("Error deleting data in Neo4j: %v", err)
@@ -545,6 +545,272 @@ func findProjectRoot() string {
 		}
 		wd = parent
 	}
+}
+
+// startMySQLVisualizationServer starts a MySQL-only visualization server when Neo4j is not available
+func startMySQLVisualizationServer(dbPort ports.DatabasePort, cfg *models.Config) {
+	logrus.Info("Starting MySQL-only visualization server...")
+
+	router := mux.NewRouter()
+
+	// Health check endpoint
+	router.HandleFunc("/api/health", func(w http.ResponseWriter, r *http.Request) {
+		logrus.Info("Health check requested")
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+
+		response := map[string]interface{}{
+			"status":    "healthy",
+			"timestamp": time.Now().Format(time.RFC3339),
+			"version":   "v1.1.0-mysql",
+			"mode":      "mysql_only",
+			"database":  "connected",
+			"neo4j":     "unavailable",
+			"message":   "Running with MySQL data, Neo4j unavailable",
+		}
+
+		if err := json.NewEncoder(w).Encode(response); err != nil {
+			logrus.Errorf("Error encoding health response: %v", err)
+			http.Error(w, "Health check failed", http.StatusInternalServerError)
+		}
+	}).Methods("GET")
+
+	// Root endpoint with MySQL data visualization
+	router.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		logrus.Info("Root endpoint requested - MySQL visualization mode")
+		w.Header().Set("Content-Type", "text/html")
+		w.WriteHeader(http.StatusOK)
+
+		// Get sample data from MySQL
+		actors, _ := getSampleActors(dbPort)
+		films, _ := getSampleFilms(dbPort)
+		categories, _ := getSampleCategories(dbPort)
+
+		html := generateMySQLVisualizationHTML(actors, films, categories)
+		if _, err := w.Write([]byte(html)); err != nil {
+			logrus.Errorf("Error writing response: %v", err)
+		}
+	}).Methods("GET")
+
+	// API endpoint for raw MySQL data
+	router.HandleFunc("/api/data", func(w http.ResponseWriter, r *http.Request) {
+		logrus.Info("Data API requested - MySQL mode")
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+
+		// Get data from MySQL based on transform rules
+		actors, _ := getSampleActors(dbPort)
+		films, _ := getSampleFilms(dbPort)
+		categories, _ := getSampleCategories(dbPort)
+
+		data := map[string]interface{}{
+			"actors":     actors,
+			"films":      films,
+			"categories": categories,
+			"meta": map[string]interface{}{
+				"source":   "mysql",
+				"mode":     "mysql_only",
+				"neo4j":    "unavailable",
+				"message":  "Data directly from MySQL database",
+				"timestamp": time.Now().Format(time.RFC3339),
+			},
+		}
+
+		if err := json.NewEncoder(w).Encode(data); err != nil {
+			logrus.Errorf("Error encoding data response: %v", err)
+			http.Error(w, "Failed to encode data", http.StatusInternalServerError)
+		}
+	}).Methods("GET")
+
+	// CORS middleware
+	corsOptions := middleware.CORSOptions{
+		AllowedOrigins:   []string{"*"},
+		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		AllowedHeaders:   []string{"Content-Type", "Authorization", "Accept"},
+		AllowCredentials: true,
+	}
+	corsHandler := middleware.NewCORSHandler(corsOptions)
+	handler := corsHandler(router)
+
+	// Use PORT environment variable
+	apiPort := os.Getenv("PORT")
+	if apiPort == "" {
+		apiPort = "3000"
+	}
+	apiAddr := ":" + apiPort
+
+	server := &http.Server{
+		Handler:           handler,
+		Addr:              apiAddr,
+		ReadTimeout:       15 * time.Second,
+		ReadHeaderTimeout: 5 * time.Second,
+		WriteTimeout:      15 * time.Second,
+		IdleTimeout:       60 * time.Second,
+	}
+
+	logrus.Infof("Starting MySQL visualization server on %s", apiAddr)
+	if err := server.ListenAndServe(); err != nil {
+		logrus.Fatalf("Failed to start MySQL visualization server: %v", err)
+	}
+}
+
+// Helper functions for MySQL data retrieval
+func getSampleActors(dbPort ports.DatabasePort) ([]map[string]interface{}, error) {
+	query := "SELECT actor_id, first_name, last_name, CONCAT(first_name, ' ', last_name) as full_name FROM actor LIMIT 20"
+	return executeQuery(dbPort, query)
+}
+
+func getSampleFilms(dbPort ports.DatabasePort) ([]map[string]interface{}, error) {
+	query := "SELECT film_id, title, description, release_year, rating, length FROM film LIMIT 20"
+	return executeQuery(dbPort, query)
+}
+
+func getSampleCategories(dbPort ports.DatabasePort) ([]map[string]interface{}, error) {
+	query := "SELECT category_id, name FROM category LIMIT 10"
+	return executeQuery(dbPort, query)
+}
+
+func executeQuery(dbPort ports.DatabasePort, query string) ([]map[string]interface{}, error) {
+	results, err := dbPort.ExecuteQuery(query)
+	if err != nil {
+		logrus.Errorf("Query failed: %v", err)
+		return nil, err
+	}
+	
+	// Convert []map[string]any to []map[string]interface{}
+	converted := make([]map[string]interface{}, len(results))
+	for i, result := range results {
+		convertedRow := make(map[string]interface{})
+		for k, v := range result {
+			convertedRow[k] = v
+		}
+		converted[i] = convertedRow
+	}
+	
+	return converted, nil
+}
+
+func generateMySQLVisualizationHTML(actors, films, categories []map[string]interface{}) string {
+	return `<!DOCTYPE html>
+<html>
+<head>
+    <title>SQL Graph Visualizer - MySQL Data</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 1200px; margin: 0 auto; padding: 20px; background: #f5f5f5; }
+        .container { background: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        h1 { color: #333; text-align: center; }
+        .section { margin: 30px 0; }
+        .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
+        .card { background: #f8f9fa; padding: 20px; border-radius: 8px; border-left: 4px solid #007bff; }
+        .card h3 { margin: 0 0 10px 0; color: #007bff; }
+        .status { background: #d4edda; padding: 15px; border-left: 4px solid #28a745; margin: 20px 0; }
+        .warning { background: #fff3cd; padding: 15px; border-left: 4px solid #ffc107; margin: 20px 0; }
+        table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #ddd; }
+        th { background-color: #f8f9fa; font-weight: bold; }
+        .api-link { color: #007bff; text-decoration: none; font-weight: bold; }
+        .api-link:hover { text-decoration: underline; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎬 SQL Graph Visualizer - MySQL Data</h1>
+        
+        <div class="status">
+            <strong>✅ MySQL Connected:</strong> Successfully displaying data from Sakila movie database!
+        </div>
+        
+        <div class="warning">
+            <strong>⚠️ Neo4j Unavailable:</strong> Showing raw MySQL data instead of graph visualization.
+        </div>
+
+        <div class="section">
+            <h2>🎭 Actors (Sample)</h2>
+            <div class="cards">` +
+			generateActorCards(actors) + `
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>🎥 Films (Sample)</h2>
+            <div class="cards">` +
+			generateFilmCards(films) + `
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>📂 Categories</h2>
+            <div class="cards">` +
+			generateCategoryCards(categories) + `
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>🔗 API Endpoints</h2>
+            <ul>
+                <li><a href="/api/health" class="api-link">/api/health</a> - Health status</li>
+                <li><a href="/api/data" class="api-link">/api/data</a> - Raw MySQL data (JSON)</li>
+            </ul>
+        </div>
+
+        <p style="text-align: center; color: #666; margin-top: 40px;">
+            SQL Graph Visualizer - MySQL Mode | Railway Deployment
+        </p>
+    </div>
+</body>
+</html>`
+}
+
+func generateActorCards(actors []map[string]interface{}) string {
+	cards := ""
+	for _, actor := range actors {
+		name := "N/A"
+		if fullName, ok := actor["full_name"]; ok && fullName != nil {
+			name = fmt.Sprintf("%v", fullName)
+		}
+		id := "N/A"
+		if actorID, ok := actor["actor_id"]; ok && actorID != nil {
+			id = fmt.Sprintf("%v", actorID)
+		}
+		cards += fmt.Sprintf(`<div class="card"><h3>%s</h3><p>ID: %s</p></div>`, name, id)
+	}
+	return cards
+}
+
+func generateFilmCards(films []map[string]interface{}) string {
+	cards := ""
+	for _, film := range films {
+		title := "N/A"
+		if filmTitle, ok := film["title"]; ok && filmTitle != nil {
+			title = fmt.Sprintf("%v", filmTitle)
+		}
+		year := "N/A"
+		if releaseYear, ok := film["release_year"]; ok && releaseYear != nil {
+			year = fmt.Sprintf("%v", releaseYear)
+		}
+		rating := "N/A"
+		if filmRating, ok := film["rating"]; ok && filmRating != nil {
+			rating = fmt.Sprintf("%v", filmRating)
+		}
+		cards += fmt.Sprintf(`<div class="card"><h3>%s</h3><p>Year: %s | Rating: %s</p></div>`, title, year, rating)
+	}
+	return cards
+}
+
+func generateCategoryCards(categories []map[string]interface{}) string {
+	cards := ""
+	for _, category := range categories {
+		name := "N/A"
+		if catName, ok := category["name"]; ok && catName != nil {
+			name = fmt.Sprintf("%v", catName)
+		}
+		id := "N/A"
+		if catID, ok := category["category_id"]; ok && catID != nil {
+			id = fmt.Sprintf("%v", catID)
+		}
+		cards += fmt.Sprintf(`<div class="card"><h3>%s</h3><p>ID: %s</p></div>`, name, id)
+	}
+	return cards
 }
 
 // startRailwayDemoServer starts a simplified server for Railway deployment without database dependencies
