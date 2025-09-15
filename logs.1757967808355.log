@@ -1,0 +1,229 @@
+2025-09-15T20:20:47.121194899Z [inf]  
+2025-09-15T20:20:51.004362048Z [inf]  [35m[Region: europe-west4][0m
+2025-09-15T20:20:51.029127269Z [inf]  [35m=========================
+2025-09-15T20:20:51.029153493Z [inf]  Using Detected Dockerfile
+2025-09-15T20:20:51.029157238Z [inf]  =========================
+2025-09-15T20:20:51.029160624Z [inf]  [0m
+2025-09-15T20:20:51.029171171Z [inf]  context: d6z4-eHCt
+2025-09-15T20:21:11.090297692Z [err]  ERROR: failed to build: listing workers for Build: failed to list workers: Unavailable: connection error: desc = "error reading server preface: read unix @->/run/docker.sock: use of closed network connection"
+2025-09-15T20:21:12.931753285Z [inf]  [35m[Region: europe-west4][0m
+2025-09-15T20:21:12.956474578Z [inf]  [35m=========================
+2025-09-15T20:21:12.956498878Z [inf]  Using Detected Dockerfile
+2025-09-15T20:21:12.956502565Z [inf]  =========================
+2025-09-15T20:21:12.956505700Z [inf]  [0m
+2025-09-15T20:21:12.956516240Z [inf]  context: d6z4-eHCt
+2025-09-15T20:21:33.018958304Z [err]  ERROR: failed to build: listing workers for Build: failed to list workers: Unavailable: connection error: desc = "error reading server preface: read unix @->/run/docker.sock: use of closed network connection"
+2025-09-15T20:21:35.581732735Z [inf]  [35m[Region: europe-west4][0m
+2025-09-15T20:21:35.610529734Z [inf]  [35m=========================
+2025-09-15T20:21:35.610576002Z [inf]  Using Detected Dockerfile
+2025-09-15T20:21:35.610588530Z [inf]  =========================
+2025-09-15T20:21:35.610598310Z [inf]  [0m
+2025-09-15T20:21:35.610624632Z [inf]  context: d6z4-eHCt
+2025-09-15T20:21:37.611766889Z [inf]  [internal] load build definition from Dockerfile
+2025-09-15T20:21:37.611779676Z [inf]  [internal] load build definition from Dockerfile
+2025-09-15T20:21:37.611792199Z [inf]  [internal] load build definition from Dockerfile
+2025-09-15T20:21:37.656955925Z [inf]  [internal] load build definition from Dockerfile
+2025-09-15T20:21:37.662468003Z [inf]  [internal] load metadata for docker.io/library/alpine:3.20
+2025-09-15T20:21:37.662500486Z [inf]  [internal] load metadata for docker.io/library/golang:1.24-alpine
+2025-09-15T20:21:37.971109767Z [inf]  [auth] library/alpine:pull token for registry-1.docker.io
+2025-09-15T20:21:37.971147964Z [inf]  [auth] library/alpine:pull token for registry-1.docker.io
+2025-09-15T20:21:37.973383590Z [inf]  [auth] library/golang:pull token for registry-1.docker.io
+2025-09-15T20:21:37.973403014Z [inf]  [auth] library/golang:pull token for registry-1.docker.io
+2025-09-15T20:21:39.353865629Z [inf]  [internal] load metadata for docker.io/library/alpine:3.20
+2025-09-15T20:21:39.373595062Z [inf]  [internal] load metadata for docker.io/library/golang:1.24-alpine
+2025-09-15T20:21:39.373931221Z [inf]  [internal] load .dockerignore
+2025-09-15T20:21:39.374076771Z [inf]  [internal] load .dockerignore
+2025-09-15T20:21:39.374285899Z [inf]  [internal] load .dockerignore
+2025-09-15T20:21:39.415000791Z [inf]  [internal] load .dockerignore
+2025-09-15T20:21:39.423069008Z [inf]  [builder 5/9] RUN go mod download
+2025-09-15T20:21:39.423101698Z [inf]  [builder 4/9] COPY go.mod go.sum ./
+2025-09-15T20:21:39.423108786Z [inf]  [internal] load build context
+2025-09-15T20:21:39.423115916Z [inf]  [builder 3/9] WORKDIR /app
+2025-09-15T20:21:39.423123591Z [inf]  [builder 2/9] RUN apk add --no-cache git ca-certificates tzdata
+2025-09-15T20:21:39.423131235Z [inf]  [builder 1/9] FROM docker.io/library/golang:1.24-alpine@sha256:fc2cff6625f3c1c92e6c85938ac5bd09034ad0d4bc2dfb08278020b68540dbb5
+2025-09-15T20:21:39.423136631Z [inf]  [stage-1 4/8] WORKDIR /app
+2025-09-15T20:21:39.423143000Z [inf]  [stage-1 3/8] RUN addgroup -g 1000 appgroup &&     adduser -u 1000 -G appgroup -s /bin/sh -D appuser
+2025-09-15T20:21:39.423148866Z [inf]  [stage-1 2/8] RUN apk add --no-cache     ca-certificates     tzdata     mysql-client     curl     && rm -rf /var/cache/apk/*
+2025-09-15T20:21:39.423154391Z [inf]  [stage-1 1/8] FROM docker.io/library/alpine:3.20@sha256:b3119ef930faabb6b7b976780c0c7a9c1aa24d0c75e9179ac10e6bc9ac080d0d
+2025-09-15T20:21:39.423183050Z [inf]  [stage-1 5/8] COPY --from=builder /app/sql-graph-visualizer .
+2025-09-15T20:21:39.423191400Z [inf]  [builder 9/9] RUN CGO_ENABLED=0 GOOS=linux go build     -ldflags="-w -s -X main.Version=dev -X main.BuildDate=unknown"     -o sql-graph-visualizer     ./cmd/main.go
+2025-09-15T20:21:39.423197062Z [inf]  [builder 8/9] RUN gqlgen generate
+2025-09-15T20:21:39.423203891Z [inf]  [builder 7/9] RUN go install github.com/99designs/gqlgen@latest &&     go mod tidy
+2025-09-15T20:21:39.423209841Z [inf]  [builder 6/9] COPY . .
+2025-09-15T20:21:39.423224576Z [inf]  [stage-1 8/8] RUN mkdir -p /app/logs /app/data &&     chown -R appuser:appgroup /app
+2025-09-15T20:21:39.423230586Z [inf]  [stage-1 7/8] COPY --from=builder /app/internal/interfaces/web ./internal/interfaces/web
+2025-09-15T20:21:39.423236104Z [inf]  [stage-1 6/8] COPY --from=builder /app/config ./config
+2025-09-15T20:21:39.423258441Z [inf]  [builder 1/9] FROM docker.io/library/golang:1.24-alpine@sha256:fc2cff6625f3c1c92e6c85938ac5bd09034ad0d4bc2dfb08278020b68540dbb5
+2025-09-15T20:21:39.423264575Z [inf]  [internal] load build context
+2025-09-15T20:21:39.423269905Z [inf]  [stage-1 1/8] FROM docker.io/library/alpine:3.20@sha256:b3119ef930faabb6b7b976780c0c7a9c1aa24d0c75e9179ac10e6bc9ac080d0d
+2025-09-15T20:21:39.423280203Z [inf]  [internal] load build context
+2025-09-15T20:21:39.434093630Z [inf]  [builder 1/9] FROM docker.io/library/golang:1.24-alpine@sha256:fc2cff6625f3c1c92e6c85938ac5bd09034ad0d4bc2dfb08278020b68540dbb5
+2025-09-15T20:21:39.434410111Z [inf]  [internal] load build context
+2025-09-15T20:21:39.434441737Z [inf]  [builder 1/9] FROM docker.io/library/golang:1.24-alpine@sha256:fc2cff6625f3c1c92e6c85938ac5bd09034ad0d4bc2dfb08278020b68540dbb5
+2025-09-15T20:21:39.434455436Z [inf]  [builder 1/9] FROM docker.io/library/golang:1.24-alpine@sha256:fc2cff6625f3c1c92e6c85938ac5bd09034ad0d4bc2dfb08278020b68540dbb5
+2025-09-15T20:21:39.434637712Z [inf]  [builder 1/9] FROM docker.io/library/golang:1.24-alpine@sha256:fc2cff6625f3c1c92e6c85938ac5bd09034ad0d4bc2dfb08278020b68540dbb5
+2025-09-15T20:21:39.439577703Z [inf]  [stage-1 1/8] FROM docker.io/library/alpine:3.20@sha256:b3119ef930faabb6b7b976780c0c7a9c1aa24d0c75e9179ac10e6bc9ac080d0d
+2025-09-15T20:21:39.439721769Z [inf]  [stage-1 1/8] FROM docker.io/library/alpine:3.20@sha256:b3119ef930faabb6b7b976780c0c7a9c1aa24d0c75e9179ac10e6bc9ac080d0d
+2025-09-15T20:21:39.439737361Z [inf]  [stage-1 1/8] FROM docker.io/library/alpine:3.20@sha256:b3119ef930faabb6b7b976780c0c7a9c1aa24d0c75e9179ac10e6bc9ac080d0d
+2025-09-15T20:21:39.439825105Z [inf]  [stage-1 1/8] FROM docker.io/library/alpine:3.20@sha256:b3119ef930faabb6b7b976780c0c7a9c1aa24d0c75e9179ac10e6bc9ac080d0d
+2025-09-15T20:21:39.476387262Z [inf]  [stage-1 1/8] FROM docker.io/library/alpine:3.20@sha256:b3119ef930faabb6b7b976780c0c7a9c1aa24d0c75e9179ac10e6bc9ac080d0d
+2025-09-15T20:21:39.486767271Z [inf]  [stage-1 1/8] FROM docker.io/library/alpine:3.20@sha256:b3119ef930faabb6b7b976780c0c7a9c1aa24d0c75e9179ac10e6bc9ac080d0d
+2025-09-15T20:21:39.530709121Z [inf]  [builder 1/9] FROM docker.io/library/golang:1.24-alpine@sha256:fc2cff6625f3c1c92e6c85938ac5bd09034ad0d4bc2dfb08278020b68540dbb5
+2025-09-15T20:21:39.533334963Z [inf]  [builder 1/9] FROM docker.io/library/golang:1.24-alpine@sha256:fc2cff6625f3c1c92e6c85938ac5bd09034ad0d4bc2dfb08278020b68540dbb5
+2025-09-15T20:21:39.608381607Z [inf]  [internal] load build context
+2025-09-15T20:21:40.737269493Z [inf]  [stage-1 2/8] RUN apk add --no-cache     ca-certificates     tzdata     mysql-client     curl     && rm -rf /var/cache/apk/*
+2025-09-15T20:21:40.966551916Z [inf]  fetch https://dl-cdn.alpinelinux.org/alpine/v3.20/main/x86_64/APKINDEX.tar.gz
+
+2025-09-15T20:21:41.043951694Z [inf]  fetch https://dl-cdn.alpinelinux.org/alpine/v3.20/community/x86_64/APKINDEX.tar.gz
+
+2025-09-15T20:21:41.288068306Z [inf]  (1/20) Installing ca-certificates (20250619-r0)
+
+2025-09-15T20:21:41.596371885Z [inf]  (2/20) Installing brotli-libs (1.1.0-r2)
+
+2025-09-15T20:21:41.612498305Z [inf]  (3/20) Installing c-ares (1.33.1-r0)
+
+2025-09-15T20:21:41.623196168Z [inf]  (4/20) Installing libunistring (1.2-r0)
+
+2025-09-15T20:21:41.924298757Z [inf]  (5/20) Installing libidn2 (2.3.7-r0)
+
+2025-09-15T20:21:41.927543632Z [inf]  [builder 1/9] FROM docker.io/library/golang:1.24-alpine@sha256:fc2cff6625f3c1c92e6c85938ac5bd09034ad0d4bc2dfb08278020b68540dbb5
+2025-09-15T20:21:41.932205972Z [inf]  (6/20) Installing nghttp2-libs (1.62.1-r0)
+
+2025-09-15T20:21:42.246434231Z [inf]  (7/20) Installing libpsl (0.21.5-r1)
+
+2025-09-15T20:21:42.559893822Z [inf]  (8/20) Installing zstd-libs (1.5.6-r0)
+
+2025-09-15T20:21:42.922777594Z [inf]  (9/20) Installing libcurl (8.12.1-r0)
+
+2025-09-15T20:21:42.936013206Z [inf]  (10/20) Installing curl (8.12.1-r0)
+
+2025-09-15T20:21:43.01207884Z [inf]  (11/20) Installing mariadb-common (10.11.14-r0)
+
+2025-09-15T20:21:43.071177996Z [inf]  (12/20) Installing libbz2 (1.0.8-r6)
+
+2025-09-15T20:21:43.079366Z [inf]  (13/20) Installing perl (5.38.5-r0)
+
+2025-09-15T20:21:43.352113623Z [inf]  (14/20) Installing libgcc (13.2.1_git20240309-r1)
+
+2025-09-15T20:21:43.645398924Z [inf]  (15/20) Installing ncurses-terminfo-base (6.4_p20240420-r2)
+
+2025-09-15T20:21:43.656450768Z [inf]  (16/20) Installing libncursesw (6.4_p20240420-r2)
+
+2025-09-15T20:21:43.974865373Z [inf]  (17/20) Installing libstdc++ (13.2.1_git20240309-r1)
+
+2025-09-15T20:21:44.003935952Z [inf]  (18/20) Installing mariadb-client (10.11.14-r0)
+
+2025-09-15T20:21:44.195687861Z [inf]  (19/20) Installing mysql-client (10.11.14-r0)
+
+2025-09-15T20:21:44.201985607Z [inf]  (20/20) Installing tzdata (2025b-r0)
+
+2025-09-15T20:21:44.238488419Z [inf]  Executing busybox-1.36.1-r29.trigger
+
+2025-09-15T20:21:44.242193906Z [inf]  Executing ca-certificates-20250619-r0.trigger
+
+2025-09-15T20:21:44.270388636Z [inf]  OK: 97 MiB in 34 packages
+
+2025-09-15T20:21:46.862333566Z [inf]  [builder 2/9] RUN apk add --no-cache git ca-certificates tzdata
+2025-09-15T20:21:57.039970519Z [inf]  fetch https://dl-cdn.alpinelinux.org/alpine/v3.22/main/x86_64/APKINDEX.tar.gz
+
+2025-09-15T20:21:57.043965557Z [inf]  [stage-1 2/8] RUN apk add --no-cache     ca-certificates     tzdata     mysql-client     curl     && rm -rf /var/cache/apk/*
+2025-09-15T20:21:57.045983715Z [inf]  [stage-1 3/8] RUN addgroup -g 1000 appgroup &&     adduser -u 1000 -G appgroup -s /bin/sh -D appuser
+2025-09-15T20:21:57.177482277Z [inf]  fetch https://dl-cdn.alpinelinux.org/alpine/v3.22/community/x86_64/APKINDEX.tar.gz
+
+2025-09-15T20:21:57.219621566Z [inf]  [stage-1 3/8] RUN addgroup -g 1000 appgroup &&     adduser -u 1000 -G appgroup -s /bin/sh -D appuser
+2025-09-15T20:21:57.221419439Z [inf]  [stage-1 4/8] WORKDIR /app
+2025-09-15T20:21:57.318962171Z [inf]  [stage-1 4/8] WORKDIR /app
+2025-09-15T20:21:57.494496854Z [inf]  (1/13) Installing brotli-libs (1.1.0-r2)
+
+2025-09-15T20:21:57.507871879Z [inf]  (2/13) Installing c-ares (1.34.5-r0)
+
+2025-09-15T20:21:57.516446457Z [inf]  (3/13) Installing libunistring (1.3-r0)
+
+2025-09-15T20:21:57.533767867Z [inf]  (4/13) Installing libidn2 (2.3.7-r0)
+
+2025-09-15T20:21:57.541547693Z [inf]  (5/13) Installing nghttp2-libs (1.65.0-r0)
+
+2025-09-15T20:21:57.548291199Z [inf]  (6/13) Installing libpsl (0.21.5-r3)
+
+2025-09-15T20:21:57.555055108Z [inf]  (7/13) Installing zstd-libs (1.5.7-r0)
+
+2025-09-15T20:21:57.567955406Z [inf]  (8/13) Installing libcurl (8.14.1-r1)
+
+2025-09-15T20:21:57.580959633Z [inf]  (9/13) Installing libexpat (2.7.1-r0)
+
+2025-09-15T20:21:57.588471245Z [inf]  (10/13) Installing pcre2 (10.43-r1)
+
+2025-09-15T20:21:57.600940126Z [inf]  (11/13) Installing git (2.49.1-r0)
+
+2025-09-15T20:21:57.674749005Z [inf]  (12/13) Installing git-init-template (2.49.1-r0)
+
+2025-09-15T20:21:57.681049271Z [inf]  (13/13) Installing tzdata (2025b-r0)
+
+2025-09-15T20:21:57.715573013Z [inf]  Executing busybox-1.37.0-r18.trigger
+
+2025-09-15T20:21:57.722492867Z [inf]  OK: 20 MiB in 30 packages
+
+2025-09-15T20:21:57.822523358Z [inf]  [builder 2/9] RUN apk add --no-cache git ca-certificates tzdata
+2025-09-15T20:21:57.824386216Z [inf]  [builder 3/9] WORKDIR /app
+2025-09-15T20:21:57.889252605Z [inf]  [builder 3/9] WORKDIR /app
+2025-09-15T20:21:57.890992167Z [inf]  [builder 4/9] COPY go.mod go.sum ./
+2025-09-15T20:21:58.024415214Z [inf]  [builder 4/9] COPY go.mod go.sum ./
+2025-09-15T20:21:58.026709897Z [inf]  [builder 5/9] RUN go mod download
+2025-09-15T20:22:01.437317829Z [inf]  [builder 5/9] RUN go mod download
+2025-09-15T20:22:01.439038698Z [inf]  [builder 6/9] COPY . .
+2025-09-15T20:22:03.402142058Z [inf]  [builder 6/9] COPY . .
+2025-09-15T20:22:03.406069346Z [inf]  [builder 7/9] RUN go install github.com/99designs/gqlgen@latest &&     go mod tidy
+2025-09-15T20:22:03.755710822Z [inf]  go: downloading github.com/99designs/gqlgen v0.17.79
+
+2025-09-15T20:22:04.896079239Z [inf]  go: downloading golang.org/x/tools v0.37.0
+
+2025-09-15T20:22:04.896503056Z [inf]  go: downloading golang.org/x/text v0.29.0
+
+2025-09-15T20:22:05.942432367Z [inf]  go: downloading golang.org/x/mod v0.28.0
+go: downloading golang.org/x/sync v0.17.0
+
+2025-09-15T20:22:27.527395875Z [inf]  go: downloading github.com/andreyvit/diff v0.0.0-20170406064948-c7f18ee00883
+go: downloading github.com/PuerkitoBio/goquery v1.10.3
+
+2025-09-15T20:22:27.5275295Z [inf]  go: downloading github.com/arbovm/levenshtein v0.0.0-20160628152529-48b4e1c0c4d0
+
+2025-09-15T20:22:27.52811755Z [inf]  go: downloading github.com/dgryski/trifles v0.0.0-20230903005119-f50d829f2e54
+
+2025-09-15T20:22:27.528153143Z [inf]  go: downloading github.com/kr/text v0.2.0
+
+2025-09-15T20:22:27.528257041Z [inf]  go: downloading github.com/rogpeppe/go-internal v1.9.0
+
+2025-09-15T20:22:27.57137414Z [inf]  go: downloading github.com/andybalholm/cascadia v1.3.3
+
+2025-09-15T20:22:27.600165129Z [inf]  go: downloading github.com/google/go-cmp v0.6.0
+
+2025-09-15T20:22:27.832423033Z [inf]  go: downloading github.com/sergi/go-diff v1.3.1
+
+2025-09-15T20:22:28.509596264Z [inf]  [builder 7/9] RUN go install github.com/99designs/gqlgen@latest &&     go mod tidy
+2025-09-15T20:22:28.511827954Z [inf]  [builder 8/9] RUN gqlgen generate
+2025-09-15T20:22:30.939536569Z [inf]  [builder 8/9] RUN gqlgen generate
+2025-09-15T20:22:30.941422092Z [inf]  [builder 9/9] RUN CGO_ENABLED=0 GOOS=linux go build     -ldflags="-w -s -X main.Version=dev -X main.BuildDate=unknown"     -o sql-graph-visualizer     ./cmd/main.go
+2025-09-15T20:22:31.202694247Z [inf]  # sql-graph-visualizer/internal/interfaces/graphql/generated
+internal/interfaces/graphql/generated/exec.go:588:17: undefined: graphql.ResolveField
+internal/interfaces/graphql/generated/exec.go:623:17: undefined: graphql.ResolveField
+internal/interfaces/graphql/generated/exec.go:658:17: undefined: graphql.ResolveField
+internal/interfaces/graphql/generated/exec.go:695:17: undefined: graphql.ResolveField
+internal/interfaces/graphql/generated/exec.go:724:17: undefined: graphql.ResolveField
+internal/interfaces/graphql/generated/exec.go:751:17: undefined: graphql.ResolveField
+internal/interfaces/graphql/generated/exec.go:778:17: undefined: graphql.ResolveField
+internal/interfaces/graphql/generated/exec.go:805:17: undefined: graphql.ResolveField
+internal/interfaces/graphql/generated/exec.go:832:17: undefined: graphql.ResolveField
+internal/interfaces/graphql/generated/exec.go:859:17: undefined: graphql.ResolveField
+internal/interfaces/graphql/generated/exec.go:859:17: too many errors
+
+2025-09-15T20:22:35.437869816Z [err]  [builder 9/9] RUN CGO_ENABLED=0 GOOS=linux go build     -ldflags="-w -s -X main.Version=dev -X main.BuildDate=unknown"     -o sql-graph-visualizer     ./cmd/main.go
+2025-09-15T20:22:35.454664108Z [err]  Dockerfile:31
+2025-09-15T20:22:35.454696736Z [err]  -------------------
+2025-09-15T20:22:35.454702401Z [err]  30 |     # Build binary with optimization flags
+2025-09-15T20:22:35.454707026Z [err]  31 | >>> RUN CGO_ENABLED=0 GOOS=linux go build \
+2025-09-15T20:22:35.454712968Z [err]  32 | >>>     -ldflags="-w -s -X main.Version=${VERSION} -X main.BuildDate=${BUILD_DATE}" \
+2025-09-15T20:22:35.454717224Z [err]  33 | >>>     -o sql-graph-visualizer \
+2025-09-15T20:22:35.454720774Z [err]  34 | >>>     ./cmd/main.go
+2025-09-15T20:22:35.454724588Z [err]  35 |
+2025-09-15T20:22:35.454728054Z [err]  -------------------
+2025-09-15T20:22:35.454733478Z [err]  ERROR: failed to build: failed to solve: process "/bin/sh -c CGO_ENABLED=0 GOOS=linux go build     -ldflags=\"-w -s -X main.Version=${VERSION} -X main.BuildDate=${BUILD_DATE}\"     -o sql-graph-visualizer     ./cmd/main.go" did not complete successfully: exit code: 1

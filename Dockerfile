@@ -17,7 +17,7 @@ RUN go mod download
 COPY . .
 
 # Install gqlgen and ensure all dependencies are available
-RUN go install github.com/99designs/gqlgen@latest && \
+RUN go install github.com/99designs/gqlgen@v0.17.79 && \
     go mod tidy
 
 # Generate GraphQL code
