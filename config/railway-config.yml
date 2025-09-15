@@ -1,0 +1,43 @@
+# Railway Demo Configuration
+# This configuration runs without external database dependencies
+
+# Database configuration disabled for Railway demo
+database:
+  type: "disabled"
+  
+# Neo4j configuration (optional - app can run without)
+neo4j:
+  uri: "bolt://demo:7687"
+  user: "neo4j"
+  password: "demo"
+
+# Minimal transform rules (empty for demo)
+transform_rules: []
+
+# Performance monitoring disabled
+performance:
+  monitoring:
+    enabled: false
+  realtime:
+    enabled: false
+  benchmarks:
+    enabled: false
+  visualization:
+    update_interval: "30s"
+    history_retention: "10m"
+
+# API Configuration
+api:
+  cors:
+    allowed_origins: ["*"]
+    allowed_methods: ["GET", "POST", "OPTIONS"]
+    allowed_headers: ["*"]
+  
+  graphql:
+    playground_enabled: true
+    introspection_enabled: true
+
+# Demo mode
+demo:
+  enabled: true
+  message: "Railway demo - running without database connections"

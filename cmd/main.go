@@ -51,7 +51,7 @@ func main() {
 	ctx := context.Background()
 
 	// Check for Railway environment or explicit demo mode
-	if os.Getenv("DEMO_MODE") == "railway_demo" || (os.Getenv("RAILWAY_ENVIRONMENT") != "" && os.Getenv("DEMO_MODE") != "false") {
+	if os.Getenv("DEMO_MODE") == "railway_demo" || (os.Getenv("RAILWAY_ENVIRONMENT") != "" && os.Getenv("DEMO_MODE") == "true") {
 		logrus.Info("Railway demo mode requested - starting in demo mode")
 		logrus.Infof("Railway environment: %s", os.Getenv("RAILWAY_ENVIRONMENT"))
 		logrus.Infof("PORT env var: %s", os.Getenv("PORT"))
@@ -59,6 +59,17 @@ func main() {
 		// Start simplified Railway server without database dependencies
 		startRailwayDemoServer()
 		return
+	}
+
+	// If on Railway but database connection fails, fallback to demo mode
+	if os.Getenv("RAILWAY_ENVIRONMENT") != "" {
+		logrus.Info("Railway environment detected - attempting normal startup first...")
+		logrus.Info("Debug: Railway environment variables:")
+		logrus.Infof("  MYSQL_HOST: %s", os.Getenv("MYSQL_HOST"))
+		logrus.Infof("  MYSQL_USER: %s", os.Getenv("MYSQL_USER"))
+		logrus.Infof("  MYSQL_DATABASE: %s", os.Getenv("MYSQL_DATABASE"))
+		logrus.Infof("  MYSQL_PORT: %s", os.Getenv("MYSQL_PORT"))
+		logrus.Infof("  MYSQL_PASSWORD: [length=%d]", len(os.Getenv("MYSQL_PASSWORD")))
 	}
 
 	logrus.Infof("Loading configuration...")
@@ -69,6 +80,10 @@ func main() {
 		if os.Getenv("RAILWAY_ENVIRONMENT") != "" {
 			logrus.Warn("Railway deployment - creating minimal config...")
 			cfg = createMinimalRailwayConfig()
+			if cfg == nil {
+				// createMinimalRailwayConfig already started demo server
+				return
+			}
 		} else {
 			logrus.Fatalf("Failed to load configuration and not on Railway: %v", err)
 		}
@@ -112,6 +127,12 @@ func main() {
 
 			db, err = sql.Open("mysql", dsn)
 			if err != nil {
+				if os.Getenv("RAILWAY_ENVIRONMENT") != "" {
+					logrus.Warnf("MySQL connection failed in Railway environment: %v", err)
+					logrus.Info("Falling back to Railway demo mode...")
+					startRailwayDemoServer()
+					return
+				}
 				logrus.Fatalf("Failed to connect to MySQL: %v", err)
 			}
 
@@ -757,13 +778,27 @@ func createRealtimeConfig(cfg *models.Config) *performance.RealtimeMonitorConfig
 func createMinimalRailwayConfig() *models.Config {
 	logrus.Info("Creating minimal Railway configuration from environment variables...")
 
+	// Check if MySQL variables are properly set (not just placeholder values)
+	mysqlHost := os.Getenv("MYSQL_HOST")
+	mysqlUser := os.Getenv("MYSQL_USER")
+	mysqlDatabase := os.Getenv("MYSQL_DATABASE")
+	
+	logrus.Infof("MySQL env vars: HOST=%s, USER=%s, DB=%s", mysqlHost, mysqlUser, mysqlDatabase)
+	
+	// If MySQL env vars are placeholders or empty, fallback to demo mode
+	if mysqlHost == "${MYSQL_HOST}" || mysqlHost == "" || mysqlUser == "${MYSQL_USER}" || mysqlUser == "" {
+		logrus.Warn("MySQL environment variables not properly set - starting in demo mode")
+		startRailwayDemoServer()
+		return nil
+	}
+
 	return &models.Config{
 		MySQL: models.MySQLConfig{
-			Host:     os.Getenv("MYSQL_HOST"),
+			Host:     mysqlHost,
 			Port:     3306,
-			User:     os.Getenv("MYSQL_USER"),
+			User:     mysqlUser,
 			Password: os.Getenv("MYSQL_PASSWORD"),
-			Database: os.Getenv("MYSQL_DATABASE"),
+			Database: mysqlDatabase,
 		},
 		Neo4j: models.Neo4jConfig{
 			URI:      os.Getenv("NEO4J_URI"),
