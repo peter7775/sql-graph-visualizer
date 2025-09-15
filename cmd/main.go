@@ -57,9 +57,9 @@ func main() {
 	logrus.Infof("PORT: %s", os.Getenv("PORT"))
 	logrus.Infof("CONFIG_PATH: %s", os.Getenv("CONFIG_PATH"))
 
-	// Check for Railway environment or explicit demo mode
-	if os.Getenv("DEMO_MODE") == "railway_demo" || (os.Getenv("RAILWAY_ENVIRONMENT") != "" && os.Getenv("DEMO_MODE") == "true") {
-		logrus.Info("Railway demo mode requested - starting in demo mode")
+	// Check for explicit demo mode only (not automatic Railway detection)
+	if os.Getenv("DEMO_MODE") == "railway_demo" || os.Getenv("DEMO_MODE") == "true" {
+		logrus.Info("Explicit demo mode requested - starting in demo mode")
 		logrus.Infof("Railway environment: %s", os.Getenv("RAILWAY_ENVIRONMENT"))
 		logrus.Infof("PORT env var: %s", os.Getenv("PORT"))
 
