@@ -1,0 +1,112 @@
+
+/* Light theme (default) */
+:root {
+    --bg-color: #ffffff;
+    --text-color: #000000;
+    --control-bg: #f8f9fa;
+    --border-color: #ccc;
+    --search-bg: #ffffff;
+    --search-hover: #f8f9fa;
+    --btn-bg: #ffffff;
+    --btn-text: #000000;
+}
+
+/* Dark theme */
+body[data-theme="dark"] {
+    --bg-color: #121212;
+    --text-color: #e0e0e0;
+    --control-bg: #1e1e1e;
+    --border-color: #444;
+    --search-bg: #2a2a2a;
+    --search-hover: #333;
+    --btn-bg: #2a2a2a;
+    --btn-text: #e0e0e0;
+}
+
+/* Shared styles using variables */
+body {
+    background: var(--bg-color);
+    color: var(--text-color);
+    transition: background 0.4s ease, color 0.4s ease;
+}
+
+#viz {
+    width: 100%;
+    height: 600px;
+    border: 1px solid var(--border-color);
+}
+
+.controls {
+    margin: 10px 0;
+    padding: 10px;
+    background: var(--control-bg);
+    border-radius: 4px;
+    transition: background 0.3s, color 0.3s;
+}
+
+.form-control, .form-select {
+    background: var(--search-bg);
+    color: var(--text-color);
+    border: 1px solid var(--border-color);
+    transition: background 0.3s, color 0.3s, border 0.3s;
+}
+
+.form-control::placeholder {
+    color: #aaa;
+}
+
+.btn {
+    background: var(--btn-bg);
+    color: var(--btn-text);
+    border: 1px solid var(--border-color);
+    transition: background 0.3s, color 0.3s, border 0.3s;
+}
+
+.btn:hover {
+    background: var(--search-hover);
+    color: var(--text-color);
+}
+
+/* Search results */
+.search-container { position: relative; }
+.search-results {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: var(--search-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    max-height: 200px;
+    overflow-y: auto;
+    z-index: 1000;
+    display: none;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    transition: background 0.3s, color 0.3s, border 0.3s;
+}
+.search-result-item {
+    padding: 8px 12px;
+    cursor: pointer;
+    border-bottom: 1px solid var(--border-color);
+    transition: background 0.2s;
+}
+.search-result-item:hover { background: var(--search-hover); }
+.search-result-item:last-child { border-bottom: none; }
+
+/* Dark overrides */
+[data-theme="dark"] .form-control,
+[data-theme="dark"] .form-select {
+    background: #222 !important;
+    color: #fff !important;
+    border: 1px solid #555 !important;
+}
+
+[data-theme="dark"] .form-control::placeholder { color: #aaa !important; }
+
+[data-theme="dark"] .search-result-item {
+    background: #222 !important;
+    color: #fff !important;
+    border-bottom: 1px solid #444;
+}
+
+[data-theme="dark"] .search-result-item:hover { background: #333 !important; }

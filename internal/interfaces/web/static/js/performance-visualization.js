@@ -879,6 +879,30 @@ class PerformanceGraphVisualizer {
     }
 }
 
+const themeToggleBtn = document.getElementById('themeToggle');
+
+if (themeToggleBtn) {
+    themeToggleBtn.addEventListener('click', () => {
+        const htmlEl = document.documentElement;
+        htmlEl.classList.toggle('dark-theme');
+
+        if (htmlEl.classList.contains('dark-theme')) {
+            themeToggleBtn.textContent = '☀️';
+        } else {
+            themeToggleBtn.textContent = '🌙';
+        }
+
+        localStorage.setItem('theme', htmlEl.classList.contains('dark-theme') ? 'dark' : 'light');
+    });
+
+    const savedTheme = localStorage.getItem('theme');
+    if (savedTheme === 'dark') {
+        document.documentElement.classList.add('dark-theme');
+        themeToggleBtn.textContent = '☀️';
+    }
+}
+
+
 // CSS styles for animations (to be added to CSS file)
 const performanceStyles = `
 @keyframes edgeFlow {
