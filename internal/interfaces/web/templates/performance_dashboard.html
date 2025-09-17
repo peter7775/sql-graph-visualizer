@@ -11,48 +11,102 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     
     <!-- D3.js for advanced visualizations -->
-    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script src="https://d3js.org/d7.min.js"></script>
     
     <!-- Chart.js for performance charts -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     
     <style>
+        :root {
+            --bg-color: #f8f9fa;
+            --text-color: #000000;
+            --control-bg: #ffffff;
+            --border-color: #e9ecef;
+            --search-bg: #ffffff;
+            --search-hover: #f8f9fa;
+            --btn-bg: #ffffff;
+            --btn-text: #000000;
+            --card-bg: #ffffff;
+            --card-shadow: rgba(0,0,0,0.08);
+            --header-bg: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --status-connected: #d4edda;
+            --status-connected-text: #155724;
+            --status-connected-border: #c3e6cb;
+            --status-disconnected: #f8d7da;
+            --status-disconnected-text: #721c24;
+            --status-disconnected-border: #f5c6cb;
+            --status-reconnecting: #fff3cd;
+            --status-reconnecting-text: #856404;
+            --status-reconnecting-border: #ffeeba;
+            --muted-text: #6c757d;
+        }
+
+        body[data-theme="dark"] {
+            --bg-color: #121212;
+            --text-color: #e0e0e0;
+            --control-bg: #1e1e1e;
+            --border-color: #333333;
+            --search-bg: #2a2a2a;
+            --search-hover: #333333;
+            --btn-bg: #2a2a2a;
+            --btn-text: #e0e0e0;
+            --card-bg: #1e1e1e;
+            --card-shadow: rgba(0,0,0,0.5);
+            --header-bg: linear-gradient(135deg, #2c2c2c 0%, #1a1a1a 100%);
+            --status-connected: #1a3b1a;
+            --status-connected-text: #b8f1b8;
+            --status-connected-border: #2e7d32;
+            --status-disconnected: #4a1a1a;
+            --status-disconnected-text: #f1b8b8;
+            --status-disconnected-border: #a32e2e;
+            --status-reconnecting: #4a4a1a;
+            --status-reconnecting-text: #f1f1b8;
+            --status-reconnecting-border: #a3a32e;
+            --muted-text: #b0b0b0;
+        }
+
         body {
-            background-color: #f8f9fa;
+            background-color: var(--bg-color);
+            color: var(--text-color);
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            transition: background 0.4s ease, color 0.4s ease;
         }
 
         .dashboard-header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
+            background: var(--header-bg);
+            color: var(--text-color);
             padding: 2rem 0;
             margin-bottom: 2rem;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            box-shadow: 0 4px 6px var(--card-shadow);
+            transition: background 0.3s, color 0.3s, box-shadow 0.3s;
         }
 
         .dashboard-header h1 {
             font-size: 2.5rem;
             font-weight: 300;
+            color: #ffffff;
         }
 
         .dashboard-header .lead {
             opacity: 0.9;
             font-size: 1.1rem;
+            color: #ffffff;
         }
 
         .metric-card {
-            background: white;
+            background: var(--card-bg);
+            color: var(--text-color);
             border-radius: 12px;
             padding: 1.5rem;
             margin-bottom: 1.5rem;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.08);
-            transition: transform 0.2s, box-shadow 0.2s;
+            box-shadow: 0 2px 10px var(--card-shadow);
+            transition: transform 0.2s, box-shadow 0.2s, background 0.3s, color 0.3s;
             border: none;
         }
 
         .metric-card:hover {
             transform: translateY(-2px);
-            box-shadow: 0 4px 20px rgba(0,0,0,0.12);
+            box-shadow: 0 4px 20px var(--card-shadow);
         }
 
         .metric-value {
@@ -62,7 +116,7 @@
         }
 
         .metric-label {
-            color: #6c757d;
+            color: var(--muted-text);
             font-size: 0.9rem;
             text-transform: uppercase;
             letter-spacing: 0.5px;
@@ -83,69 +137,100 @@
         }
 
         .performance-graph-container {
-            background: white;
+            background: var(--card-bg);
+            color: var(--text-color);
             border-radius: 12px;
             padding: 0;
             margin-bottom: 2rem;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+            box-shadow: 0 2px 10px var(--card-shadow);
             min-height: 600px;
             position: relative;
+            transition: background 0.3s, color 0.3s, box-shadow 0.3s;
         }
 
         .graph-header {
             padding: 1.5rem;
-            border-bottom: 1px solid #e9ecef;
-            background: #f8f9fa;
+            border-bottom: 1px solid var(--border-color);
+            background: var(--control-bg);
+            color: var(--text-color);
             border-radius: 12px 12px 0 0;
+            transition: background 0.3s, color 0.3s, border-color 0.3s;
         }
 
         .graph-content {
             padding: 1rem;
             height: 500px;
             position: relative;
+            background: var(--card-bg);
+            transition: background 0.3s;
         }
 
         #performanceGraph {
             width: 100%;
             height: 100%;
             border-radius: 0 0 12px 12px;
+            background: var(--card-bg);
+            transition: background 0.3s;
         }
 
-        .connection-status {
+        .header-right-btns {
             position: fixed;
+            display: flex;
+            gap: 10px;
             top: 20px;
             right: 20px;
             z-index: 1050;
+        }
+
+        .connection-status {
             padding: 0.5rem 1rem;
             border-radius: 20px;
             font-size: 0.85rem;
             font-weight: 500;
+            transition: background 0.3s, color 0.3s, border-color 0.3s;
+        }
+
+        .theme-toggle-btn {
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            background: var(--btn-bg);
+            color: var(--btn-text);
+            border: 1px solid var(--border-color);
+            transition: background 0.3s, color 0.3s, border 0.3s;
+        }
+
+        .theme-toggle-btn:hover {
+            background: var(--search-hover);
+            color: var(--text-color);
         }
 
         .connection-status.connected {
-            background: #d4edda;
-            color: #155724;
-            border: 1px solid #c3e6cb;
+            background: var(--status-connected);
+            color: var(--status-connected-text);
+            border: 1px solid var(--status-connected-border);
         }
 
         .connection-status.disconnected {
-            background: #f8d7da;
-            color: #721c24;
-            border: 1px solid #f5c6cb;
+            background: var(--status-disconnected);
+            color: var(--status-disconnected-text);
+            border: 1px solid var(--status-disconnected-border);
         }
 
         .connection-status.reconnecting {
-            background: #fff3cd;
-            color: #856404;
-            border: 1px solid #ffeeba;
+            background: var(--status-reconnecting);
+            color: var(--status-reconnecting-text);
+            border: 1px solid var(--status-reconnecting-border);
         }
 
         .controls-panel {
-            background: white;
+            background: var(--card-bg);
+            color: var(--text-color);
             border-radius: 12px;
             padding: 1.5rem;
             margin-bottom: 2rem;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+            box-shadow: 0 2px 10px var(--card-shadow);
+            transition: background 0.3s, color 0.3s, box-shadow 0.3s;
         }
 
         .control-group {
@@ -159,8 +244,31 @@
         .control-label {
             font-weight: 600;
             margin-bottom: 0.5rem;
-            color: #495057;
+            color: var(--text-color);
             font-size: 0.9rem;
+        }
+
+        .form-control, .form-select {
+            background: var(--search-bg);
+            color: var(--text-color);
+            border: 1px solid var(--border-color);
+            transition: background 0.3s, color 0.3s, border 0.3s;
+        }
+
+        .form-control:focus, .form-select:focus {
+            background: var(--search-bg);
+            color: var(--text-color);
+            border-color: #007bff;
+            box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+        }
+
+        .form-check-input:checked {
+            background-color: #007bff;
+            border-color: #007bff;
+        }
+
+        .form-check-label {
+            color: var(--text-color);
         }
 
         .alert-panel {
@@ -177,38 +285,43 @@
             margin-bottom: 0.5rem;
             border-radius: 8px;
             border: none;
+            background: var(--card-bg);
+            color: var(--text-color);
+            transition: background 0.3s, color 0.3s;
         }
 
         .performance-alert.alert-critical {
-            background: #f8d7da;
-            color: #721c24;
+            background: var(--status-disconnected);
+            color: var(--status-disconnected-text);
             border-left: 4px solid #dc3545;
         }
 
         .performance-alert.alert-warning {
-            background: #fff3cd;
-            color: #856404;
+            background: var(--status-reconnecting);
+            color: var(--status-reconnecting-text);
             border-left: 4px solid #ffc107;
         }
 
         .performance-alert.alert-info {
-            background: #d1ecf1;
-            color: #0c5460;
+            background: var(--status-connected);
+            color: var(--status-connected-text);
             border-left: 4px solid #17a2b8;
         }
 
         .chart-container {
-            background: white;
+            background: var(--card-bg);
+            color: var(--text-color);
             border-radius: 12px;
             padding: 1.5rem;
             margin-bottom: 2rem;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+            box-shadow: 0 2px 10px var(--card-shadow);
+            transition: background 0.3s, color 0.3s, box-shadow 0.3s;
         }
 
         .chart-title {
             font-size: 1.1rem;
             font-weight: 600;
-            color: #495057;
+            color: var(--text-color);
             margin-bottom: 1rem;
         }
 
@@ -216,6 +329,7 @@
             display: inline-flex;
             align-items: center;
             gap: 0.5rem;
+            color: var(--text-color);
         }
 
         .status-dot {
@@ -243,6 +357,100 @@
             100% { opacity: 1; }
         }
 
+        .btn {
+            background: var(--btn-bg);
+            color: var(--btn-text);
+            border: 1px solid var(--border-color);
+            transition: background 0.3s, color 0.3s, border 0.3s;
+        }
+
+        .btn:hover {
+            background: var(--search-hover);
+            color: var(--text-color);
+        }
+
+        .btn-primary {
+            background: #007bff;
+            color: #ffffff;
+            border-color: #007bff;
+        }
+
+        .btn-primary:hover {
+            background: #0056b3;
+            color: #ffffff;
+            border-color: #0056b3;
+        }
+
+        .btn-danger {
+            background: #dc3545;
+            color: #ffffff;
+            border-color: #dc3545;
+        }
+
+        .btn-danger:hover {
+            background: #c82333;
+            color: #ffffff;
+            border-color: #c82333;
+        }
+
+        .btn-outline-primary {
+            background: transparent;
+            color: #007bff;
+            border-color: #007bff;
+        }
+
+        .btn-outline-primary:hover {
+            background: #007bff;
+            color: #ffffff;
+            border-color: #007bff;
+        }
+
+        /* Text muted styling */
+        .text-muted {
+            color: var(--muted-text) !important;
+        }
+
+        /* Border styling */
+        .border-bottom {
+            border-bottom: 1px solid var(--border-color) !important;
+        }
+
+        /* Alert styling */
+        .alert {
+            background: var(--card-bg);
+            color: var(--text-color);
+            border: 1px solid var(--border-color);
+            transition: background 0.3s, color 0.3s, border-color 0.3s;
+        }
+
+        .alert-info {
+            background: var(--status-connected);
+            color: var(--status-connected-text);
+            border-color: var(--status-connected-border);
+        }
+
+        /* Loading states */
+        .loading {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 200px;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid var(--border-color);
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
         /* Responsive adjustments */
         @media (max-width: 768px) {
             .dashboard-header {
@@ -265,43 +473,24 @@
                 margin-bottom: 2rem;
             }
 
-            .connection-status {
+            .header-right-btns {
                 position: relative;
                 top: 0;
                 right: 0;
+                justify-content: center;
                 margin-bottom: 1rem;
-                display: block;
-                text-align: center;
             }
-        }
-
-        /* Loading states */
-        .loading {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 200px;
-        }
-
-        .spinner {
-            width: 40px;
-            height: 40px;
-            border: 4px solid #f3f3f3;
-            border-top: 4px solid #667eea;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-        }
-
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
         }
     </style>
 </head>
 <body>
     <!-- Connection Status Indicator -->
-    <div id="connectionStatus" class="connection-status disconnected">
-        <i class="fas fa-circle"></i> Connecting...
+    <div class="header-right-btns">
+        <button id="themeToggle" class="btn theme-toggle-btn">🌙</button>
+
+        <div id="connectionStatus" class="connection-status disconnected">
+            <i class="fas fa-circle"></i> Connecting...
+        </div>
     </div>
 
     <!-- Alert Panel -->
@@ -487,8 +676,91 @@
     <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
     
-    <!-- Performance Visualization Script -->
-    <script src="/static/js/performance-visualization.js"></script>
+    <!-- Shared theme toggle functionality -->
+    <script>
+        function applyThemeToBody() {
+            const body = document.body;
+            const toggleBtn = document.getElementById("themeToggle");
+            const savedTheme = localStorage.getItem("theme") || "light";
+            body.setAttribute("data-theme", savedTheme);
+            if (toggleBtn) toggleBtn.textContent = savedTheme === "dark" ? "☀️" : "🌙";
+        }
+
+        function initThemeToggle() {
+            const body = document.body;
+            const toggleBtn = document.getElementById("themeToggle");
+            applyThemeToBody();
+            if (!toggleBtn) return;
+            
+            toggleBtn.addEventListener("click", () => {
+                const currentTheme = body.getAttribute("data-theme");
+                const newTheme = currentTheme === "light" ? "dark" : "light";
+                body.setAttribute("data-theme", newTheme);
+                localStorage.setItem("theme", newTheme);
+                toggleBtn.textContent = newTheme === "dark" ? "☀️" : "🌙";
+                
+                if (typeof trendsChart !== 'undefined' && trendsChart) {
+                    updateChartTheme(trendsChart);
+                }
+                if (typeof benchmarkChart !== 'undefined' && benchmarkChart) {
+                    updateChartTheme(benchmarkChart);
+                }
+            });
+        }
+
+        function updateChartTheme(chart) {
+            const isDark = document.body.getAttribute('data-theme') === 'dark';
+            const textColor = isDark ? '#e0e0e0' : '#000000';
+            const gridColor = isDark ? '#333333' : '#e9ecef';
+            
+            // Update legend labels
+            if (chart.options.plugins && chart.options.plugins.legend && chart.options.plugins.legend.labels) {
+                chart.options.plugins.legend.labels.color = textColor;
+            }
+            
+            // Update all scales
+            if (chart.options.scales) {
+                Object.keys(chart.options.scales).forEach(scaleKey => {
+                    const scale = chart.options.scales[scaleKey];
+                    
+                    // Update axis labels/ticks
+                    if (scale.ticks) {
+                        scale.ticks.color = textColor;
+                    }
+                    
+                    // Update grid lines
+                    if (scale.grid) {
+                        scale.grid.color = gridColor;
+                    }
+                    
+                    // Update axis title if it exists
+                    if (scale.title) {
+                        scale.title.color = textColor;
+                    }
+                });
+            }
+            
+            // Update chart title if it exists
+            if (chart.options.plugins && chart.options.plugins.title) {
+                chart.options.plugins.title.color = textColor;
+            }
+            
+            // Update tooltip styling
+            if (!chart.options.plugins.tooltip) {
+                chart.options.plugins.tooltip = {};
+            }
+            chart.options.plugins.tooltip.backgroundColor = isDark ? 'rgba(30, 30, 30, 0.9)' : 'rgba(255, 255, 255, 0.9)';
+            chart.options.plugins.tooltip.titleColor = textColor;
+            chart.options.plugins.tooltip.bodyColor = textColor;
+            chart.options.plugins.tooltip.borderColor = gridColor;
+            
+            chart.update('none');
+        }
+
+        window.addEventListener("DOMContentLoaded", () => {
+            initThemeToggle();
+        });
+    </script>
     
     <!-- Dashboard Control Script -->
     <script>
@@ -504,16 +776,9 @@
 
         function initializeDashboard() {
             console.log('Initializing Performance Dashboard...');
-            
-            // Initialize performance graph visualizer
-            performanceVisualizer = new PerformanceGraphVisualizer('performanceGraph', {
-                width: document.getElementById('performanceGraph').clientWidth,
-                height: 500,
-                enableRealtime: true,
-                enableAnimations: true,
-                enableHeatmap: true
-            });
 
+            applyThemeToBody();
+            
             // Initialize performance trends chart
             initializeTrendsChart();
             
@@ -531,6 +796,8 @@
 
         function initializeTrendsChart() {
             const ctx = document.getElementById('performanceTrendsChart').getContext('2d');
+            const isDark = document.body.getAttribute('data-theme') === 'dark';
+            
             trendsChart = new Chart(ctx, {
                 type: 'line',
                 data: {
@@ -559,19 +826,44 @@
                         mode: 'index',
                         intersect: false,
                     },
+                    plugins: {
+                        legend: {
+                            labels: {
+                                color: isDark ? '#e0e0e0' : '#000000'
+                            }
+                        }
+                    },
                     scales: {
                         y: {
                             type: 'linear',
                             display: true,
                             position: 'left',
+                            ticks: {
+                                color: isDark ? '#e0e0e0' : '#000000'
+                            },
+                            grid: {
+                                color: isDark ? '#333333' : '#e9ecef'
+                            }
                         },
                         y1: {
                             type: 'linear',
                             display: true,
                             position: 'right',
+                            ticks: {
+                                color: isDark ? '#e0e0e0' : '#000000'
+                            },
                             grid: {
                                 drawOnChartArea: false,
+                                color: isDark ? '#333333' : '#e9ecef'
                             },
+                        },
+                        x: {
+                            ticks: {
+                                color: isDark ? '#e0e0e0' : '#000000'
+                            },
+                            grid: {
+                                color: isDark ? '#333333' : '#e9ecef'
+                            }
                         }
                     }
                 }
@@ -580,6 +872,8 @@
 
         function initializeBenchmarkChart() {
             const ctx = document.getElementById('benchmarkChart').getContext('2d');
+            const isDark = document.body.getAttribute('data-theme') === 'dark';
+            
             benchmarkChart = new Chart(ctx, {
                 type: 'line',
                 data: {
@@ -596,12 +890,34 @@
                 },
                 options: {
                     responsive: true,
+                    plugins: {
+                        legend: {
+                            labels: {
+                                color: isDark ? '#e0e0e0' : '#000000'
+                            }
+                        }
+                    },
                     scales: {
                         y: {
                             beginAtZero: true,
                             title: {
                                 display: true,
-                                text: 'Transactions/sec'
+                                text: 'Transactions/sec',
+                                color: isDark ? '#e0e0e0' : '#000000'
+                            },
+                            ticks: {
+                                color: isDark ? '#e0e0e0' : '#000000'
+                            },
+                            grid: {
+                                color: isDark ? '#333333' : '#e9ecef'
+                            }
+                        },
+                        x: {
+                            ticks: {
+                                color: isDark ? '#e0e0e0' : '#000000'
+                            },
+                            grid: {
+                                color: isDark ? '#333333' : '#e9ecef'
                             }
                         }
                     }
@@ -612,16 +928,22 @@
         function setupEventHandlers() {
             // Control handlers
             document.getElementById('enableAnimations').addEventListener('change', function(e) {
-                performanceVisualizer.options.enableAnimations = e.target.checked;
+                if (performanceVisualizer && performanceVisualizer.options) {
+                    performanceVisualizer.options.enableAnimations = e.target.checked;
+                }
             });
 
             document.getElementById('enableHeatmap').addEventListener('change', function(e) {
-                performanceVisualizer.options.enableHeatmap = e.target.checked;
+                if (performanceVisualizer && performanceVisualizer.options) {
+                    performanceVisualizer.options.enableHeatmap = e.target.checked;
+                }
             });
 
             document.getElementById('updateFrequency').addEventListener('change', function(e) {
                 const interval = parseInt(e.target.value);
-                performanceVisualizer.options.updateInterval = interval;
+                if (performanceVisualizer && performanceVisualizer.options) {
+                    performanceVisualizer.options.updateInterval = interval;
+                }
             });
 
             // Benchmark controls
