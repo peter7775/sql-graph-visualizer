@@ -1,11 +1,7 @@
-# SQL Graph Visualizer - Cloud Deployment Configuration
-# This configuration uses environment variables for sensitive data
-
-# Database Configuration (MySQL via Railway - optional)
 database:
   type: "mysql"
   mysql:
-    host: "demo.mysql.com"  # Default fallback - will be overridden by env vars
+    host: "demo.mysql.com"
     port: 3306
     user: "demo"
     password: "demo"
@@ -20,31 +16,26 @@ database:
       query_timeout: 30
       max_connections: 10
 
-# Neo4j AuraDB (Cloud managed) - will be overridden by env vars in code
 neo4j:
-  uri: "bolt://demo:7687"  # Default fallback - will be overridden by NEO4J_URI env var
-  user: "neo4j"            # Default fallback - will be overridden by NEO4J_USER env var  
-  password: "demo"         # Default fallback - will be overridden by NEO4J_PASSWORD env var
+  uri: "bolt://demo:7687"
+  user: "neo4j"
+  password: "demo"
   max_connection_pool_size: 50
   connection_timeout: 10s
   max_transaction_retry_time: 15s
 
-# Demo settings
 demo:
-  enabled: true              # Default fallback - will be overridden by DEMO_MODE env var
-  auto_transform_on_start: true  # Default fallback - will be overridden by AUTO_TRANSFORM env var
+  enabled: true
+  auto_transform_on_start: true
   sample_data_loaded: false
   reset_on_restart: false
   show_demo_banner: true
   demo_scenario: "cloud_demo"
 
-# Performance Benchmarking (disabled for cloud demo)
 benchmark:
   enabled: false
 
-# Transform rules for Sakila database (classic movie rental demo)
 transform_rules:
-  # Actors as nodes
   - name: "actors_to_graph"
     rule_type: "node"
     source:
@@ -57,7 +48,6 @@ transform_rules:
       last_name: "last_name"
       full_name: "name"
 
-  # Films as nodes  
   - name: "films_to_graph"
     rule_type: "node"
     source:
@@ -72,7 +62,6 @@ transform_rules:
       rating: "rating"
       length: "duration"
 
-  # Categories as nodes
   - name: "categories_to_graph"
     rule_type: "node"
     source:
@@ -83,7 +72,6 @@ transform_rules:
       category_id: "category_id"
       name: "name"
 
-  # Actor-Film relationships
   - name: "actor_film_relationships"
     rule_type: "relationship"
     relationship_type: "ACTED_IN"
@@ -100,7 +88,6 @@ transform_rules:
       key: "film_id"
       target_field: "film_id"
 
-  # Film-Category relationships
   - name: "film_category_relationships"
     rule_type: "relationship"
     relationship_type: "HAS_CATEGORY"
@@ -117,22 +104,19 @@ transform_rules:
       key: "category_id"
       target_field: "category_id"
 
-# Processing Configuration (optimized for cloud)
 processing:
   batch_size: 500
   max_memory_mb: 512
   parallel_workers: 2
   transaction_size: 100
 
-# Logging (cloud-friendly)
 logging:
-  level: info  # Default fallback - will be overridden by LOG_LEVEL env var
+  level: info
   format: json
   output: stdout
   enable_performance_logs: false
   log_slow_queries: false
 
-# API Configuration (open for demo)
 api:
   cors:
     allowed_origins: ["*"]
@@ -150,18 +134,16 @@ api:
     introspection_enabled: true
     complexity_limit: 500
 
-# Visualization Settings
 visualization:
   node_colors:
     User: "#4CAF50"
-    Product: "#2196F3" 
+    Product: "#2196F3"
     Category: "#FF9800"
   
   relationship_colors:
     RELATED_TO: "#757575"
     BELONGS_TO: "#607D8B"
 
-# Monitoring and Health Checks
 monitoring:
   health_check:
     enabled: true
@@ -169,16 +151,14 @@ monitoring:
     include_database_status: true
   
   metrics:
-    enabled: false  # Disabled for demo
+    enabled: false
 
-# Security (demo-friendly)
 security:
   enable_auth: false
   cors_enabled: true
   rate_limiting_enabled: true
   input_validation_enabled: true
 
-# Demo info
 demo_info:
   description: "Cloud demo with minimal sample data"
   message: "This is a live demo running on Railway with Neo4j AuraDB"

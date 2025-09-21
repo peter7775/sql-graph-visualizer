@@ -26,7 +26,6 @@ linters:
 issues:
   exclude-use-default: false
   exclude-rules:
-    # Exclude mock and test specific issues
     - path: _test\.go
       linters:
         - typecheck

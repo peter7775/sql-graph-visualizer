@@ -1,5 +1,3 @@
-# SQL Graph Visualizer - PostgreSQL Configuration Example
-# This example demonstrates how to configure PostgreSQL database support (Issue #7)
 
 database:
   type: "postgresql"
@@ -9,23 +7,17 @@ database:
     user: "postgres"
     password: "password"
     database: "sample_db"
-    schema: "public"  # PostgreSQL-specific schema support
+    schema: "public"
     
-    # PostgreSQL-specific SSL configuration
     ssl:
-      mode: "prefer"  # disable, allow, prefer, require, verify-ca, verify-full
-      # cert_file: "/path/to/client-cert.pem"
-      # key_file: "/path/to/client-key.pem"
-      # ca_file: "/path/to/ca-cert.pem"
+      mode: "prefer"
     
-    # PostgreSQL-specific connection settings
     application_name: "sql-graph-visualizer"
-    statement_timeout: 30  # seconds
+    statement_timeout: 30
     search_path: ["public", "analytics"]
     
     connection_mode: existing
     
-    # Data filtering and processing options
     data_filtering:
       schema_discovery: true
       table_whitelist: []
@@ -36,7 +28,6 @@ database:
         orders: "status != 'cancelled'"
       query_timeout: 30
     
-    # Security configuration
     security:
       read_only: true
       connection_timeout: 30
@@ -46,7 +37,6 @@ database:
       allowed_hosts: ["localhost", "127.0.0.1"]
       forbidden_patterns: ["DROP", "DELETE", "UPDATE", "INSERT", "TRUNCATE"]
     
-    # Automatic rule generation
     auto_generated_rules:
       enabled: true
       strategy:
@@ -61,7 +51,6 @@ database:
         audit_logs:
           skip: true
 
-# Neo4j configuration (unchanged)
 neo4j:
   uri: "bolt://localhost:7687"
   user: "neo4j"
@@ -71,7 +60,6 @@ neo4j:
     commit_frequency: 5000
     memory_limit_mb: 512
 
-# Transform rules (can work with any database type)
 transform_rules:
   - name: "users_to_nodes"
     rule_type: "node_creation"
@@ -108,7 +96,6 @@ transform_rules:
       status: "status"
     priority: 2
 
-# Global auto-generated rules configuration
 auto_generated_rules:
   enabled: true
   strategy:

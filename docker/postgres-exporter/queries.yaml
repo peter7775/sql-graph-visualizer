@@ -1,6 +1,6 @@
-# PostgreSQL .monitoring queries for SQL Graph Visualizer
 
-# Table sizes and row counts
+
+
 table_stats:
   query: |
     SELECT 
@@ -39,7 +39,7 @@ table_stats:
         usage: "GAUGE"
         description: "Number of dead rows"
 
-# Connection statistics
+
 connection_stats:
   query: |
     SELECT 
@@ -60,7 +60,7 @@ connection_stats:
         usage: "GAUGE"
         description: "Number of connections"
 
-# Database sizes
+
 database_size:
   query: |
     SELECT 
@@ -76,7 +76,7 @@ database_size:
         usage: "GAUGE"
         description: "Database size in bytes"
 
-# Query performance
+
 slow_queries:
   query: |
     SELECT 
@@ -106,7 +106,7 @@ slow_queries:
         usage: "COUNTER"
         description: "Total rows retrieved or affected"
 
-# Index usage statistics
+
 index_usage:
   query: |
     SELECT

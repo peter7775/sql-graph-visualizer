@@ -1,5 +1,3 @@
-# SQL Graph Visualizer - Development Configuration
-# Issue #10 - Direct Database Connection Implementation
 
 mysql:
   host: "localhost"
@@ -9,26 +7,22 @@ mysql:
   database: "myapp_development"
   connection_mode: "existing"
 
-  # Relaxed filtering for development
   data_filtering:
     schema_discovery: true
     table_blacklist: ["migrations", "schema_migrations", "ar_internal_metadata"]
-    row_limit_per_table: 1000  # Small limit for faster development
+    row_limit_per_table: 1000
     query_timeout: 60
 
-  # Development security settings
   security:
     read_only: true
     connection_timeout: 15
     query_timeout: 60
     max_connections: 3
-    allow_root_user: true  # Allow root for development
+    allow_root_user: true
 
-  # No SSL required for local development
   ssl:
     enabled: false
 
-  # Auto-generate rules for all tables
   auto_generated_rules:
     enabled: true
     strategy:

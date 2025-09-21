@@ -1,5 +1,4 @@
 ---
-# Docker Compose for testing with Sakila sample database
 services:
   
   mysql-sakila:
@@ -13,7 +12,6 @@ services:
     ports:
       - "3308:3306"
     volumes:
-      # Download Sakila database from MySQL official samples
       - ./testdata/sakila/sakila-schema.sql:/docker-entrypoint-initdb.d/01-sakila-schema.sql:ro
       - ./testdata/sakila/sakila-data.sql:/docker-entrypoint-initdb.d/02-sakila-data.sql:ro
     healthcheck:
@@ -36,8 +34,8 @@ services:
       NEO4J_dbms_security_http_access_control_allow_origin: "*"
       NEO4J_dbms_default_listen_address: 0.0.0.0
     ports:
-      - "7688:7687"  # Different port to avoid conflict
-      - "7475:7474"  # Different port to avoid conflict
+      - "7688:7687"
+      - "7475:7474"
     volumes:
       - neo4j-sakila-data:/data
     healthcheck:

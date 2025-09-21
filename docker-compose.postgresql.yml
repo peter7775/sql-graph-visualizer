@@ -1,10 +1,7 @@
-# Docker Compose for SQL Graph Visualizer with PostgreSQL
-# This setup includes PostgreSQL with Chinook sample database + Neo4j
 
 version: '3.8'
 
 services:
-  # PostgreSQL database with Chinook sample data
   postgresql:
     image: postgres:15-alpine
     container_name: sql-graph-visualizer-postgres
@@ -39,7 +36,6 @@ services:
       -c random_page_cost=1.1
       -c effective_io_concurrency=200
 
-# Neo4j graph database (commented out - using existing container)
   neo4j:
     image: neo4j:5.15-community
     container_name: sql-graph-visualizer-neo4j
@@ -55,7 +51,6 @@ services:
       NEO4J_apoc_export_file_enabled: true
       NEO4J_apoc_import_file_enabled: true
       NEO4J_apoc_import_file_use__neo4j__config: true
-    # Memory settings
       NEO4J_dbms_memory_heap_initial__size: 512m
       NEO4J_dbms_memory_heap_max__size: 1G
       NEO4J_dbms_memory_pagecache_size: 512m
@@ -75,7 +70,6 @@ services:
       timeout: 10s
       retries: 3
 
-  # pgAdmin for PostgreSQL management (optional)
   pgadmin:
     image: dpage/pgadmin4:8.0
     container_name: sql-graph-visualizer-pgadmin
@@ -96,9 +90,8 @@ services:
       postgresql:
         condition: service_healthy
     profiles:
-      - admin  # Only start with --profile admin
+      - admin
 
-  # Optional: PostgreSQL .monitoring with pg_stat_statements
   postgres-exporter:
     image: prometheuscommunity/postgres-exporter:v0.12.0
     container_name: sql-graph-visualizer-postgres-exporter
@@ -116,7 +109,7 @@ services:
       postgresql:
         condition: service_healthy
     profiles:
-      - .monitoring  # Only start with --profile .monitoring
+      - .monitoring
 
 volumes:
   postgres_data:

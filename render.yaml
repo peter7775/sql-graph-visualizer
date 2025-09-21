@@ -1,5 +1,5 @@
 services:
-  # Main web service
+
   - type: web
     name: sql-graph-visualizer
     env: go

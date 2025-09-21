@@ -1,5 +1,3 @@
-# SQL Graph Visualizer - Multi-Database MySQL Configuration Example
-# This example demonstrates how to use the new multi-database configuration system with MySQL
 
 database:
   type: "mysql"
@@ -10,14 +8,12 @@ database:
     password: "password"
     database: "sakila"
     
-    # MySQL-specific SSL configuration
     ssl:
       enabled: true
       insecure_skip_verify: true
     
     connection_mode: existing
     
-    # Data filtering and processing options
     data_filtering:
       schema_discovery: true
       table_whitelist: ["customer", "film", "actor", "film_actor", "rental"]
@@ -28,7 +24,6 @@ database:
         customer: "active = 1"
       query_timeout: 30
     
-    # Security configuration
     security:
       read_only: true
       connection_timeout: 30
@@ -38,7 +33,6 @@ database:
       allowed_hosts: ["localhost", "127.0.0.1"]
       forbidden_patterns: ["DROP", "DELETE", "UPDATE", "INSERT", "TRUNCATE"]
     
-    # Automatic rule generation
     auto_generated_rules:
       enabled: true
       strategy:
@@ -53,7 +47,6 @@ database:
         film_category:
           relationship_type: "BELONGS_TO_CATEGORY"
 
-# Neo4j configuration
 neo4j:
   uri: "bolt://localhost:7687"
   user: "neo4j"
@@ -63,7 +56,6 @@ neo4j:
     commit_frequency: 5000
     memory_limit_mb: 512
 
-# Transform rules
 transform_rules:
   - name: "actors_to_nodes"
     rule_type: "node_creation"
@@ -99,7 +91,6 @@ transform_rules:
             target: "rating"
     priority: 1
 
-# Global auto-generated rules configuration
 auto_generated_rules:
   enabled: true
   strategy:
