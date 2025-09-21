@@ -233,7 +233,8 @@ func main() {
 	}()
 
 	logrus.Infof("Initializing Neo4j connection...")
-	neo4jRepo, err := neo4j.NewNeo4jRepository(cfg.Neo4j.URI, cfg.Neo4j.User, cfg.Neo4j.Password)
+	var neo4jRepo ports.Neo4jPort
+	realNeo4jRepo, err := neo4j.NewNeo4jRepository(cfg.Neo4j.URI, cfg.Neo4j.User, cfg.Neo4j.Password)
 	if err != nil {
 		if os.Getenv("RAILWAY_ENVIRONMENT") != "" && os.Getenv("FORCE_FULL_MODE") != "true" {
 			logrus.Warnf("Neo4j connection failed in Railway environment: %v", err)
@@ -248,6 +249,7 @@ func main() {
 			logrus.Fatalf("Failed to create Neo4j repository: %v", err)
 		}
 	} else {
+		neo4jRepo = realNeo4jRepo
 		logrus.Infof("Neo4j connection successful")
 	}
 	defer func() {
@@ -256,13 +258,12 @@ func main() {
 		}
 	}()
 
-	// Skip Neo4j operations for Mock repository
-	if mockRepo, ok := neo4jRepo.(*neo4j.MockNeo4jRepository); ok {
+	// Skip Neo4j operations for Mock repository  
+	if realNeo4jRepo == nil {
 		logrus.Info("Using Mock Neo4j repository, skipping data deletion")
-		_ = mockRepo // Avoid unused variable warning
 	} else {
 		logrus.Infof("Deleting all data in Neo4j...")
-		session := neo4jRepo.NewSession(neo4jDriver.SessionConfig{})
+		session := realNeo4jRepo.NewSession(neo4jDriver.SessionConfig{})
 		defer func() {
 			if sessionCloser, ok := session.(interface{ Close() error }); ok {
 				if err := sessionCloser.Close(); err != nil {
