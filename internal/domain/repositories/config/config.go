@@ -75,6 +75,21 @@ func Load() (*models.Config, error) {
 }
 
 func findProjectRoot() string {
+	// In Railway/production environment, assume we're in /app
+	if os.Getenv("RAILWAY_ENVIRONMENT") != "" {
+		// Check if we're in Docker container with /app directory
+		if _, err := os.Stat("/app"); err == nil {
+			logrus.Info("Railway deployment detected, using /app as project root")
+			return "/app"
+		}
+		// Fallback to current working directory in Railway
+		wd, err := os.Getwd()
+		if err == nil {
+			logrus.Infof("Using current working directory as project root: %s", wd)
+			return wd
+		}
+	}
+
 	wd, err := os.Getwd()
 	if err != nil {
 		logrus.Fatalf("Cannot get working directory: %v", err)
@@ -86,6 +101,11 @@ func findProjectRoot() string {
 		}
 		parent := filepath.Dir(wd)
 		if parent == wd {
+			// Last resort for Railway: try /app
+			if os.Getenv("RAILWAY_ENVIRONMENT") != "" {
+				logrus.Warn("Cannot find go.mod, using /app as fallback in Railway")
+				return "/app"
+			}
 			logrus.Fatalf("Cannot find project root directory")
 			return ""
 		}
