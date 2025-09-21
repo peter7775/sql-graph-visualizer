@@ -19,7 +19,7 @@ database:
 neo4j:
   uri: "bolt://neo4j.railway.internal:7687"
   user: "neo4j"
-  password: "password123"
+  password: "neo4jpassword"
   max_connection_pool_size: 50
   connection_timeout: 10s
   max_transaction_retry_time: 15s
