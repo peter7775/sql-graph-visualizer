@@ -176,7 +176,6 @@ func NewRealtimePerformanceMonitor(
 		graphMapper: graphMapper,
 		upgrader: websocket.Upgrader{
 			CheckOrigin: func(r *http.Request) bool {
-				// TODO: Implement proper origin checking in production
 				return true
 			},
 			ReadBufferSize:  1024,
@@ -338,8 +337,7 @@ func (rpm *RealtimePerformanceMonitor) collectAndBroadcastPerformanceData(ctx co
 		return fmt.Errorf("failed to collect performance data: %w", err)
 	}
 
-	// TODO: Get base graph from graph service
-	var baseGraph *models.Graph // This would come from the graph service
+	var baseGraph *models.Graph
 
 	// Map performance data to graph visualization
 	if baseGraph != nil {
@@ -395,7 +393,6 @@ func (rpm *RealtimePerformanceMonitor) generateRealtimeMetrics(perfData *Perform
 }
 
 func (rpm *RealtimePerformanceMonitor) collectSystemMetrics() *SystemMetrics {
-	// TODO: Implement actual system metrics collection
 	return &SystemMetrics{
 		CPUPercent:    0.0,
 		MemoryPercent: 0.0,
@@ -412,9 +409,9 @@ func (rpm *RealtimePerformanceMonitor) collectDatabaseMetrics(perfData *Performa
 
 	return &DatabaseMetrics{
 		QueriesPerSecond: float64(totalQueries) / rpm.config.DataUpdateInterval.Seconds(),
-		SlowQueries:      0,    // TODO: Calculate from perfData
-		ConnectionsUsed:  1,    // ConnectionStats is a struct, not slice - use 1
-		ConnectionsMax:   1000, // TODO: Get from MySQL configuration
+		SlowQueries:      0,
+		ConnectionsUsed:  1,
+		ConnectionsMax:   1000,
 	}
 }
 

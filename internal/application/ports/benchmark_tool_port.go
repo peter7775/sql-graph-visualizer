@@ -57,7 +57,6 @@ type BenchmarkResult struct {
 	// Query-level results for graph mapping
 	QueryResults []QueryPerformance `json:"query_results,omitempty"`
 
-	// Raw output from tool (for debugging)
 	RawOutput string `json:"raw_output,omitempty"`
 
 	// Status and errors

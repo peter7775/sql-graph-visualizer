@@ -400,7 +400,6 @@ func (r *MySQLDatabaseRepository) GetTableRowCount(ctx context.Context, tableNam
 	return 0, nil
 }
 
-// Implement remaining methods...
 func (r *MySQLDatabaseRepository) SampleTableData(ctx context.Context, tableName string, limit int) ([]map[string]interface{}, error) {
 	return nil, fmt.Errorf("not implemented yet")
 }

@@ -37,7 +37,6 @@ func (s *Neo4jGraphService) SearchNodes(term string) ([]models.SearchResult, err
 		return nil, err
 	}
 
-	// Convert GraphAggregates to SearchResults (placeholder implementation)
 	var results []models.SearchResult
 	for _, graphAgg := range graphs {
 		for _, node := range graphAgg.GetNodes() {

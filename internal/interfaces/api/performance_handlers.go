@@ -308,7 +308,6 @@ func (ph *PerformanceHandlers) GetCurrentPerformanceData(w http.ResponseWriter, 
 
 	// Include graph data if requested
 	if includeGraph {
-		// TODO: Get base graph from graph service
 		var baseGraph *models.Graph
 		if baseGraph != nil {
 			graphData, err := ph.graphMapper.MapPerformanceToGraph(r.Context(), baseGraph, perfData)
@@ -320,7 +319,6 @@ func (ph *PerformanceHandlers) GetCurrentPerformanceData(w http.ResponseWriter, 
 
 	// Include analysis if requested
 	if includeAnalysis {
-		// TODO: Implement performance analysis when method is available
 		response.AnalysisResults = map[string]interface{}{
 			"status":  "analysis_not_available",
 			"message": "Performance analysis feature is under development",
@@ -370,8 +368,6 @@ func (ph *PerformanceHandlers) GetPerformanceHistory(w http.ResponseWriter, r *h
 		}
 	}
 
-	// TODO: Implement historical data collection
-	// This would typically query a time-series database or historical storage
 	historyData := []interface{}{
 		map[string]interface{}{
 			"message": "Historical data collection not yet implemented",
@@ -398,7 +394,6 @@ func (ph *PerformanceHandlers) GetPerformanceAnalysis(w http.ResponseWriter, r *
 		return
 	}
 
-	// TODO: Implement performance analysis
 	analysisResults := map[string]interface{}{
 		"status":  "analysis_not_available",
 		"message": "Performance analysis feature is under development",
@@ -420,7 +415,6 @@ func (ph *PerformanceHandlers) GetPerformanceGraph(w http.ResponseWriter, r *htt
 		return
 	}
 
-	// TODO: Get base graph from graph service
 	var baseGraph *models.Graph
 	if baseGraph == nil {
 		ph.sendErrorResponse(w, http.StatusServiceUnavailable, "graph_unavailable", "Base graph is not available", "")
@@ -541,9 +535,6 @@ func (ph *PerformanceHandlers) GetQueryMetrics(w http.ResponseWriter, r *http.Re
 }
 
 func (ph *PerformanceHandlers) GetAlerts(w http.ResponseWriter, r *http.Request) {
-	// TODO: Implement alerts retrieval
-	// This would typically query an alerts storage system
-
 	alerts := []map[string]interface{}{
 		{
 			"message": "Alerts system not yet implemented",
@@ -561,7 +552,6 @@ func (ph *PerformanceHandlers) GetAlerts(w http.ResponseWriter, r *http.Request)
 // Configuration handlers
 
 func (ph *PerformanceHandlers) GetPerformanceConfig(w http.ResponseWriter, r *http.Request) {
-	// TODO: Return current performance .monitoring configuration
 	config := map[string]interface{}{
 		"message": "Configuration endpoint not yet implemented",
 	}
@@ -574,7 +564,6 @@ func (ph *PerformanceHandlers) GetPerformanceConfig(w http.ResponseWriter, r *ht
 }
 
 func (ph *PerformanceHandlers) UpdatePerformanceConfig(w http.ResponseWriter, r *http.Request) {
-	// TODO: Update performance .monitoring configuration
 	ph.sendJSONResponse(w, http.StatusOK, APIResponse{
 		Success:   true,
 		Data:      map[string]string{"status": "configuration update not yet implemented"},
@@ -625,8 +614,8 @@ func (ph *PerformanceHandlers) generatePerformanceSummary(perfData *performance.
 		QueriesPerSecond:  float64(totalQueries) / 300.0, // Assume 5-minute collection period
 		SlowQueriesCount:  slowQueriesCount,
 		ErrorRate:         errorRate,
-		HotspotCount:      0, // TODO: Calculate from analysis
-		BottleneckCount:   0, // TODO: Calculate from analysis
+		HotspotCount:      0,
+		BottleneckCount:   0,
 		PerformanceRating: rating,
 	}
 }

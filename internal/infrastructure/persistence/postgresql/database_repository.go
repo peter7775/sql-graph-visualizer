@@ -488,7 +488,6 @@ func (r *PostgreSQLDatabaseRepository) GetTableRowCount(ctx context.Context, tab
 	return 0, nil
 }
 
-// Implement remaining methods...
 func (r *PostgreSQLDatabaseRepository) SampleTableData(ctx context.Context, tableName string, limit int) ([]map[string]interface{}, error) {
 	return nil, fmt.Errorf("not implemented yet")
 }

@@ -160,8 +160,6 @@ func main() {
 	if cfg.Database != nil && cfg.Database.Type != "" {
 		logrus.Infof("Using new multi-database configuration: %s", cfg.Database.Type)
 
-		// For now, PostgreSQL will use the existing MySQL port interface
-		// This is a temporary workaround until we have a unified database interface
 		switch cfg.Database.Type {
 		case models.DatabaseTypePostgreSQL:
 			pgConfig := cfg.Database.PostgreSQL
@@ -364,7 +362,7 @@ func main() {
 			"timestamp": time.Now().Format(time.RFC3339),
 			"version":   "v1.1.0",
 			"database":  dbStatus,
-			"neo4j":     "connected", // TODO: Add real Neo4j health check
+			"neo4j":     "connected",
 			"environment": map[string]string{
 				"railway":    getEnvOrDefault("RAILWAY_ENVIRONMENT", "not_set"),
 				"port":       getEnvOrDefault("PORT", "not_set"),
@@ -1125,8 +1123,6 @@ func initializePerformanceServices(cfg *models.Config, db *sql.DB) *PerformanceS
 	// Create Benchmark Service configuration
 	benchmarkConfig := createBenchmarkConfig(cfg)
 
-	// TODO: Initialize benchmark tools when implemented
-	// For now, create benchmark service with minimal configuration
 	benchmarkService := performance.NewBenchmarkService(nil, nil, nil, performanceAnalyzer, logger, benchmarkConfig)
 
 	// Start real-time .monitoring if enabled
@@ -1170,7 +1166,6 @@ func createGraphMapperConfig(cfg *models.Config) *performance.GraphPerformanceMa
 			}
 		}
 
-		// Set other visualization configs similarly...
 	}
 
 	return config

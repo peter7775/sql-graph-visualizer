@@ -419,8 +419,6 @@ func (s *BenchmarkService) updateExecutionStatus(executionID string, status port
 }
 
 func (s *BenchmarkService) cleanupExecution(executionID string) {
-	// Note: We don't immediately remove executions to allow result retrieval
-	// The cleanup routine will remove them after the retention period
 }
 
 func (s *BenchmarkService) getActiveRunCount() int {

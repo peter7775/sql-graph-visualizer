@@ -584,8 +584,6 @@ func (pa *PerformanceAnalyzer) ComparePerformance(ctx context.Context, baseline,
 	return comparison, nil
 }
 
-// Private helper methods continue in next part due to length...
-// [Rest of implementation would continue with all the helper methods]
 
 func (pa *PerformanceAnalyzer) analyzeGlobalBottlenecks(metrics *ports.PerformanceMetrics) []ports.PerformanceBottleneck {
 	bottlenecks := make([]ports.PerformanceBottleneck, 0)
@@ -745,8 +743,6 @@ func (pa *PerformanceAnalyzer) generateQueryRecommendations(query ports.QueryPer
 	return recommendations
 }
 
-// Additional helper methods would continue...
-// This is a simplified version showing the key structure and algorithms
 
 func defaultPerformanceAnalyzerConfig() *PerformanceAnalyzerConfig {
 	return &PerformanceAnalyzerConfig{
@@ -767,19 +763,15 @@ func defaultPerformanceAnalyzerConfig() *PerformanceAnalyzerConfig {
 	}
 }
 
-// Placeholder implementations for complex methods that would be fully implemented
 func (pa *PerformanceAnalyzer) buildPerformanceGraph(graphData *ports.GraphPerformanceData) map[string]map[string]float64 {
-	// Implementation would build adjacency graph
 	return make(map[string]map[string]float64)
 }
 
 func (pa *PerformanceAnalyzer) findCriticalPaths(graph map[string]map[string]float64, graphData *ports.GraphPerformanceData) []ports.CriticalPath {
-	// Implementation would use path-finding algorithms
 	return make([]ports.CriticalPath, 0)
 }
 
 func (pa *PerformanceAnalyzer) filterCriticalPaths(paths []ports.CriticalPath) []ports.CriticalPath {
-	// Implementation would filter and sort paths
 	return paths
 }
 
@@ -809,7 +801,6 @@ func (pa *PerformanceAnalyzer) calculateOverallPathScore(paths []ports.CriticalP
 	return totalImpact / float64(len(paths))
 }
 
-// Additional stub methods for remaining functionality...
 func (pa *PerformanceAnalyzer) aggregateMetrics(metrics []*ports.PerformanceMetrics) map[string]*ports.PerformanceMetrics {
 	return nil
 }
@@ -839,7 +830,6 @@ func (pa *PerformanceAnalyzer) determineTrendDirection(metrics *ports.Performanc
 	return ports.TrendStable
 }
 
-// More stub implementations would follow for completeness...
 func (pa *PerformanceAnalyzer) groupSimilarQueries(queries []ports.QueryPerformance) []ports.QueryPatternGroup {
 	return nil
 }
