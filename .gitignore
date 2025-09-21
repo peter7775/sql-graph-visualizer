@@ -23,3 +23,4 @@ WARP.md
 .monitoring/
 .monitoring/monitoring-results.log
 .monitoring/results/repo_search.json
+/.local-documentation/
