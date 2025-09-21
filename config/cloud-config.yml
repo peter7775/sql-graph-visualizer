@@ -1,11 +1,11 @@
 database:
   type: "mysql"
   mysql:
-    host: "demo.mysql.com"
+    host: "mysql.railway.internal"
     port: 3306
-    user: "demo"
-    password: "demo"
-    database: "demo"
+    user: "root"
+    password: "TvJpFrrrWeXlneATmgriZHoSgubRAXeQ"
+    database: "railway"
     connection_mode: "existing"
     data_filtering:
       schema_discovery: true
@@ -17,9 +17,9 @@ database:
       max_connections: 10
 
 neo4j:
-  uri: "bolt://demo:7687"
+  uri: "bolt://neo4j.railway.internal:7687"
   user: "neo4j"
-  password: "demo"
+  password: "password123"
   max_connection_pool_size: 50
   connection_timeout: 10s
   max_transaction_retry_time: 15s
@@ -136,13 +136,13 @@ api:
 
 visualization:
   node_colors:
-    User: "#4CAF50"
-    Product: "#2196F3"
+    Actor: "#4CAF50"
+    Film: "#2196F3"
     Category: "#FF9800"
   
   relationship_colors:
-    RELATED_TO: "#757575"
-    BELONGS_TO: "#607D8B"
+    ACTED_IN: "#757575"
+    HAS_CATEGORY: "#607D8B"
 
 monitoring:
   health_check:
