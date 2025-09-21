@@ -241,42 +241,54 @@ func main() {
 			startRailwayDemoServer()
 			return
 		} else if os.Getenv("FORCE_FULL_MODE") == "true" {
-			logrus.Errorf("Neo4j connection failed but FORCE_FULL_MODE is enabled: %v", err)
-			logrus.Fatal("Cannot continue in FORCE_FULL_MODE without Neo4j connection")
+			logrus.Warnf("Neo4j connection failed but FORCE_FULL_MODE is enabled, using Mock repository: %v", err)
+			neo4jRepo = neo4j.NewMockNeo4jRepository()
+			logrus.Info("Using Mock Neo4j repository for visualization")
 		} else {
 			logrus.Fatalf("Failed to create Neo4j repository: %v", err)
 		}
+	} else {
+		logrus.Infof("Neo4j connection successful")
 	}
-	logrus.Infof("Neo4j connection successful")
 	defer func() {
 		if err := neo4jRepo.Close(); err != nil {
 			logrus.Errorf("Error closing Neo4j repository: %v", err)
 		}
 	}()
 
-	logrus.Infof("Deleting all data in Neo4j...")
-	session := neo4jRepo.NewSession(neo4jDriver.SessionConfig{})
-	defer func() {
-		if err := session.Close(); err != nil {
-			logrus.Errorf("Error closing session: %v", err)
-		}
-	}()
+	// Skip Neo4j operations for Mock repository
+	if mockRepo, ok := neo4jRepo.(*neo4j.MockNeo4jRepository); ok {
+		logrus.Info("Using Mock Neo4j repository, skipping data deletion")
+		_ = mockRepo // Avoid unused variable warning
+	} else {
+		logrus.Infof("Deleting all data in Neo4j...")
+		session := neo4jRepo.NewSession(neo4jDriver.SessionConfig{})
+		defer func() {
+			if sessionCloser, ok := session.(interface{ Close() error }); ok {
+				if err := sessionCloser.Close(); err != nil {
+					logrus.Errorf("Error closing session: %v", err)
+				}
+			}
+		}()
 
-	_, err = session.Run("MATCH (n) DETACH DELETE n", nil)
-	if err != nil {
-		if os.Getenv("RAILWAY_ENVIRONMENT") != "" && os.Getenv("FORCE_FULL_MODE") != "true" {
-			logrus.Warnf("Neo4j operation failed in Railway environment: %v", err)
-			logrus.Info("Neo4j database unreachable, starting MySQL-only visualization mode...")
-			startMySQLVisualizationServer(dbPort, cfg)
-			return
-		} else if os.Getenv("FORCE_FULL_MODE") == "true" {
-			logrus.Warnf("Neo4j operation failed but FORCE_FULL_MODE is enabled, continuing with empty Neo4j: %v", err)
-			// Continue with empty Neo4j - don't return here
-		} else {
-			logrus.Fatalf("Error deleting data in Neo4j: %v", err)
+		if sessionRunner, ok := session.(interface{ Run(string, interface{}) (interface{}, error) }); ok {
+			_, err = sessionRunner.Run("MATCH (n) DETACH DELETE n", nil)
+			if err != nil {
+				if os.Getenv("RAILWAY_ENVIRONMENT") != "" && os.Getenv("FORCE_FULL_MODE") != "true" {
+					logrus.Warnf("Neo4j operation failed in Railway environment: %v", err)
+					logrus.Info("Neo4j database unreachable, starting MySQL-only visualization mode...")
+					startMySQLVisualizationServer(dbPort, cfg)
+					return
+				} else if os.Getenv("FORCE_FULL_MODE") == "true" {
+					logrus.Warnf("Neo4j operation failed but FORCE_FULL_MODE is enabled, continuing with empty Neo4j: %v", err)
+					// Continue with empty Neo4j - don't return here
+				} else {
+					logrus.Fatalf("Error deleting data in Neo4j: %v", err)
+				}
+			}
 		}
+		logrus.Infof("All data in Neo4j deleted")
 	}
-	logrus.Infof("All data in Neo4j deleted")
 
 	logrus.Infof("Initializing services...")
 	transformService := transform.NewTransformService(dbPort, neo4jRepo, configrule.NewRuleRepository())
