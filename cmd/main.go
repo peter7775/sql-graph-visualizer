@@ -73,11 +73,20 @@ func main() {
 	if os.Getenv("RAILWAY_ENVIRONMENT") != "" {
 		logrus.Info("Railway environment detected - attempting normal startup first...")
 		logrus.Info("Debug: Railway environment variables:")
+		// Check both possible MySQL variable naming conventions
+		logrus.Infof("  MYSQLHOST: %s", os.Getenv("MYSQLHOST"))
 		logrus.Infof("  MYSQL_HOST: %s", os.Getenv("MYSQL_HOST"))
+		logrus.Infof("  MYSQLUSER: %s", os.Getenv("MYSQLUSER"))
 		logrus.Infof("  MYSQL_USER: %s", os.Getenv("MYSQL_USER"))
 		logrus.Infof("  MYSQL_DATABASE: %s", os.Getenv("MYSQL_DATABASE"))
+		logrus.Infof("  MYSQLPORT: %s", os.Getenv("MYSQLPORT"))
 		logrus.Infof("  MYSQL_PORT: %s", os.Getenv("MYSQL_PORT"))
+		logrus.Infof("  MYSQLPASSWORD: [length=%d]", len(os.Getenv("MYSQLPASSWORD")))
 		logrus.Infof("  MYSQL_PASSWORD: [length=%d]", len(os.Getenv("MYSQL_PASSWORD")))
+		// Neo4j variables
+		logrus.Infof("  NEO4J_URI: %s", func() string { if uri := os.Getenv("NEO4J_URI"); uri != "" { return "[SET]" } else { return "[NOT_SET]" } }())
+		logrus.Infof("  NEO4J_USER: %s", os.Getenv("NEO4J_USER"))
+		logrus.Infof("  NEO4J_PASSWORD: [length=%d]", len(os.Getenv("NEO4J_PASSWORD")))
 	}
 
 	logrus.Infof("Loading configuration...")
@@ -114,15 +123,18 @@ func main() {
 		
 		// Override MySQL configuration with Railway env vars
 		if cfg.Database != nil && cfg.Database.MySQL != nil {
-			if host := os.Getenv("MYSQLHOST"); host != "" {
+			// Try both MYSQLHOST and MYSQL_HOST
+			if host := getEnvOrDefault("MYSQLHOST", os.Getenv("MYSQL_HOST")); host != "" {
 				cfg.Database.MySQL.Host = host
 				logrus.Infof("MySQL host overridden: %s", host)
 			}
-			if user := os.Getenv("MYSQLUSER"); user != "" {
+			// Try both MYSQLUSER and MYSQL_USER
+			if user := getEnvOrDefault("MYSQLUSER", os.Getenv("MYSQL_USER")); user != "" {
 				cfg.Database.MySQL.User = user
 				logrus.Infof("MySQL user overridden: %s", user)
 			}
-			if password := os.Getenv("MYSQLPASSWORD"); password != "" {
+			// Try both MYSQLPASSWORD and MYSQL_PASSWORD
+			if password := getEnvOrDefault("MYSQLPASSWORD", os.Getenv("MYSQL_PASSWORD")); password != "" {
 				cfg.Database.MySQL.Password = password
 				logrus.Info("MySQL password overridden")
 			}
@@ -130,7 +142,8 @@ func main() {
 				cfg.Database.MySQL.Database = database
 				logrus.Infof("MySQL database overridden: %s", database)
 			}
-			if port := os.Getenv("MYSQLPORT"); port != "" {
+			// Try both MYSQLPORT and MYSQL_PORT
+			if port := getEnvOrDefault("MYSQLPORT", os.Getenv("MYSQL_PORT")); port != "" {
 				if portNum := parseInt(port); portNum > 0 {
 					cfg.Database.MySQL.Port = portNum
 					logrus.Infof("MySQL port overridden: %d", portNum)
