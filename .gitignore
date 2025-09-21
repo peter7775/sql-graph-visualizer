@@ -24,3 +24,12 @@ WARP.md
 .monitoring/monitoring-results.log
 .monitoring/results/repo_search.json
 /.local-documentation/
+
+# Build artifacts and binaries
+sql-graph-visualizer
+sql-graph-cli
+integration.test
+coverage.out
+
+# IDE files
+.idea/
