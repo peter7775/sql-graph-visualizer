@@ -383,6 +383,26 @@ func main() {
 	}
 
 	// Health check endpoint
+	// Add debug endpoint for environment variables
+	router.HandleFunc("/api/debug", func(w http.ResponseWriter, r *http.Request) {
+		logrus.Info("Debug endpoint requested")
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		
+		debugInfo := map[string]interface{}{
+			"RAILWAY_ENVIRONMENT": os.Getenv("RAILWAY_ENVIRONMENT"),
+			"FORCE_FULL_MODE": os.Getenv("FORCE_FULL_MODE"),
+			"neo4j_repo_type": fmt.Sprintf("%T", neo4jRepo),
+			"real_neo4j_repo_nil": realNeo4jRepo == nil,
+			"timestamp": time.Now().Format(time.RFC3339),
+		}
+		
+		if err := json.NewEncoder(w).Encode(debugInfo); err != nil {
+			logrus.Errorf("Error encoding debug response: %v", err)
+			http.Error(w, "Debug endpoint failed", http.StatusInternalServerError)
+		}
+	}).Methods("GET")
+
 	router.HandleFunc("/api/health", func(w http.ResponseWriter, r *http.Request) {
 		logrus.Info("Health check requested")
 		w.Header().Set("Content-Type", "application/json")
