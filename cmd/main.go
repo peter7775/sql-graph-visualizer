@@ -282,8 +282,12 @@ func main() {
 					startMySQLVisualizationServer(dbPort, cfg)
 					return
 				} else if os.Getenv("FORCE_FULL_MODE") == "true" {
-					logrus.Warnf("Neo4j operation failed but FORCE_FULL_MODE is enabled, continuing with empty Neo4j: %v", err)
-					// Continue with empty Neo4j - don't return here
+					logrus.Warnf("Neo4j operation failed but FORCE_FULL_MODE is enabled, switching to Mock Neo4j repository: %v", err)
+					// Replace neo4jRepo with Mock repository
+					neo4jRepo = neo4j.NewMockNeo4jRepository()
+					realNeo4jRepo = nil // Clear real repo reference
+					logrus.Info("Successfully switched to Mock Neo4j repository")
+					// Continue with Mock Neo4j - don't return here
 				} else {
 					logrus.Fatalf("Error deleting data in Neo4j: %v", err)
 				}
