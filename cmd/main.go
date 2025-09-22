@@ -276,19 +276,29 @@ func main() {
 		if sessionRunner, ok := session.(interface{ Run(string, interface{}) (interface{}, error) }); ok {
 			_, err = sessionRunner.Run("MATCH (n) DETACH DELETE n", nil)
 			if err != nil {
-				if os.Getenv("RAILWAY_ENVIRONMENT") != "" && os.Getenv("FORCE_FULL_MODE") != "true" {
-					logrus.Warnf("Neo4j operation failed in Railway environment: %v", err)
-					logrus.Info("Neo4j database unreachable, starting MySQL-only visualization mode...")
+				// Debug logging for FORCE_FULL_MODE logic
+				railwayEnv := os.Getenv("RAILWAY_ENVIRONMENT")
+				forceFullMode := os.Getenv("FORCE_FULL_MODE")
+				logrus.Warnf("Neo4j operation failed: %v", err)
+				logrus.Infof("Debug - RAILWAY_ENVIRONMENT: '%s'", railwayEnv)
+				logrus.Infof("Debug - FORCE_FULL_MODE: '%s'", forceFullMode)
+				logrus.Infof("Debug - Railway check: %v", railwayEnv != "")
+				logrus.Infof("Debug - FORCE_FULL_MODE check: %v", forceFullMode == "true")
+				logrus.Infof("Debug - Combined condition: %v", railwayEnv != "" && forceFullMode != "true")
+				
+				if railwayEnv != "" && forceFullMode != "true" {
+					logrus.Info("Condition 1: Railway environment without FORCE_FULL_MODE - starting MySQL-only mode")
 					startMySQLVisualizationServer(dbPort, cfg)
 					return
-				} else if os.Getenv("FORCE_FULL_MODE") == "true" {
-					logrus.Warnf("Neo4j operation failed but FORCE_FULL_MODE is enabled, switching to Mock Neo4j repository: %v", err)
+				} else if forceFullMode == "true" {
+					logrus.Info("Condition 2: FORCE_FULL_MODE enabled - switching to Mock Neo4j repository")
 					// Replace neo4jRepo with Mock repository
 					neo4jRepo = neo4j.NewMockNeo4jRepository()
 					realNeo4jRepo = nil // Clear real repo reference
-					logrus.Info("Successfully switched to Mock Neo4j repository")
+					logrus.Info("Successfully switched to Mock Neo4j repository - continuing with normal flow")
 					// Continue with Mock Neo4j - don't return here
 				} else {
+					logrus.Info("Condition 3: Neither Railway fallback nor FORCE_FULL_MODE - fatal error")
 					logrus.Fatalf("Error deleting data in Neo4j: %v", err)
 				}
 			}
