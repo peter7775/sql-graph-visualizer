@@ -52,11 +52,12 @@ func main() {
 	ctx := context.Background()
 
 	// Always log startup information first
-	logrus.Info("=== SQL Graph Visualizer Starting ===")
+	logrus.Infof("=== SQL Graph Visualizer Starting - Version with FORCE_FULL_MODE support ===")
 	logrus.Infof("Environment: %s", os.Getenv("RAILWAY_ENVIRONMENT"))
 	logrus.Infof("DEMO_MODE: %s", os.Getenv("DEMO_MODE"))
 	logrus.Infof("PORT: %s", os.Getenv("PORT"))
 	logrus.Infof("CONFIG_PATH: %s", os.Getenv("CONFIG_PATH"))
+	logrus.Infof("FORCE_FULL_MODE: %s", os.Getenv("FORCE_FULL_MODE"))
 
 	// Check for explicit demo mode only (not automatic Railway detection)
 	if os.Getenv("DEMO_MODE") == "railway_demo" || os.Getenv("DEMO_MODE") == "true" {
