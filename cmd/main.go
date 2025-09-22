@@ -695,6 +695,26 @@ func startMySQLVisualizationServer(dbPort ports.DatabasePort, cfg *models.Config
 		}
 	}).Methods("GET")
 
+	// Debug endpoint for environment variables (in MySQL-only mode)
+	router.HandleFunc("/api/debug", func(w http.ResponseWriter, r *http.Request) {
+		logrus.Info("Debug endpoint requested - MySQL mode")
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		
+		debugInfo := map[string]interface{}{
+			"server_mode": "mysql_only",
+			"RAILWAY_ENVIRONMENT": os.Getenv("RAILWAY_ENVIRONMENT"),
+			"FORCE_FULL_MODE": os.Getenv("FORCE_FULL_MODE"),
+			"timestamp": time.Now().Format(time.RFC3339),
+			"message": "This endpoint is served by startMySQLVisualizationServer",
+		}
+		
+		if err := json.NewEncoder(w).Encode(debugInfo); err != nil {
+			logrus.Errorf("Error encoding debug response: %v", err)
+			http.Error(w, "Debug endpoint failed", http.StatusInternalServerError)
+		}
+	}).Methods("GET")
+
 	// API endpoint for raw MySQL data
 	router.HandleFunc("/api/data", func(w http.ResponseWriter, r *http.Request) {
 		logrus.Info("Data API requested - MySQL mode")
