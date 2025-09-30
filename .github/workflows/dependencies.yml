@@ -115,18 +115,22 @@ jobs:
           echo "======================"
           cat licenses.txt
 
-      - name:  Check for forbidden licenses
+      - name: Check for forbidden licenses
         run: |
           # Define forbidden licenses (GPL, AGPL, etc.)
           FORBIDDEN_LICENSES="GPL-2.0|GPL-3.0|AGPL-3.0|LGPL-2.1|LGPL-3.0"
           
-          if grep -iE "($FORBIDDEN_LICENSES)" licenses.txt; then
-            echo " Forbidden licenses detected!"
+          # Filter out own project from license check
+          grep -v "^sql-graph-visualizer," licenses.txt > external_licenses.txt
+          
+          if grep -iE "($FORBIDDEN_LICENSES)" external_licenses.txt; then
+            echo "Forbidden licenses detected in dependencies!"
             echo "The following dependencies have incompatible licenses:"
-            grep -iE "($FORBIDDEN_LICENSES)" licenses.txt
+            grep -iE "($FORBIDDEN_LICENSES)" external_licenses.txt
             exit 1
           else
-            echo " No forbidden licenses found"
+            echo "No forbidden licenses found in dependencies"
+            echo "ℹ️  Note: Own project license (sql-graph-visualizer) is excluded from this check"
           fi
 
       - name:  Upload license report
