@@ -13,10 +13,10 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"sql-graph-visualizer/internal/domain/repositories"
 	"time"
 
 	"sql-graph-visualizer/internal/domain/models"
-	"sql-graph-visualizer/internal/domain/repository"
 
 	"github.com/sirupsen/logrus"
 )
@@ -24,7 +24,7 @@ import (
 // UniversalDatabaseService orchestrates database operations for any supported database type
 // Works with MySQL, PostgreSQL, and future database types through the generic DatabaseRepository interface
 type UniversalDatabaseService struct {
-	repo              repository.DatabaseRepository
+	repo              repositories.DatabaseRepository
 	config            models.DatabaseConfig
 	dbType            models.DatabaseType
 	securityValidator *SecurityValidationService
@@ -32,7 +32,7 @@ type UniversalDatabaseService struct {
 
 // NewUniversalDatabaseService creates a new universal database service
 func NewUniversalDatabaseService(
-	repo repository.DatabaseRepository,
+	repo repositories.DatabaseRepository,
 	config models.DatabaseConfig,
 ) *UniversalDatabaseService {
 

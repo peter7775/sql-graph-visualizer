@@ -13,16 +13,16 @@ import (
 )
 
 type MockNeo4jRepository struct {
-	logger *logrus.Logger
-	nodes  []*entities.Node
+	logger    *logrus.Logger
+	nodes     []*entities.Node
 	relations []*entities.Relation
 }
 
 func NewMockNeo4jRepository() ports.Neo4jPort {
 	logrus.Info("Creating Mock Neo4j Repository for Railway deployment")
 	return &MockNeo4jRepository{
-		logger: logrus.StandardLogger(),
-		nodes: []*entities.Node{},
+		logger:    logrus.StandardLogger(),
+		nodes:     []*entities.Node{},
 		relations: []*entities.Relation{},
 	}
 }
@@ -39,7 +39,7 @@ func (m *MockNeo4jRepository) SearchNodes(criteria string) ([]*graph.GraphAggreg
 
 func (m *MockNeo4jRepository) ExportGraph(query string) (any, error) {
 	logrus.Info("Mock: Exporting graph data")
-	
+
 	// Create sample graph data for visualization
 	sampleNodes := []*entities.Node{
 		entities.NewNode("1", "Actor"),
@@ -49,7 +49,7 @@ func (m *MockNeo4jRepository) ExportGraph(query string) (any, error) {
 		entities.NewNode("5", "Category"),
 		entities.NewNode("6", "Category"),
 	}
-	
+
 	// Set properties
 	sampleNodes[0].Properties["name"] = "Tom Hanks"
 	sampleNodes[0].Properties["actor_id"] = "1"
@@ -65,7 +65,7 @@ func (m *MockNeo4jRepository) ExportGraph(query string) (any, error) {
 	sampleNodes[4].Properties["category_id"] = "1"
 	sampleNodes[5].Properties["name"] = "Sci-Fi"
 	sampleNodes[5].Properties["category_id"] = "7"
-	
+
 	sampleRelations := []*entities.Relation{
 		entities.NewRelation("1", "ACTED_IN", sampleNodes[0], sampleNodes[2]),
 		entities.NewRelation("2", "ACTED_IN", sampleNodes[1], sampleNodes[3]),
@@ -74,18 +74,18 @@ func (m *MockNeo4jRepository) ExportGraph(query string) (any, error) {
 		entities.NewRelation("5", "HAS_CATEGORY", sampleNodes[3], sampleNodes[4]),
 		entities.NewRelation("6", "HAS_CATEGORY", sampleNodes[3], sampleNodes[5]),
 	}
-	
+
 	// Combine with actual stored data
 	allNodes := append(sampleNodes, m.nodes...)
 	allRelations := append(sampleRelations, m.relations...)
-	
+
 	graphAggregate := graph.NewGraphAggregate("mock-graph-1")
-	
+
 	// Add nodes using proper GraphAggregate method
 	for _, node := range allNodes {
 		graphAggregate.AddNode(node.Label, node.Properties)
 	}
-	
+
 	// Add relationships using direct relationship method
 	for _, rel := range allRelations {
 		// Extract IDs from properties
@@ -96,7 +96,7 @@ func (m *MockNeo4jRepository) ExportGraph(query string) (any, error) {
 		if sourceID == nil {
 			sourceID = rel.FromNode.Properties["category_id"]
 		}
-		
+
 		targetID := rel.ToNode.Properties["actor_id"]
 		if targetID == nil {
 			targetID = rel.ToNode.Properties["film_id"]
@@ -104,18 +104,18 @@ func (m *MockNeo4jRepository) ExportGraph(query string) (any, error) {
 		if targetID == nil {
 			targetID = rel.ToNode.Properties["category_id"]
 		}
-		
+
 		if sourceID != nil && targetID != nil {
 			graphAggregate.AddDirectRelationship(rel.Type, sourceID, targetID, rel.Properties)
 		}
 	}
-	
+
 	return graphAggregate, nil
 }
 
 func (m *MockNeo4jRepository) FetchNodes(nodeType string) ([]map[string]any, error) {
 	logrus.Infof("Mock: Fetching nodes of type: %s", nodeType)
-	
+
 	// Return sample nodes based on type
 	switch nodeType {
 	case "Actor":

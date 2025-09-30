@@ -85,7 +85,13 @@ func main() {
 		logrus.Infof("  MYSQLPASSWORD: [length=%d]", len(os.Getenv("MYSQLPASSWORD")))
 		logrus.Infof("  MYSQL_PASSWORD: [length=%d]", len(os.Getenv("MYSQL_PASSWORD")))
 		// Neo4j variables
-		logrus.Infof("  NEO4J_URI: %s", func() string { if uri := os.Getenv("NEO4J_URI"); uri != "" { return "[SET]" } else { return "[NOT_SET]" } }())
+		logrus.Infof("  NEO4J_URI: %s", func() string {
+			if uri := os.Getenv("NEO4J_URI"); uri != "" {
+				return "[SET]"
+			} else {
+				return "[NOT_SET]"
+			}
+		}())
 		logrus.Infof("  NEO4J_USER: %s", os.Getenv("NEO4J_USER"))
 		logrus.Infof("  NEO4J_PASSWORD: [length=%d]", len(os.Getenv("NEO4J_PASSWORD")))
 	}
@@ -107,7 +113,7 @@ func main() {
 	// Override configuration with environment variables if available (Railway deployment)
 	if os.Getenv("RAILWAY_ENVIRONMENT") != "" {
 		logrus.Info("Overriding configuration with Railway environment variables...")
-		
+
 		// Override Neo4j configuration
 		if uri := os.Getenv("NEO4J_URI"); uri != "" && uri != "${NEO4J_URI}" {
 			cfg.Neo4j.URI = uri
@@ -121,7 +127,7 @@ func main() {
 			cfg.Neo4j.Password = password
 			logrus.Info("Neo4j password overridden")
 		}
-		
+
 		// Override MySQL configuration with Railway env vars
 		if cfg.Database != nil && cfg.Database.MySQL != nil {
 			// Try both MYSQLHOST and MYSQL_HOST
@@ -259,7 +265,7 @@ func main() {
 		}
 	}()
 
-	// Skip Neo4j operations for Mock repository  
+	// Skip Neo4j operations for Mock repository
 	if realNeo4jRepo == nil {
 		logrus.Info("Using Mock Neo4j repository, skipping data deletion")
 	} else {
@@ -273,7 +279,9 @@ func main() {
 			}
 		}()
 
-		if sessionRunner, ok := session.(interface{ Run(string, interface{}) (interface{}, error) }); ok {
+		if sessionRunner, ok := session.(interface {
+			Run(string, interface{}) (interface{}, error)
+		}); ok {
 			_, err = sessionRunner.Run("MATCH (n) DETACH DELETE n", nil)
 			if err != nil {
 				// Debug logging for FORCE_FULL_MODE logic
@@ -285,7 +293,7 @@ func main() {
 				logrus.Infof("Debug - Railway check: %v", railwayEnv != "")
 				logrus.Infof("Debug - FORCE_FULL_MODE check: %v", forceFullMode == "true")
 				logrus.Infof("Debug - Combined condition: %v", railwayEnv != "" && forceFullMode != "true")
-				
+
 				if railwayEnv != "" && forceFullMode != "true" {
 					logrus.Info("Condition 1: Railway environment without FORCE_FULL_MODE - starting MySQL-only mode")
 					startMySQLVisualizationServer(dbPort, cfg)
@@ -388,15 +396,15 @@ func main() {
 		logrus.Info("Debug endpoint requested")
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		
+
 		debugInfo := map[string]interface{}{
 			"RAILWAY_ENVIRONMENT": os.Getenv("RAILWAY_ENVIRONMENT"),
-			"FORCE_FULL_MODE": os.Getenv("FORCE_FULL_MODE"),
-			"neo4j_repo_type": fmt.Sprintf("%T", neo4jRepo),
+			"FORCE_FULL_MODE":     os.Getenv("FORCE_FULL_MODE"),
+			"neo4j_repo_type":     fmt.Sprintf("%T", neo4jRepo),
 			"real_neo4j_repo_nil": realNeo4jRepo == nil,
-			"timestamp": time.Now().Format(time.RFC3339),
+			"timestamp":           time.Now().Format(time.RFC3339),
 		}
-		
+
 		if err := json.NewEncoder(w).Encode(debugInfo); err != nil {
 			logrus.Errorf("Error encoding debug response: %v", err)
 			http.Error(w, "Debug endpoint failed", http.StatusInternalServerError)
@@ -700,15 +708,15 @@ func startMySQLVisualizationServer(dbPort ports.DatabasePort, cfg *models.Config
 		logrus.Info("Debug endpoint requested - MySQL mode")
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		
+
 		debugInfo := map[string]interface{}{
-			"server_mode": "mysql_only",
+			"server_mode":         "mysql_only",
 			"RAILWAY_ENVIRONMENT": os.Getenv("RAILWAY_ENVIRONMENT"),
-			"FORCE_FULL_MODE": os.Getenv("FORCE_FULL_MODE"),
-			"timestamp": time.Now().Format(time.RFC3339),
-			"message": "This endpoint is served by startMySQLVisualizationServer",
+			"FORCE_FULL_MODE":     os.Getenv("FORCE_FULL_MODE"),
+			"timestamp":           time.Now().Format(time.RFC3339),
+			"message":             "This endpoint is served by startMySQLVisualizationServer",
 		}
-		
+
 		if err := json.NewEncoder(w).Encode(debugInfo); err != nil {
 			logrus.Errorf("Error encoding debug response: %v", err)
 			http.Error(w, "Debug endpoint failed", http.StatusInternalServerError)
@@ -731,10 +739,10 @@ func startMySQLVisualizationServer(dbPort ports.DatabasePort, cfg *models.Config
 			"films":      films,
 			"categories": categories,
 			"meta": map[string]interface{}{
-				"source":   "mysql",
-				"mode":     "mysql_only",
-				"neo4j":    "unavailable",
-				"message":  "Data directly from MySQL database",
+				"source":    "mysql",
+				"mode":      "mysql_only",
+				"neo4j":     "unavailable",
+				"message":   "Data directly from MySQL database",
 				"timestamp": time.Now().Format(time.RFC3339),
 			},
 		}
@@ -799,7 +807,7 @@ func executeQuery(dbPort ports.DatabasePort, query string) ([]map[string]interfa
 		logrus.Errorf("Query failed: %v", err)
 		return nil, err
 	}
-	
+
 	// Convert []map[string]any to []map[string]interface{}
 	converted := make([]map[string]interface{}, len(results))
 	for i, result := range results {
@@ -809,7 +817,7 @@ func executeQuery(dbPort ports.DatabasePort, query string) ([]map[string]interfa
 		}
 		converted[i] = convertedRow
 	}
-	
+
 	return converted, nil
 }
 
@@ -850,21 +858,21 @@ func generateMySQLVisualizationHTML(actors, films, categories []map[string]inter
         <div class="section">
             <h2>🎭 Actors (Sample)</h2>
             <div class="cards">` +
-			generateActorCards(actors) + `
+		generateActorCards(actors) + `
             </div>
         </div>
 
         <div class="section">
             <h2>🎥 Films (Sample)</h2>
             <div class="cards">` +
-			generateFilmCards(films) + `
+		generateFilmCards(films) + `
             </div>
         </div>
 
         <div class="section">
             <h2>📂 Categories</h2>
             <div class="cards">` +
-			generateCategoryCards(categories) + `
+		generateCategoryCards(categories) + `
             </div>
         </div>
 
@@ -974,7 +982,7 @@ func startRailwayDemoServer() {
 		logrus.Info("Root endpoint requested in demo mode")
 		w.Header().Set("Content-Type", "text/html")
 		w.WriteHeader(http.StatusOK)
-		
+
 		html := `<!DOCTYPE html>
 <html>
 <head>
@@ -1023,7 +1031,7 @@ func startRailwayDemoServer() {
     </div>
 </body>
 </html>`
-		
+
 		if _, err := w.Write([]byte(html)); err != nil {
 			logrus.Errorf("Error writing response: %v", err)
 		}
@@ -1034,7 +1042,7 @@ func startRailwayDemoServer() {
 		logrus.Info("Graph endpoint requested in demo mode")
 		w.Header().Set("Content-Type", "application/json")
 		w.Header().Set("Access-Control-Allow-Origin", "*")
-		
+
 		// Return demo graph data
 		demoData := map[string]interface{}{
 			"nodes": []map[string]interface{}{
@@ -1045,11 +1053,11 @@ func startRailwayDemoServer() {
 				{"from": "demo1", "to": "demo2", "type": "CONNECTS_TO", "properties": map[string]interface{}{"demo": true}},
 			},
 			"meta": map[string]interface{}{
-				"mode": "demo",
+				"mode":    "demo",
 				"message": "This is demo data for Railway deployment",
 			},
 		}
-		
+
 		if err := json.NewEncoder(w).Encode(demoData); err != nil {
 			logrus.Errorf("Error encoding demo graph data: %v", err)
 			http.Error(w, "Failed to encode demo data", http.StatusInternalServerError)
@@ -1296,9 +1304,9 @@ func createMinimalRailwayConfig() *models.Config {
 	mysqlHost := os.Getenv("MYSQL_HOST")
 	mysqlUser := os.Getenv("MYSQL_USER")
 	mysqlDatabase := os.Getenv("MYSQL_DATABASE")
-	
+
 	logrus.Infof("MySQL env vars: HOST=%s, USER=%s, DB=%s", mysqlHost, mysqlUser, mysqlDatabase)
-	
+
 	// If MySQL env vars are placeholders or empty, fallback to demo mode
 	if mysqlHost == "${MYSQL_HOST}" || mysqlHost == "" || mysqlUser == "${MYSQL_USER}" || mysqlUser == "" {
 		logrus.Warn("MySQL environment variables not properly set - starting in demo mode")
@@ -1364,7 +1372,7 @@ func createBenchmarkConfig(cfg *models.Config) *performance.BenchmarkServiceConf
 // createFallbackGraphData creates dummy graph data from MySQL data when Neo4j operations fail
 func createFallbackGraphData(ctx context.Context, dbPort ports.DatabasePort, neo4jRepo ports.Neo4jPort) error {
 	logrus.Info("Creating fallback graph data from MySQL...")
-	
+
 	// This is a simplified fallback - in reality you might want to implement
 	// a more sophisticated transformation
 	return nil // For now, just return nil to continue with empty graph

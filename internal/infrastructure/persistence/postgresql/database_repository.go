@@ -16,7 +16,7 @@ import (
 	"database/sql"
 	"fmt"
 	"sql-graph-visualizer/internal/domain/models"
-	"sql-graph-visualizer/internal/domain/repository"
+	"sql-graph-visualizer/internal/domain/repositories"
 	"strings"
 	"time"
 
@@ -30,7 +30,7 @@ type PostgreSQLDatabaseRepository struct {
 }
 
 // NewPostgreSQLDatabaseRepository creates a new PostgreSQL database repository
-func NewPostgreSQLDatabaseRepository() repository.DatabaseRepository {
+func NewPostgreSQLDatabaseRepository() repositories.DatabaseRepository {
 	return &PostgreSQLDatabaseRepository{}
 }
 

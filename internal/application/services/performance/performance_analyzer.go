@@ -584,7 +584,6 @@ func (pa *PerformanceAnalyzer) ComparePerformance(ctx context.Context, baseline,
 	return comparison, nil
 }
 
-
 func (pa *PerformanceAnalyzer) analyzeGlobalBottlenecks(metrics *ports.PerformanceMetrics) []ports.PerformanceBottleneck {
 	bottlenecks := make([]ports.PerformanceBottleneck, 0)
 
@@ -742,7 +741,6 @@ func (pa *PerformanceAnalyzer) generateQueryRecommendations(query ports.QueryPer
 
 	return recommendations
 }
-
 
 func defaultPerformanceAnalyzerConfig() *PerformanceAnalyzerConfig {
 	return &PerformanceAnalyzerConfig{

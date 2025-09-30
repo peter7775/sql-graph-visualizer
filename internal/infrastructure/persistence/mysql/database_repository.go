@@ -16,7 +16,7 @@ import (
 	"database/sql"
 	"fmt"
 	"sql-graph-visualizer/internal/domain/models"
-	"sql-graph-visualizer/internal/domain/repository"
+	"sql-graph-visualizer/internal/domain/repositories"
 	"strings"
 	"time"
 
@@ -30,7 +30,7 @@ type MySQLDatabaseRepository struct {
 }
 
 // NewMySQLDatabaseRepository creates a new MySQL database repository
-func NewMySQLDatabaseRepository() repository.DatabaseRepository {
+func NewMySQLDatabaseRepository() repositories.DatabaseRepository {
 	return &MySQLDatabaseRepository{}
 }
 
