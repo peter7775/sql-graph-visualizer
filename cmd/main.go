@@ -59,22 +59,13 @@ func main() {
 	logrus.Infof("CONFIG_PATH: %s", os.Getenv("CONFIG_PATH"))
 	logrus.Infof("FORCE_FULL_MODE: %s", os.Getenv("FORCE_FULL_MODE"))
 
-	// Check for explicit demo mode only (not automatic Railway detection)
-	if os.Getenv("DEMO_MODE") == "railway_demo" || os.Getenv("DEMO_MODE") == "true" {
-		logrus.Info("Explicit demo mode requested - starting in demo mode")
-		logrus.Infof("Railway environment: %s", os.Getenv("RAILWAY_ENVIRONMENT"))
-		logrus.Infof("PORT env var: %s", os.Getenv("PORT"))
 
-		// Start simplified Railway server without database dependencies
-		startRailwayDemoServer()
-		return
-	}
 
-	// If on Railway but database connection fails, fallback to demo mode
+	
 	if os.Getenv("RAILWAY_ENVIRONMENT") != "" {
 		logrus.Info("Railway environment detected - attempting normal startup first...")
 		logrus.Info("Debug: Railway environment variables:")
-		// Check both possible MySQL variable naming conventions
+		
 		logrus.Infof("  MYSQLHOST: %s", os.Getenv("MYSQLHOST"))
 		logrus.Infof("  MYSQL_HOST: %s", os.Getenv("MYSQL_HOST"))
 		logrus.Infof("  MYSQLUSER: %s", os.Getenv("MYSQLUSER"))
@@ -84,7 +75,7 @@ func main() {
 		logrus.Infof("  MYSQL_PORT: %s", os.Getenv("MYSQL_PORT"))
 		logrus.Infof("  MYSQLPASSWORD: [length=%d]", len(os.Getenv("MYSQLPASSWORD")))
 		logrus.Infof("  MYSQL_PASSWORD: [length=%d]", len(os.Getenv("MYSQL_PASSWORD")))
-		// Neo4j variables
+		
 		logrus.Infof("  NEO4J_URI: %s", func() string {
 			if uri := os.Getenv("NEO4J_URI"); uri != "" {
 				return "[SET]"
@@ -99,22 +90,14 @@ func main() {
 	logrus.Infof("Loading configuration...")
 	cfg, err := config.Load()
 	if err != nil {
-		logrus.Errorf("Failed to load configuration: %v", err)
-		// On Railway, always fallback to demo mode if config fails
-		if os.Getenv("RAILWAY_ENVIRONMENT") != "" {
-			logrus.Warn("Railway deployment - config failed, starting demo mode...")
-			startRailwayDemoServer()
-			return
-		} else {
-			logrus.Fatalf("Failed to load configuration and not on Railway: %v", err)
-		}
+		logrus.Fatalf("Failed to load configuration: %v", err)
 	}
 
-	// Override configuration with environment variables if available (Railway deployment)
+	
 	if os.Getenv("RAILWAY_ENVIRONMENT") != "" {
 		logrus.Info("Overriding configuration with Railway environment variables...")
 
-		// Override Neo4j configuration
+		
 		if uri := os.Getenv("NEO4J_URI"); uri != "" && uri != "${NEO4J_URI}" {
 			cfg.Neo4j.URI = uri
 			logrus.Infof("Neo4j URI overridden: %s", uri)
@@ -128,19 +111,19 @@ func main() {
 			logrus.Info("Neo4j password overridden")
 		}
 
-		// Override MySQL configuration with Railway env vars
+		
 		if cfg.Database != nil && cfg.Database.MySQL != nil {
-			// Try both MYSQLHOST and MYSQL_HOST
+			
 			if host := getEnvOrDefault("MYSQLHOST", os.Getenv("MYSQL_HOST")); host != "" {
 				cfg.Database.MySQL.Host = host
 				logrus.Infof("MySQL host overridden: %s", host)
 			}
-			// Try both MYSQLUSER and MYSQL_USER
+			
 			if user := getEnvOrDefault("MYSQLUSER", os.Getenv("MYSQL_USER")); user != "" {
 				cfg.Database.MySQL.User = user
 				logrus.Infof("MySQL user overridden: %s", user)
 			}
-			// Try both MYSQLPASSWORD and MYSQL_PASSWORD
+		
 			if password := getEnvOrDefault("MYSQLPASSWORD", os.Getenv("MYSQL_PASSWORD")); password != "" {
 				cfg.Database.MySQL.Password = password
 				logrus.Info("MySQL password overridden")
@@ -149,7 +132,7 @@ func main() {
 				cfg.Database.MySQL.Database = database
 				logrus.Infof("MySQL database overridden: %s", database)
 			}
-			// Try both MYSQLPORT and MYSQL_PORT
+			
 			if port := getEnvOrDefault("MYSQLPORT", os.Getenv("MYSQL_PORT")); port != "" {
 				if portNum := parseInt(port); portNum > 0 {
 					cfg.Database.MySQL.Port = portNum
@@ -159,11 +142,10 @@ func main() {
 		}
 	}
 
-	// Initialize database connection based on configuration
+	
 	var dbPort ports.DatabasePort
 	var db *sql.DB
 
-	// Check if we have a new multi-database configuration or legacy MySQL
 	if cfg.Database != nil && cfg.Database.Type != "" {
 		logrus.Infof("Using new multi-database configuration: %s", cfg.Database.Type)
 
@@ -172,14 +154,14 @@ func main() {
 			pgConfig := cfg.Database.PostgreSQL
 			logrus.Infof("Connecting to PostgreSQL: %s@%s:%d/%s", pgConfig.GetUsername(), pgConfig.GetHost(), pgConfig.GetPort(), pgConfig.GetDatabase())
 
-			// Create PostgreSQL repository
+			
 			postgresRepo := postgresqlrepo.NewPostgreSQLRepository(nil)
 			db, err = postgresRepo.ConnectToExisting(ctx, pgConfig)
 			if err != nil {
 				logrus.Fatalf("Failed to connect to PostgreSQL: %v", err)
 			}
 
-			// Use PostgreSQL repository as a DatabasePort
+	
 			dbPort = postgresqlrepo.NewPostgreSQLDatabasePort(db)
 			logrus.Infof("Successfully connected to PostgreSQL database")
 
@@ -212,7 +194,7 @@ func main() {
 		}
 
 	} else {
-		// Legacy MySQL configuration
+		
 		logrus.Infof("Using legacy MySQL configuration")
 
 		dsn := fmt.Sprintf("%s:%s@tcp(%s:%d)/%s",
@@ -265,7 +247,7 @@ func main() {
 		}
 	}()
 
-	// Skip Neo4j operations for Mock repository
+	
 	if realNeo4jRepo == nil {
 		logrus.Info("Using Mock Neo4j repository, skipping data deletion")
 	} else {
@@ -284,7 +266,7 @@ func main() {
 		}); ok {
 			_, err = sessionRunner.Run("MATCH (n) DETACH DELETE n", nil)
 			if err != nil {
-				// Debug logging for FORCE_FULL_MODE logic
+				
 				railwayEnv := os.Getenv("RAILWAY_ENVIRONMENT")
 				forceFullMode := os.Getenv("FORCE_FULL_MODE")
 				logrus.Warnf("Neo4j operation failed: %v", err)
@@ -300,11 +282,11 @@ func main() {
 					return
 				} else if forceFullMode == "true" {
 					logrus.Info("Condition 2: FORCE_FULL_MODE enabled - switching to Mock Neo4j repository")
-					// Replace neo4jRepo with Mock repository
+					
 					neo4jRepo = neo4j.NewMockNeo4jRepository()
 					realNeo4jRepo = nil // Clear real repo reference
 					logrus.Info("Successfully switched to Mock Neo4j repository - continuing with normal flow")
-					// Continue with Mock Neo4j - don't return here
+					
 				} else {
 					logrus.Info("Condition 3: Neither Railway fallback nor FORCE_FULL_MODE - fatal error")
 					logrus.Fatalf("Error deleting data in Neo4j: %v", err)
@@ -317,7 +299,7 @@ func main() {
 	logrus.Infof("Initializing services...")
 	transformService := transform.NewTransformService(dbPort, neo4jRepo, configrule.NewRuleRepository())
 
-	// Initialize performance services if enabled
+
 	var performanceServices *PerformanceServiceContainer
 	if cfg.Performance != nil && cfg.Performance.Monitoring != nil && cfg.Performance.Monitoring.Enabled {
 		logrus.Info("Initializing performance .monitoring services...")
@@ -327,7 +309,7 @@ func main() {
 		logrus.Info("Performance .monitoring is disabled")
 	}
 
-	// Initialize SimpleMetricsInjector for demo visualization (always enabled)
+	
 	logrus.Info("Initializing performance metrics visualization...")
 	metricsInjectorConfig := &performance.SimpleMetricsConfig{
 		UpdateInterval:   5 * time.Second,
@@ -337,7 +319,7 @@ func main() {
 
 	metricsInjector := performance.NewSimpleMetricsInjector(neo4jRepo, logrus.StandardLogger(), metricsInjectorConfig)
 
-	// Start MetricsInjector for live performance visualization
+	
 	if err := metricsInjector.Start(ctx); err != nil {
 		logrus.Errorf("Failed to start metrics injector: %v", err)
 	} else {
@@ -346,7 +328,7 @@ func main() {
 
 	logrus.Infof("Services initialized")
 
-	// Start GraphQL server
+	
 	graphqlserver.StartGraphQLServer(neo4jRepo, cfg)
 	logrus.Info("GraphQL server started")
 
@@ -375,7 +357,6 @@ func main() {
 
 	router := mux.NewRouter()
 
-	// Register performance routes if services are initialized
 	if performanceServices != nil {
 		logrus.Info("Registering performance API routes...")
 		performanceHandlers := api.NewPerformanceHandlers(
@@ -390,8 +371,7 @@ func main() {
 		logrus.Info("Performance API routes registered")
 	}
 
-	// Health check endpoint
-	// Add debug endpoint for environment variables
+
 	router.HandleFunc("/api/debug", func(w http.ResponseWriter, r *http.Request) {
 		logrus.Info("Debug endpoint requested")
 		w.Header().Set("Content-Type", "application/json")
@@ -416,7 +396,7 @@ func main() {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 
-		// Test database connectivity
+		
 		dbStatus := "unknown"
 		if db != nil {
 			if err := db.Ping(); err == nil {
@@ -469,7 +449,7 @@ func main() {
 	corsHandler := middleware.NewCORSHandler(corsOptions)
 	handler := corsHandler(router)
 
-	// Use PORT environment variable if available (for Railway deployment)
+
 	apiPort := os.Getenv("PORT")
 	if apiPort == "" {
 		apiPort = "8080"
@@ -485,7 +465,6 @@ func main() {
 		IdleTimeout:       60 * time.Second,
 	}
 
-	// Handle graceful shutdown
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, os.Interrupt)
 
@@ -601,7 +580,7 @@ func startVisualizationServer(neo4jRepo ports.Neo4jPort, cfg *models.Config) *ht
 	fs := http.FileServer(http.Dir(filepath.Join(webRoot, "static")))
 	mux.Handle("/static/", http.StripPrefix("/static/", fs))
 
-	// Performance dashboard route
+
 	mux.HandleFunc("/performance", func(w http.ResponseWriter, r *http.Request) {
 		logrus.Infof("Request to performance dashboard")
 		http.ServeFile(w, r, filepath.Join(webRoot, "templates", "performance_dashboard.html"))
@@ -612,12 +591,12 @@ func startVisualizationServer(neo4jRepo ports.Neo4jPort, cfg *models.Config) *ht
 		http.ServeFile(w, r, filepath.Join(webRoot, "templates", "visualization.html"))
 	})
 
-	// Use PORT environment variable if available (for Railway deployment)
+	
 	vizPort := os.Getenv("PORT")
 	if vizPort == "" {
 		vizPort = "3000"
 	}
-	vizAddr := ":" + vizPort // Listen on all interfaces
+	vizAddr := ":" + vizPort 
 
 	server := &http.Server{
 		Handler:           mux,
@@ -658,13 +637,13 @@ func findProjectRoot() string {
 	}
 }
 
-// startMySQLVisualizationServer starts a MySQL-only visualization server when Neo4j is not available
+
 func startMySQLVisualizationServer(dbPort ports.DatabasePort, cfg *models.Config) {
 	logrus.Info("Starting MySQL-only visualization server...")
 
 	router := mux.NewRouter()
 
-	// Health check endpoint
+	
 	router.HandleFunc("/api/health", func(w http.ResponseWriter, r *http.Request) {
 		logrus.Info("Health check requested")
 		w.Header().Set("Content-Type", "application/json")
@@ -686,13 +665,13 @@ func startMySQLVisualizationServer(dbPort ports.DatabasePort, cfg *models.Config
 		}
 	}).Methods("GET")
 
-	// Root endpoint with MySQL data visualization
+
 	router.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		logrus.Info("Root endpoint requested - MySQL visualization mode")
 		w.Header().Set("Content-Type", "text/html")
 		w.WriteHeader(http.StatusOK)
 
-		// Get sample data from MySQL
+		
 		actors, _ := getSampleActors(dbPort)
 		films, _ := getSampleFilms(dbPort)
 		categories, _ := getSampleCategories(dbPort)
@@ -703,7 +682,6 @@ func startMySQLVisualizationServer(dbPort ports.DatabasePort, cfg *models.Config
 		}
 	}).Methods("GET")
 
-	// Debug endpoint for environment variables (in MySQL-only mode)
 	router.HandleFunc("/api/debug", func(w http.ResponseWriter, r *http.Request) {
 		logrus.Info("Debug endpoint requested - MySQL mode")
 		w.Header().Set("Content-Type", "application/json")
@@ -723,7 +701,7 @@ func startMySQLVisualizationServer(dbPort ports.DatabasePort, cfg *models.Config
 		}
 	}).Methods("GET")
 
-	// API endpoint for raw MySQL data
+
 	router.HandleFunc("/api/data", func(w http.ResponseWriter, r *http.Request) {
 		logrus.Info("Data API requested - MySQL mode")
 		w.Header().Set("Content-Type", "application/json")
@@ -753,7 +731,7 @@ func startMySQLVisualizationServer(dbPort ports.DatabasePort, cfg *models.Config
 		}
 	}).Methods("GET")
 
-	// CORS middleware
+
 	corsOptions := middleware.CORSOptions{
 		AllowedOrigins:   []string{"*"},
 		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
@@ -763,7 +741,7 @@ func startMySQLVisualizationServer(dbPort ports.DatabasePort, cfg *models.Config
 	corsHandler := middleware.NewCORSHandler(corsOptions)
 	handler := corsHandler(router)
 
-	// Use PORT environment variable
+
 	apiPort := os.Getenv("PORT")
 	if apiPort == "" {
 		apiPort = "3000"
@@ -785,7 +763,7 @@ func startMySQLVisualizationServer(dbPort ports.DatabasePort, cfg *models.Config
 	}
 }
 
-// Helper functions for MySQL data retrieval
+
 func getSampleActors(dbPort ports.DatabasePort) ([]map[string]interface{}, error) {
 	query := "SELECT actor_id, first_name, last_name, CONCAT(first_name, ' ', last_name) as full_name FROM actor LIMIT 20"
 	return executeQuery(dbPort, query)
@@ -808,7 +786,7 @@ func executeQuery(dbPort ports.DatabasePort, query string) ([]map[string]interfa
 		return nil, err
 	}
 
-	// Convert []map[string]any to []map[string]interface{}
+
 	converted := make([]map[string]interface{}, len(results))
 	for i, result := range results {
 		convertedRow := make(map[string]interface{})
@@ -944,13 +922,13 @@ func generateCategoryCards(categories []map[string]interface{}) string {
 	return cards
 }
 
-// startRailwayDemoServer starts a simplified server for Railway deployment without database dependencies
+
 func startRailwayDemoServer() {
 	logrus.Info("Starting Railway demo server...")
 
 	router := mux.NewRouter()
 
-	// Health check endpoint - essential for Railway deployment
+
 	router.HandleFunc("/api/health", func(w http.ResponseWriter, r *http.Request) {
 		logrus.Info("Health check requested")
 		w.Header().Set("Content-Type", "application/json")
@@ -977,7 +955,7 @@ func startRailwayDemoServer() {
 		}
 	}).Methods("GET")
 
-	// Root endpoint for Railway demo
+
 	router.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		logrus.Info("Root endpoint requested in demo mode")
 		w.Header().Set("Content-Type", "text/html")
@@ -1037,13 +1015,13 @@ func startRailwayDemoServer() {
 		}
 	}).Methods("GET")
 
-	// Demo graph data endpoint
+
 	router.HandleFunc("/api/graph", func(w http.ResponseWriter, r *http.Request) {
 		logrus.Info("Graph endpoint requested in demo mode")
 		w.Header().Set("Content-Type", "application/json")
 		w.Header().Set("Access-Control-Allow-Origin", "*")
 
-		// Return demo graph data
+	
 		demoData := map[string]interface{}{
 			"nodes": []map[string]interface{}{
 				{"id": "demo1", "label": "DemoNode", "properties": map[string]interface{}{"name": "Railway Demo", "type": "demo"}},
@@ -1064,13 +1042,12 @@ func startRailwayDemoServer() {
 		}
 	}).Methods("GET")
 
-	// Use PORT environment variable if available (for Railway deployment)
+
 	apiPort := os.Getenv("PORT")
 	if apiPort == "" {
 		apiPort = "8080"
 	}
-	apiAddr := ":" + apiPort // Listen on all interfaces
-
+	apiAddr := ":" + apiPort 
 	corsOptions := middleware.CORSOptions{
 		AllowedOrigins:   []string{"*"},
 		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
@@ -1095,7 +1072,7 @@ func startRailwayDemoServer() {
 	}
 }
 
-// getEnvOrDefault returns environment variable value or default if not set
+
 func getEnvOrDefault(key, defaultValue string) string {
 	if value := os.Getenv(key); value != "" {
 		return value
@@ -1103,7 +1080,7 @@ func getEnvOrDefault(key, defaultValue string) string {
 	return defaultValue
 }
 
-// parseInt safely parses string to int, returns 0 if invalid
+
 func parseInt(s string) int {
 	if i, err := strconv.Atoi(s); err == nil {
 		return i
@@ -1120,7 +1097,7 @@ func init() {
 	}
 }
 
-// PerformanceServiceContainer holds all performance-related services
+
 type PerformanceServiceContainer struct {
 	BenchmarkService    *performance.BenchmarkService
 	PerformanceAnalyzer *performance.PerformanceAnalyzer
@@ -1134,16 +1111,14 @@ type PerformanceServiceContainer struct {
 func initializePerformanceServices(cfg *models.Config, db *sql.DB) *PerformanceServiceContainer {
 	logger := logrus.StandardLogger()
 
-	// Parse configuration durations
+
 	updateInterval, err := time.ParseDuration(cfg.Performance.Monitoring.UpdateInterval)
 	if err != nil {
 		logrus.Warnf("Invalid update_interval, using default 5s: %v", err)
 		updateInterval = 5 * time.Second
 	}
 
-	// Cache duration is handled internally by the performance schema adapter
 
-	// Create Performance Schema Adapter configuration with safe defaults
 	maxStatements := 100
 	maxTables := 50
 	if cfg.Performance != nil && cfg.Performance.Monitoring != nil && cfg.Performance.Monitoring.PerformanceSchema != nil {
@@ -1170,10 +1145,10 @@ func initializePerformanceServices(cfg *models.Config, db *sql.DB) *PerformanceS
 		MinAvgLatency:       10.0,
 	}
 
-	// Initialize Performance Schema Adapter
+
 	psAdapter := performance.NewPerformanceSchemaAdapter(db, logger, psConfig)
 
-	// Create Performance Analyzer configuration with safe defaults
+
 	slowQueryThreshold := 200.0 // Default 200ms
 	if cfg.Performance != nil && cfg.Performance.Monitoring != nil && cfg.Performance.Monitoring.Analysis != nil {
 		slowQueryThreshold = cfg.Performance.Monitoring.Analysis.SlowQueryThreshold
@@ -1196,27 +1171,27 @@ func initializePerformanceServices(cfg *models.Config, db *sql.DB) *PerformanceS
 		TrendSignificanceLevel:    0.05,
 	}
 
-	// Initialize Performance Analyzer
+
 	performanceAnalyzer := performance.NewPerformanceAnalyzer(logger, analyzerConfig)
 
-	// Create Graph Performance Mapper configuration
+
 	graphMapperConfig := createGraphMapperConfig(cfg)
 
-	// Initialize Graph Performance Mapper
+
 	graphMapper := performance.NewGraphPerformanceMapper(logger, graphMapperConfig, psAdapter, performanceAnalyzer)
 
-	// Create Real-time Monitor configuration
+
 	realtimeConfig := createRealtimeConfig(cfg)
 
-	// Initialize Real-time Performance Monitor
+	
 	realtimeMonitor := performance.NewRealtimePerformanceMonitor(logger, realtimeConfig, psAdapter, performanceAnalyzer, graphMapper)
 
-	// Create Benchmark Service configuration
+
 	benchmarkConfig := createBenchmarkConfig(cfg)
 
 	benchmarkService := performance.NewBenchmarkService(nil, nil, nil, performanceAnalyzer, logger, benchmarkConfig)
 
-	// Start real-time .monitoring if enabled
+	
 	if cfg.Performance != nil && cfg.Performance.Realtime != nil && cfg.Performance.Realtime.Enabled {
 		ctx := context.Background()
 		if err := realtimeMonitor.Start(ctx); err != nil {
@@ -1232,7 +1207,7 @@ func initializePerformanceServices(cfg *models.Config, db *sql.DB) *PerformanceS
 		PSAdapter:           psAdapter,
 		GraphMapper:         graphMapper,
 		RealtimeMonitor:     realtimeMonitor,
-		MetricsInjector:     nil, // Handled separately in main function
+		MetricsInjector:     nil, 
 	}
 }
 
@@ -1296,18 +1271,18 @@ func createRealtimeConfig(cfg *models.Config) *performance.RealtimeMonitorConfig
 	return config
 }
 
-// createMinimalRailwayConfig creates a basic config when YAML loading fails on Railway
+
 func createMinimalRailwayConfig() *models.Config {
 	logrus.Info("Creating minimal Railway configuration from environment variables...")
 
-	// Check if MySQL variables are properly set (not just placeholder values)
+
 	mysqlHost := os.Getenv("MYSQL_HOST")
 	mysqlUser := os.Getenv("MYSQL_USER")
 	mysqlDatabase := os.Getenv("MYSQL_DATABASE")
 
 	logrus.Infof("MySQL env vars: HOST=%s, USER=%s, DB=%s", mysqlHost, mysqlUser, mysqlDatabase)
 
-	// If MySQL env vars are placeholders or empty, fallback to demo mode
+
 	if mysqlHost == "${MYSQL_HOST}" || mysqlHost == "" || mysqlUser == "${MYSQL_USER}" || mysqlUser == "" {
 		logrus.Warn("MySQL environment variables not properly set - starting in demo mode")
 		startRailwayDemoServer()
@@ -1352,7 +1327,7 @@ func createBenchmarkConfig(cfg *models.Config) *performance.BenchmarkServiceConf
 		defaultDuration, _ := time.ParseDuration(cfg.Performance.Benchmarks.DefaultDuration)
 		maxDuration, _ := time.ParseDuration(cfg.Performance.Benchmarks.MaxDuration)
 		resultsRetention, _ := time.ParseDuration(cfg.Performance.Benchmarks.ResultsRetention)
-		cleanupInterval := 15 * time.Minute // Default cleanup interval
+		cleanupInterval := 15 * time.Minute 
 
 		config.DefaultTimeout = defaultDuration
 		config.MaxDuration = maxDuration
@@ -1362,18 +1337,17 @@ func createBenchmarkConfig(cfg *models.Config) *performance.BenchmarkServiceConf
 		if cfg.Performance.Benchmarks.Limits != nil {
 			config.MaxConcurrentRuns = cfg.Performance.Benchmarks.Limits.MaxConcurrentBenchmarks
 			config.MaxResultsInMemory = cfg.Performance.Benchmarks.Limits.MemoryLimitMB
-			// CPUThreshold not available in BenchmarkServiceConfig
+			
 		}
 	}
 
 	return config
 }
 
-// createFallbackGraphData creates dummy graph data from MySQL data when Neo4j operations fail
+
 func createFallbackGraphData(ctx context.Context, dbPort ports.DatabasePort, neo4jRepo ports.Neo4jPort) error {
 	logrus.Info("Creating fallback graph data from MySQL...")
 
-	// This is a simplified fallback - in reality you might want to implement
-	// a more sophisticated transformation
-	return nil // For now, just return nil to continue with empty graph
+
+	return nil 
 }

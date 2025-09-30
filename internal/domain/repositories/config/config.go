@@ -106,8 +106,9 @@ func findProjectRoot() string {
 				logrus.Warn("Cannot find go.mod, using /app as fallback in Railway")
 				return "/app"
 			}
-			logrus.Fatalf("Cannot find project root directory")
-			return ""
+			// Do NOT fatal in production containers; fall back to current dir
+			logrus.Error("Cannot find project root directory; falling back to current working directory")
+			return wd
 		}
 		wd = parent
 	}

@@ -1,11 +1,11 @@
 database:
   type: "mysql"
   mysql:
-    host: "${MYSQL_HOST}"
-    port: ${MYSQL_PORT}
-    user: "${MYSQL_USER}"
-    password: "${MYSQL_PASSWORD}"
-    database: "${MYSQL_DATABASE}"
+    host: "placeholder.host"
+    port: 3306
+    user: "placeholder"
+    password: "placeholder"
+    database: "placeholder"
     
     connection_mode: existing
     
@@ -25,9 +25,9 @@ database:
       allowed_hosts: ["*"]
 
 neo4j:
-  uri: "${NEO4J_URI}"
-  user: "${NEO4J_USER}"
-  password: "${NEO4J_PASSWORD}"
+  uri: "bolt://placeholder:7687"
+  user: "placeholder"
+  password: "placeholder"
   max_connection_pool_size: 50
   connection_timeout: 30s
   max_transaction_retry_time: 30s
@@ -272,5 +272,5 @@ security:
   input_validation_enabled: true
 
 demo:
-  enabled: true
+  enabled: false
   message: "Railway production deployment with comprehensive project management data"

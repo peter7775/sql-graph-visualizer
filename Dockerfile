@@ -78,5 +78,12 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
 ENV GO_ENV=production
 ENV LOG_LEVEL=info
 
+# Copy init SQL for optional DB bootstrap
+COPY /railway-mysql-init.sql /app/railway-mysql-init.sql
+
+# Copy entrypoint
+COPY /start.sh /app/start.sh
+RUN chmod +x /app/start.sh
+
 # Default command
-CMD ["./sql-graph-visualizer"]
+CMD ["/app/start.sh"]
