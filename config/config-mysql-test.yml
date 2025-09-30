@@ -1,0 +1,172 @@
+database:
+  type: "mysql"
+  mysql:
+    host: "localhost"
+    port: 3307
+    user: "root"
+    password: "testpass"
+    database: "testdata"
+    
+    connection_mode: existing
+    
+    data_filtering:
+      schema_discovery: true
+      table_whitelist: ["users", "teams", "skills", "projects", "tasks"]
+      table_blacklist: []
+      row_limit_per_table: 1000
+      query_timeout: 30
+    
+    security:
+      read_only: true
+      connection_timeout: 30
+      query_timeout: 30
+      max_connections: 10
+      allow_production_connections: false
+      allowed_hosts: ["localhost", "127.0.0.1"]
+
+neo4j:
+  uri: "bolt://127.0.0.1:7687"
+  user: "neo4j"
+  password: "testpass"
+
+performance:
+  monitoring:
+    enabled: false
+  realtime:
+    enabled: false
+  benchmarks:
+    enabled: false
+  visualization:
+    update_interval: "5s"
+    history_retention: "1h"
+    max_concurrent_updates: 3
+
+transform_rules:
+  - name: "users_to_nodes"
+    rule_type: "node"
+    source:
+      type: "query"
+      value: "SELECT id, username, email, full_name, role, is_active FROM users WHERE is_active = 1"
+    target_type: "User"
+    field_mappings:
+      id: "id"
+      username: "username"
+      email: "email"
+      full_name: "name"
+      role: "role"
+      is_active: "is_active"
+
+  - name: "teams_to_nodes"
+    rule_type: "node"
+    source:
+      type: "query"
+      value: "SELECT t.id, t.name, t.description FROM teams t"
+    target_type: "Team"
+    field_mappings:
+      id: "id"
+      name: "name"
+      description: "description"
+
+  - name: "skills_to_nodes"
+    rule_type: "node"
+    source:
+      type: "query"
+      value: "SELECT id, name, category FROM skills"
+    target_type: "Skill"
+    field_mappings:
+      id: "id"
+      name: "name"
+      category: "category"
+
+  - name: "projects_to_nodes"
+    rule_type: "node"
+    source:
+      type: "query"
+      value: "SELECT p.id, p.name, p.description, p.status FROM projects p"
+    target_type: "Project"
+    field_mappings:
+      id: "id"
+      name: "name"
+      description: "description"
+      status: "status"
+
+  - name: "tasks_to_nodes"
+    rule_type: "node"
+    source:
+      type: "query"
+      value: "SELECT t.id, t.title, t.description, t.status, t.priority FROM tasks t"
+    target_type: "Task"
+    field_mappings:
+      id: "id"
+      title: "name"
+      description: "description"
+      status: "status"
+      priority: "priority"
+
+  - name: "team_membership"
+    rule_type: "relationship"
+    relationship_type: "MEMBER_OF"
+    direction: "outgoing"
+    source:
+      type: "query"
+      value: "SELECT tm.user_id, tm.team_id, tm.role FROM team_members tm"
+    source_node:
+      type: "User"
+      key: "user_id"
+      target_field: "id"
+    target_node:
+      type: "Team"
+      key: "team_id"
+      target_field: "id"
+    properties:
+      role: "role"
+
+  - name: "user_skills"
+    rule_type: "relationship"
+    relationship_type: "HAS_SKILL"
+    direction: "outgoing"
+    source:
+      type: "query"
+      value: "SELECT us.user_id, us.skill_id, us.proficiency FROM user_skills us"
+    source_node:
+      type: "User"
+      key: "user_id"
+      target_field: "id"
+    target_node:
+      type: "Skill"
+      key: "skill_id"
+      target_field: "id"
+    properties:
+      proficiency: "proficiency"
+
+  - name: "project_assignments"
+    rule_type: "relationship"
+    relationship_type: "ASSIGNED_TO"
+    direction: "outgoing"
+    source:
+      type: "query"
+      value: "SELECT p.id as project_id, p.team_id FROM projects p WHERE p.team_id IS NOT NULL"
+    source_node:
+      type: "Project"
+      key: "project_id"
+      target_field: "id"
+    target_node:
+      type: "Team"
+      key: "team_id"
+      target_field: "id"
+
+  - name: "task_projects"
+    rule_type: "relationship"
+    relationship_type: "BELONGS_TO"
+    direction: "outgoing"
+    source:
+      type: "query"
+      value: "SELECT t.id as task_id, t.project_id FROM tasks t WHERE t.project_id IS NOT NULL"
+    source_node:
+      type: "Task"
+      key: "task_id"
+      target_field: "id"
+    target_node:
+      type: "Project"
+      key: "project_id"
+      target_field: "id"

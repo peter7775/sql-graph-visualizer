@@ -1,18 +1,11 @@
 database:
   type: "mysql"
   mysql:
-    host: "localhost"
-    port: 3307
-    user: "testuser"
-    password: "testpass"
-    database: "testdata"
-    
-    charset: "utf8mb4"
-    parseTime: true
-    loc: "UTC"
-    timeout: "30s"
-    readTimeout: "30s"
-    writeTimeout: "30s"
+    host: "${MYSQL_HOST}"
+    port: ${MYSQL_PORT:-3306}
+    user: "${MYSQL_USER}"
+    password: "${MYSQL_PASSWORD}"
+    database: "${MYSQL_DATABASE}"
     
     connection_mode: existing
     
@@ -20,171 +13,162 @@ database:
       schema_discovery: true
       table_whitelist: ["users", "teams", "skills", "projects", "tasks", "team_members", "user_skills", "project_skills", "task_dependencies", "activity_log"]
       table_blacklist: []
-      row_limit_per_table: 0
-      query_timeout: 30
+      row_limit_per_table: 10000
+      query_timeout: 60
     
     security:
       read_only: true
-      connection_timeout: 30
-      query_timeout: 30
-      max_connections: 10
-      allow_production_connections: false
-      allowed_hosts: ["localhost", "127.0.0.1"]
+      connection_timeout: 60
+      query_timeout: 60
+      max_connections: 20
+      allow_production_connections: true
+      allowed_hosts: ["*"]
 
 neo4j:
-  uri: "bolt://127.0.0.1:7687"
-  user: "neo4j"
-  password: "testpass"
+  uri: "${NEO4J_URI:-bolt://localhost:7687}"
+  user: "${NEO4J_USER:-neo4j}"
+  password: "${NEO4J_PASSWORD}"
+  max_connection_pool_size: 50
+  connection_timeout: 30s
+  max_transaction_retry_time: 30s
+
+server:
+  port: ${PORT:-3000}
+  api_port: ${API_PORT:-8080}
+  host: "0.0.0.0"
+  read_timeout: 30s
+  write_timeout: 30s
+  idle_timeout: 120s
 
 performance:
   monitoring:
     enabled: true
-    update_interval: "5s"
-    data_retention: "1h"
-    max_concurrent_queries: 10
+    update_interval: "10s"
+    data_retention: "2h"
+    max_concurrent_queries: 50
     
     performance_schema:
       enabled: true
-      statement_limit: 100
-      table_io_limit: 50
-      index_limit: 50
-      connection_limit: 25
-      cache_duration: "30s"
+      statement_limit: 1000
+      table_io_limit: 500
+      index_limit: 500
+      connection_limit: 100
+      cache_duration: "60s"
       
     analysis:
       bottleneck_threshold: 70.0
-      slow_query_threshold: 200.0
+      slow_query_threshold: 500.0
       high_load_threshold: 80.0
       hotspot_threshold: 75.0
       
   realtime:
     enabled: true
-    update_interval: "5s"
+    update_interval: "10s"
     heartbeat_interval: "30s"
-    max_connections: 100
-    write_timeout: "10s"
-    read_timeout: "60s"
-    ping_timeout: "90s"
-    max_message_size: 512
+    max_connections: 500
+    write_timeout: "30s"
+    read_timeout: "120s"
+    ping_timeout: "180s"
+    max_message_size: 1024
     compression_enabled: true
     
     alerts:
-      high_latency: 1000.0
-      high_error_rate: 5.0
-      high_cpu_usage: 80.0
-      high_memory_usage: 85.0
-      slow_query_threshold: 200.0
-      deadlock_threshold: 5
+      high_latency: 2000.0
+      high_error_rate: 10.0
+      high_cpu_usage: 85.0
+      high_memory_usage: 90.0
+      slow_query_threshold: 500.0
+      deadlock_threshold: 10
       
   benchmarks:
-    enabled: true
-    default_duration: "60s"
-    max_duration: "600s"
-    results_retention: "24h"
-    cleanup_interval: "15m"
+    enabled: false
     
-    sysbench:
-      executable_path: "sysbench"
-      temp_dir: "/tmp/sysbench"
-      cleanup_after_test: true
-      
-      defaults:
-        table_size: 10000
-        threads: 4
-        time: 60
-        report_interval: 10
-        
-    limits:
-      max_concurrent_benchmarks: 3
-      memory_limit_mb: 100
-      cpu_threshold: 80.0
-      
   visualization:
     edge_thickness:
       metric: "query_frequency"
       scale: "linear"
-      min_thickness: 1.0
-      max_thickness: 10.0
-      multiplier: 1.0
+      min_thickness: 2.0
+      max_thickness: 15.0
+      multiplier: 1.5
       
     edge_color:
       metric: "avg_execution_time"
       color_scale: "green_yellow_red"
       thresholds:
-        fast: "< 100ms"
-        medium: "100ms - 1s"
-        slow: "> 1s"
+        fast: "< 200ms"
+        medium: "200ms - 2s"
+        slow: "> 2s"
         
     node_size:
       metric: "total_queries_involved"
-      min_size: 20.0
-      max_size: 100.0
+      min_size: 25.0
+      max_size: 120.0
       scale: "sqrt"
       
     node_color:
       metric: "avg_response_time"
       color_scale: "green_yellow_red"
       thresholds:
-        good: "< 50ms"
-        ok: "50ms - 200ms"
-        slow: "> 200ms"
+        good: "< 100ms"
+        ok: "100ms - 500ms"
+        slow: "> 500ms"
         
     animation:
       show_data_flow: true
       speed_based_on: "query_frequency"
-      animation_speed: 1.0
-      particle_count: 10
+      animation_speed: 1.2
+      particle_count: 20
       
-    update_interval: "5s"
-    history_retention: "1h"
-    max_concurrent_updates: 3
+    update_interval: "10s"
+    history_retention: "2h"
+    max_concurrent_updates: 10
 
 transform_rules:
   - name: "users_to_nodes"
     rule_type: "node"
     source:
       type: "query"
-      value: "SELECT u.*, CONCAT(u.full_name, ' (', u.role, ')') as display_name FROM users u WHERE u.is_active = 1"
+      value: "SELECT u.id, u.username, u.email, u.full_name, u.role, u.is_active, CONCAT(u.full_name, ' (', u.role, ')') as display_name FROM users u WHERE u.is_active = 1"
     target_type: "User"
     field_mappings:
       id: "id"
       username: "username"
       email: "email"
-      full_name: "full_name"
+      full_name: "name"
       role: "role"
-      display_name: "name"
       is_active: "is_active"
+      display_name: "display_name"
 
   - name: "teams_to_nodes"
     rule_type: "node"
     source:
       type: "query"
-      value: "SELECT t.*, u.full_name as lead_name FROM teams t LEFT JOIN users u ON t.team_lead_id = u.id"
+      value: "SELECT t.id, t.name, t.description, u.full_name as lead_name FROM teams t LEFT JOIN users u ON t.team_lead_id = u.id"
     target_type: "Team"
     field_mappings:
       id: "id"
       name: "name"
       description: "description"
-      team_lead_id: "team_lead_id"
       lead_name: "lead_name"
 
   - name: "skills_to_nodes"
     rule_type: "node"
     source:
       type: "query"
-      value: "SELECT s.*, CONCAT(s.name, ' (', s.category, ')') as display_name FROM skills s"
+      value: "SELECT s.id, s.name, s.category, s.level_required, CONCAT(s.name, ' (', s.category, ')') as display_name FROM skills s"
     target_type: "Skill"
     field_mappings:
       id: "id"
-      name: "display_name"
+      name: "name"
       category: "category"
       level_required: "level_required"
+      display_name: "display_name"
 
   - name: "projects_to_nodes"
     rule_type: "node"
     source:
       type: "query"
-      value: "SELECT p.*, u.full_name as creator_name, t.name as team_name FROM projects p LEFT JOIN users u ON p.created_by = u.id LEFT JOIN teams t ON p.team_id = t.id"
+      value: "SELECT p.id, p.name, p.description, p.status, p.priority, p.budget, u.full_name as creator_name, t.name as team_name FROM projects p LEFT JOIN users u ON p.created_by = u.id LEFT JOIN teams t ON p.team_id = t.id"
     target_type: "Project"
     field_mappings:
       id: "id"
@@ -200,7 +184,7 @@ transform_rules:
     rule_type: "node"
     source:
       type: "query"
-      value: "SELECT t.*, p.name as project_name, u1.full_name as assigned_to_name, u2.full_name as created_by_name, pt.title as parent_title FROM tasks t LEFT JOIN projects p ON t.project_id = p.id LEFT JOIN users u1 ON t.assigned_to = u1.id LEFT JOIN users u2 ON t.created_by = u2.id LEFT JOIN tasks pt ON t.parent_task_id = pt.id"
+      value: "SELECT t.id, t.title, t.description, t.status, t.priority, t.estimated_hours, t.actual_hours, p.name as project_name, u1.full_name as assigned_to_name, u2.full_name as created_by_name FROM tasks t LEFT JOIN projects p ON t.project_id = p.id LEFT JOIN users u1 ON t.assigned_to = u1.id LEFT JOIN users u2 ON t.created_by = u2.id"
     target_type: "Task"
     field_mappings:
       id: "id"
@@ -213,14 +197,13 @@ transform_rules:
       project_name: "project_name"
       assigned_to_name: "assigned_to_name"
       created_by_name: "created_by_name"
-      parent_title: "parent_title"
 
-  - name: "high_impact_projects"
+  - name: "high_priority_projects"
     rule_type: "node"
     source:
       type: "query"
-      value: "SELECT CONCAT('IMPACT_', p.id) as id, p.name, p.status, p.priority, p.budget, COUNT(t.id) as task_count, AVG(ps.importance = 'critical') as critical_skills_ratio FROM projects p LEFT JOIN tasks t ON p.id = t.project_id LEFT JOIN project_skills ps ON p.id = ps.project_id WHERE p.budget > 150000 OR p.priority IN ('high', 'critical') GROUP BY p.id, p.name, p.status, p.priority, p.budget HAVING task_count > 2"
-    target_type: "HighImpactProject"
+      value: "SELECT CONCAT('HIGH_PRIO_', p.id) as id, p.name, p.status, p.priority, p.budget, COUNT(t.id) as task_count FROM projects p LEFT JOIN tasks t ON p.id = t.project_id WHERE p.priority IN ('high', 'critical') AND p.budget > 100000 GROUP BY p.id, p.name, p.status, p.priority, p.budget HAVING task_count >= 2"
+    target_type: "HighPriorityProject"
     field_mappings:
       id: "id"
       name: "name"
@@ -228,13 +211,12 @@ transform_rules:
       priority: "priority"
       budget: "budget"
       task_count: "task_count"
-      critical_skills_ratio: "critical_skills_ratio"
 
   - name: "skill_experts"
     rule_type: "node"
     source:
       type: "query"
-      value: "SELECT CONCAT('EXPERT_', us.user_id, '_', us.skill_id) as id, u.full_name as expert_name, s.name as skill_name, us.proficiency, us.years_experience FROM user_skills us JOIN users u ON us.user_id = u.id JOIN skills s ON us.skill_id = s.id WHERE us.proficiency IN ('advanced', 'expert') AND us.years_experience >= 4"
+      value: "SELECT CONCAT('EXPERT_', us.user_id, '_', us.skill_id) as id, u.full_name as expert_name, s.name as skill_name, us.proficiency, us.years_experience FROM user_skills us JOIN users u ON us.user_id = u.id JOIN skills s ON us.skill_id = s.id WHERE us.proficiency IN ('advanced', 'expert') AND us.years_experience >= 3"
     target_type: "SkillExpert"
     field_mappings:
       id: "id"
@@ -243,19 +225,6 @@ transform_rules:
       proficiency: "proficiency"
       years_experience: "years_experience"
       name: "expert_name"
-
-  - name: "project_teams_summary"
-    rule_type: "node"
-    source:
-      type: "query"
-      value: "SELECT CONCAT('TEAM_SUMMARY_', t.id) as id, t.name as team_name, COUNT(DISTINCT p.id) as project_count, COUNT(DISTINCT tm.user_id) as member_count, AVG(p.budget) as avg_project_budget FROM teams t LEFT JOIN projects p ON t.id = p.team_id LEFT JOIN team_members tm ON t.id = tm.team_id GROUP BY t.id, t.name HAVING project_count > 0"
-    target_type: "TeamSummary"
-    field_mappings:
-      id: "id"
-      team_name: "name"
-      project_count: "project_count"
-      member_count: "member_count"
-      avg_project_budget: "avg_project_budget"
 
   - name: "team_leadership"
     rule_type: "relationship"
@@ -269,8 +238,6 @@ transform_rules:
       type: "Team"
       key: "team_lead_id"
       target_field: "id"
-    field_mappings:
-      id: "id"
 
   - name: "team_membership"
     rule_type: "relationship"
@@ -322,8 +289,6 @@ transform_rules:
       type: "Project"
       key: "id"
       target_field: "id"
-    field_mappings:
-      id: "id"
 
   - name: "project_team_assignment"
     rule_type: "relationship"
@@ -337,8 +302,6 @@ transform_rules:
       type: "Team"
       key: "team_id"
       target_field: "id"
-    field_mappings:
-      id: "id"
 
   - name: "task_assignment"
     rule_type: "relationship"
@@ -352,8 +315,6 @@ transform_rules:
       type: "User"
       key: "assigned_to"
       target_field: "id"
-    field_mappings:
-      id: "id"
 
   - name: "task_project_relationship"
     rule_type: "relationship"
@@ -367,26 +328,6 @@ transform_rules:
       type: "Project"
       key: "project_id"
       target_field: "id"
-    field_mappings:
-      id: "id"
-
-  - name: "skill_compatibility"
-    rule_type: "relationship"
-    relationship_type: "SKILL_COMPATIBLE"
-    direction: "both"
-    source:
-      type: "query"
-      value: "SELECT u1.id as user1_id, u2.id as user2_id, COUNT(DISTINCT us1.skill_id) as common_skills FROM users u1 JOIN user_skills us1 ON u1.id = us1.user_id JOIN user_skills us2 ON us1.skill_id = us2.skill_id JOIN users u2 ON us2.user_id = u2.id WHERE u1.id < u2.id GROUP BY u1.id, u2.id HAVING common_skills >= 2"
-    source_node:
-      type: "User"
-      key: "user1_id"
-      target_field: "id"
-    target_node:
-      type: "User"
-      key: "user2_id"
-      target_field: "id"
-    properties:
-      common_skills: "common_skills"
 
   - name: "project_skill_requirements"
     rule_type: "relationship"
@@ -424,31 +365,13 @@ transform_rules:
     properties:
       dependency_type: "dependency_type"
 
-  - name: "task_hierarchy"
-    rule_type: "relationship"
-    relationship_type: "SUBTASK_OF"
-    direction: "outgoing"
-    source:
-      type: "query"
-      value: "SELECT t.id as child_id, t.parent_task_id FROM tasks t WHERE t.parent_task_id IS NOT NULL"
-    source_node:
-      type: "Task"
-      key: "child_id"
-      target_field: "id"
-    target_node:
-      type: "Task"
-      key: "parent_task_id"
-      target_field: "id"
-    field_mappings:
-      child_id: "id"
-
   - name: "expert_skill_mastery"
     rule_type: "relationship"
     relationship_type: "EXPERT_IN"
     direction: "outgoing"
     source:
       type: "query"
-      value: "SELECT CONCAT('EXPERT_', us.user_id, '_', us.skill_id) as expert_id, us.skill_id FROM user_skills us WHERE us.proficiency IN ('advanced', 'expert') AND us.years_experience >= 4"
+      value: "SELECT CONCAT('EXPERT_', us.user_id, '_', us.skill_id) as expert_id, us.skill_id FROM user_skills us WHERE us.proficiency IN ('advanced', 'expert') AND us.years_experience >= 3"
     source_node:
       type: "SkillExpert"
       key: "expert_id"
@@ -457,23 +380,49 @@ transform_rules:
       type: "Skill"
       key: "skill_id"
       target_field: "id"
-    field_mappings:
-      expert_id: "id"
 
-  - name: "team_summary_connection"
-    rule_type: "relationship"
-    relationship_type: "SUMMARIZES"
-    direction: "outgoing"
-    source:
-      type: "query"
-      value: "SELECT CONCAT('TEAM_SUMMARY_', t.id) as summary_id, t.id as team_id FROM teams t"
-    source_node:
-      type: "TeamSummary"
-      key: "summary_id"
-      target_field: "id"
-    target_node:
-      type: "Team"
-      key: "team_id"
-      target_field: "id"
-    field_mappings:
-      summary_id: "id"
+logging:
+  level: "${LOG_LEVEL:-info}"
+  format: json
+  output: stdout
+  enable_performance_logs: true
+  log_slow_queries: true
+  slow_query_threshold: 1s
+
+api:
+  cors:
+    allowed_origins: ["*"]
+    allowed_methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
+    allowed_headers: ["*"]
+    max_age: 3600
+  
+  rate_limit:
+    enabled: true
+    requests_per_minute: 500
+    burst: 100
+
+  graphql:
+    playground_enabled: "${GRAPHQL_PLAYGROUND_ENABLED:-true}"
+    introspection_enabled: "${GRAPHQL_INTROSPECTION_ENABLED:-true}"
+    complexity_limit: 2000
+
+monitoring:
+  health_check:
+    enabled: true
+    endpoint: "/api/health"
+    include_database_status: true
+  
+  metrics:
+    enabled: true
+    endpoint: "/api/metrics"
+    include_performance_metrics: true
+
+security:
+  enable_auth: false
+  cors_enabled: true
+  rate_limiting_enabled: true
+  input_validation_enabled: true
+
+demo:
+  enabled: false
+  message: "Railway production deployment with comprehensive project management data"
