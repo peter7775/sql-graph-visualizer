@@ -1,4 +1,5 @@
 # Use pre-built binary to avoid Railway build timeout issues
+# Build date: 2025-10-01-14:22 - Force cache invalidation
 FROM alpine:3.20
 
 # Install runtime dependencies
