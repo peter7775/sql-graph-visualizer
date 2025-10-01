@@ -16,16 +16,8 @@ RUN go mod download
 # Copy source code
 COPY . .
 
-# Install gqlgen and ensure all dependencies are available
-RUN go install github.com/99designs/gqlgen@v0.17.79
-
-# Generate GraphQL code (if needed)
-RUN if [ ! -f "internal/interfaces/graphql/generated/exec.go" ]; then \
-        echo "Generating GraphQL code..."; \
-        gqlgen generate; \
-    else \
-        echo "GraphQL code already exists, skipping generation..."; \
-    fi
+# GraphQL files are already generated and committed to git
+# No need to regenerate in Docker build
 
 # Build the application
 ARG VERSION=dev
