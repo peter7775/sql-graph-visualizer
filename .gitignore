@@ -30,6 +30,8 @@ sql-graph-visualizer
 sql-graph-cli
 integration.test
 coverage.out
+# Allow railway-binary for deployment
+!railway-binary
 
 # IDE files
 .idea/

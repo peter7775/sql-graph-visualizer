@@ -1,35 +1,4 @@
-# Build stage
-FROM golang:1.24-alpine AS builder
-
-# Install build dependencies
-RUN apk add --no-cache git ca-certificates tzdata
-
-# Set working directory
-WORKDIR /app
-
-# Copy go mod and sum files
-COPY go.mod go.sum ./
-
-# Download dependencies
-RUN go mod download
-
-# Copy source code
-COPY . .
-
-# GraphQL files are already generated and committed to git
-# No need to regenerate in Docker build
-
-# Build the application
-ARG VERSION=dev
-ARG BUILD_DATE=unknown
-
-# Build binary with optimization flags
-RUN CGO_ENABLED=0 GOOS=linux go build \
-    -ldflags="-w -s -X main.Version=${VERSION} -X main.BuildDate=${BUILD_DATE}" \
-    -o sql-graph-visualizer \
-    ./cmd/main.go
-
-# Final stage
+# Use pre-built binary to avoid Railway build timeout issues
 FROM alpine:3.20
 
 # Install runtime dependencies
@@ -47,14 +16,15 @@ RUN addgroup -g 1000 appgroup && \
 # Set working directory
 WORKDIR /app
 
-# Copy built binary from builder stage
-COPY --from=builder /app/sql-graph-visualizer .
+# Copy pre-built binary
+COPY railway-binary ./sql-graph-visualizer
+RUN chmod +x ./sql-graph-visualizer
 
 # Copy configuration files
-COPY --from=builder /app/config ./config
+COPY config ./config
 
-# Copy static files if any
-COPY --from=builder /app/internal/interfaces/web ./internal/interfaces/web
+# Copy static files if any  
+COPY internal/interfaces/web ./internal/interfaces/web
 
 # Create directories for logs and data
 RUN mkdir -p /app/logs /app/data && \
@@ -75,11 +45,11 @@ ENV GO_ENV=production
 ENV LOG_LEVEL=info
 
 # Copy init SQL for optional DB bootstrap
-COPY /railway-mysql-init.sql /app/railway-mysql-init.sql
+COPY railway-mysql-init.sql ./railway-mysql-init.sql
 
 # Copy entrypoint
-COPY /start.sh /app/start.sh
-RUN chmod +x /app/start.sh
+COPY start.sh ./start.sh
+RUN chmod +x ./start.sh
 
 # Default command
 CMD ["/app/start.sh"]
