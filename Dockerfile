@@ -20,8 +20,13 @@ COPY . .
 RUN go install github.com/99designs/gqlgen@v0.17.79 && \
     go mod tidy
 
-# Generate GraphQL code
-RUN gqlgen generate
+# Generate GraphQL code (if needed)
+RUN if [ ! -f "internal/interfaces/graphql/generated/exec.go" ]; then \
+        echo "Generating GraphQL code..."; \
+        gqlgen generate; \
+    else \
+        echo "GraphQL code already exists, skipping generation..."; \
+    fi
 
 # Build the application
 ARG VERSION=dev
