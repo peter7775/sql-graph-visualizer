@@ -26,6 +26,13 @@ COPY config ./config
 # Copy static files if any  
 COPY internal/interfaces/web ./internal/interfaces/web
 
+# Copy init SQL for optional DB bootstrap
+COPY railway-mysql-init.sql ./railway-mysql-init.sql
+
+# Copy entrypoint
+COPY start.sh ./start.sh
+RUN chmod +x ./start.sh
+
 # Create directories for logs and data
 RUN mkdir -p /app/logs /app/data && \
     chown -R appuser:appgroup /app
@@ -43,13 +50,6 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
 # Environment variables
 ENV GO_ENV=production
 ENV LOG_LEVEL=info
-
-# Copy init SQL for optional DB bootstrap
-COPY railway-mysql-init.sql ./railway-mysql-init.sql
-
-# Copy entrypoint
-COPY start.sh ./start.sh
-RUN chmod +x ./start.sh
 
 # Default command
 CMD ["/app/start.sh"]
