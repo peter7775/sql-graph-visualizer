@@ -52,7 +52,7 @@ func main() {
 	ctx := context.Background()
 
 	// Always log startup information first
-	logrus.Infof("=== SQL Graph Visualizer Starting - Version with FORCE_FULL_MODE support ===")
+	logrus.Infof("=== SQL Graph Visualizer Starting - Build timestamp: %s ===", time.Now().Format("2006-01-02 15:04:05"))
 	logrus.Infof("Environment: %s", os.Getenv("RAILWAY_ENVIRONMENT"))
 	logrus.Infof("DEMO_MODE: %s", os.Getenv("DEMO_MODE"))
 	logrus.Infof("PORT: %s", os.Getenv("PORT"))
