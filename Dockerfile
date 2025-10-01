@@ -20,6 +20,9 @@ WORKDIR /app
 COPY railway-binary ./sql-graph-visualizer
 RUN chmod +x ./sql-graph-visualizer
 
+# Copy go.mod so findProjectRoot() can locate project root
+COPY go.mod ./go.mod
+
 # Copy configuration files
 COPY config ./config
 
