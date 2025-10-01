@@ -66,9 +66,7 @@ USER appuser
 # Expose ports
 EXPOSE 3000 8080
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:8080/api/health || exit 1
+# Railway uses its own healthcheck system, so Docker HEALTHCHECK is not needed
 
 # Environment variables
 ENV GO_ENV=production
