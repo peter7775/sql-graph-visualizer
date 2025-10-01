@@ -572,9 +572,13 @@ func startVisualizationServer(neo4jRepo ports.Neo4jPort, cfg *models.Config) *ht
 		http.ServeFile(w, r, filepath.Join(webRoot, "templates", "visualization.html"))
 	})
 
-	vizPort := os.Getenv("PORT")
-	if vizPort == "" {
-		vizPort = "3000"
+	
+	vizPort := "3000"
+	if os.Getenv("RAILWAY_ENVIRONMENT") == "" {
+		
+		if envPort := os.Getenv("VIZ_PORT"); envPort != "" {
+			vizPort = envPort
+		}
 	}
 	vizAddr := ":" + vizPort
 
