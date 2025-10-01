@@ -1,5 +1,24 @@
-# Use pre-built binary to avoid Railway build timeout issues
-# Build date: 2025-10-01-14:22 - Force cache invalidation
+# Multi-stage build to reduce final image size
+# Build date: 2025-10-01-14:32 - Cloud build approach
+FROM golang:1.21-alpine AS builder
+
+# Install build dependencies
+RUN apk add --no-cache git ca-certificates tzdata
+
+# Set working directory
+WORKDIR /app
+
+# Copy go mod files first for better caching
+COPY go.mod go.sum ./
+RUN go mod download
+
+# Copy source code
+COPY . .
+
+# Build the application with optimizations
+RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o sql-graph-visualizer cmd/main.go
+
+# Final stage
 FROM alpine:3.20
 
 # Install runtime dependencies
@@ -17,8 +36,8 @@ RUN addgroup -g 1000 appgroup && \
 # Set working directory
 WORKDIR /app
 
-# Copy pre-built binary
-COPY railway-binary ./sql-graph-visualizer
+# Copy binary from builder stage
+COPY --from=builder /app/sql-graph-visualizer ./sql-graph-visualizer
 RUN chmod +x ./sql-graph-visualizer
 
 # Copy go.mod so findProjectRoot() can locate project root
