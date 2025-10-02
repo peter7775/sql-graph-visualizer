@@ -25,7 +25,7 @@ import (
 func Load() (*models.Config, error) {
 	var configPath string
 
-	// Check for CONFIG_PATH environment variable
+
 	if envPath := os.Getenv("CONFIG_PATH"); envPath != "" {
 		logrus.Infof("Using CONFIG_PATH environment variable: %s", envPath)
 		if filepath.IsAbs(envPath) {
@@ -34,7 +34,7 @@ func Load() (*models.Config, error) {
 			configPath = filepath.Join(findProjectRoot(), envPath)
 		}
 	} else if os.Getenv("RAILWAY_ENVIRONMENT") != "" {
-		// Railway deployment detected - use cloud config
+	
 		logrus.Info("Railway environment detected, using cloud-config.yml")
 		configPath = findProjectRoot() + "/config/cloud-config.yml"
 	} else {
@@ -43,7 +43,7 @@ func Load() (*models.Config, error) {
 
 	logrus.Infof("Loading configuration from YAML file: %s", configPath)
 
-	// Validate path to prevent directory traversal
+
 	cleanPath := filepath.Clean(configPath)
 	if strings.Contains(cleanPath, "..") {
 		return nil, fmt.Errorf("invalid config path: %s", configPath)
