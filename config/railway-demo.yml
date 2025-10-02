@@ -11,7 +11,7 @@ database:
     
     data_filtering:
       schema_discovery: true
-      table_whitelist: ["users", "products", "categories", "orders", "order_items", "teams", "skills", "projects", "tasks", "team_members", "user_skills", "project_skills", "task_dependencies", "activity_log"]
+      table_whitelist: ["users", "teams", "skills", "projects", "tasks", "team_members", "user_skills", "project_skills", "task_dependencies", "activity_log"]
       table_blacklist: []
       row_limit_per_table: 10000
       query_timeout: 60
@@ -46,120 +46,24 @@ demo:
   sample_data_loaded: true
   reset_on_restart: false
   show_demo_banner: true
-  demo_scenario: "ecommerce_analytics"
+  demo_scenario: "project_management"
 
 transform_rules:
-  - name: "users_to_graph"
+  - name: "users_to_nodes"
     rule_type: "node"
     source:
       type: "query"
-      value: "SELECT id, username, email, first_name, last_name, created_at, country, city FROM users WHERE is_active = 1"
+      value: "SELECT u.id, u.username, u.email, u.full_name, u.role, u.is_active, CONCAT(u.full_name, ' (', u.role, ')') as display_name FROM users u WHERE u.is_active = 1"
     target_type: "User"
     field_mappings:
-      id: "user_id"
+      id: "id"
       username: "username"
       email: "email"
-      first_name: "first_name"
-      last_name: "last_name"
-      created_at: "registration_date"
-      country: "country"
-      city: "city"
+      full_name: "name"
+      role: "role"
+      is_active: "is_active"
+      display_name: "display_name"
 
-  - name: "products_to_graph"
-    rule_type: "node"
-    source:
-      type: "query"
-      value: "SELECT p.id, p.name, p.description, p.price, p.stock_quantity, c.name as category_name, p.created_at FROM products p JOIN categories c ON p.category_id = c.id WHERE p.is_active = 1"
-    target_type: "Product"
-    field_mappings:
-      id: "product_id"
-      name: "product_name"
-      description: "description"
-      price: "price"
-      stock_quantity: "stock"
-      category_name: "category"
-      created_at: "created_date"
-
-  - name: "categories_to_graph"
-    rule_type: "node"
-    source:
-      type: "table"
-      value: "categories"
-    target_type: "Category"
-    field_mappings:
-      id: "category_id"
-      name: "category_name"
-      description: "description"
-
-  - name: "orders_to_graph"
-    rule_type: "node"
-    source:
-      type: "query"
-      value: "SELECT id, user_id, order_date, total_amount, status FROM orders"
-    target_type: "Order"
-    field_mappings:
-      id: "order_id"
-      user_id: "user_id"
-      order_date: "order_date"
-      total_amount: "total_amount"
-      status: "order_status"
-
-  - name: "user_orders"
-    rule_type: "relationship"
-    relationship_type: "PLACED_ORDER"
-    direction: "outgoing"
-    source:
-      type: "query"
-      value: "SELECT user_id, id as order_id, order_date, total_amount, status FROM orders"
-    source_node:
-      type: "User"
-      key: "user_id"
-      target_field: "user_id"
-    target_node:
-      type: "Order"
-      key: "order_id"
-      target_field: "order_id"
-    properties:
-      order_date: "order_date"
-      total_amount: "total_amount"
-      status: "order_status"
-
-  - name: "order_products"
-    rule_type: "relationship"
-    relationship_type: "CONTAINS_PRODUCT"
-    direction: "outgoing"
-    source:
-      type: "query"
-      value: "SELECT oi.order_id, oi.product_id, oi.quantity, oi.unit_price FROM order_items oi"
-    source_node:
-      type: "Order"
-      key: "order_id"
-      target_field: "order_id"
-    target_node:
-      type: "Product"
-      key: "product_id"
-      target_field: "product_id"
-    properties:
-      quantity: "quantity"
-      unit_price: "unit_price"
-
-  - name: "product_categories"
-    rule_type: "relationship"
-    relationship_type: "BELONGS_TO_CATEGORY"
-    direction: "outgoing"
-    source:
-      type: "query"
-      value: "SELECT id as product_id, category_id FROM products"
-    source_node:
-      type: "Product"
-      key: "product_id"
-      target_field: "product_id"
-    target_node:
-      type: "Category"
-      key: "category_id"
-      target_field: "category_id"
-
-  # Add project management data if available
   - name: "teams_to_nodes"
     rule_type: "node"
     source:
@@ -201,6 +105,124 @@ transform_rules:
       creator_name: "creator_name"
       team_name: "team_name"
 
+  - name: "tasks_to_nodes"
+    rule_type: "node"
+    source:
+      type: "query"
+      value: "SELECT t.id, t.title, t.description, t.status, t.priority, t.estimated_hours, t.actual_hours, p.name as project_name, u1.full_name as assigned_to_name, u2.full_name as created_by_name FROM tasks t LEFT JOIN projects p ON t.project_id = p.id LEFT JOIN users u1 ON t.assigned_to = u1.id LEFT JOIN users u2 ON t.created_by = u2.id"
+    target_type: "Task"
+    field_mappings:
+      id: "id"
+      title: "name"
+      description: "description"
+      status: "status"
+      priority: "priority"
+      estimated_hours: "estimated_hours"
+      actual_hours: "actual_hours"
+      project_name: "project_name"
+      assigned_to_name: "assigned_to_name"
+      created_by_name: "created_by_name"
+
+  - name: "team_membership"
+    rule_type: "relationship"
+    relationship_type: "MEMBER_OF"
+    direction: "outgoing"
+    source:
+      type: "query"
+      value: "SELECT tm.user_id, tm.team_id, tm.role, tm.joined_at FROM team_members tm"
+    source_node:
+      type: "User"
+      key: "user_id"
+      target_field: "id"
+    target_node:
+      type: "Team"
+      key: "team_id"
+      target_field: "id"
+    properties:
+      role: "role"
+      joined_at: "joined_at"
+
+  - name: "user_skill_proficiency"
+    rule_type: "relationship"
+    relationship_type: "HAS_SKILL"
+    direction: "outgoing"
+    source:
+      type: "query"
+      value: "SELECT us.user_id, us.skill_id, us.proficiency, us.years_experience FROM user_skills us"
+    source_node:
+      type: "User"
+      key: "user_id"
+      target_field: "id"
+    target_node:
+      type: "Skill"
+      key: "skill_id"
+      target_field: "id"
+    properties:
+      proficiency: "proficiency"
+      years_experience: "years_experience"
+
+  - name: "project_team_assignment"
+    rule_type: "relationship"
+    relationship_type: "ASSIGNED_TO"
+    direction: "outgoing"
+    source_node:
+      type: "Project"
+      key: "id"
+      target_field: "id"
+    target_node:
+      type: "Team"
+      key: "team_id"
+      target_field: "id"
+
+  - name: "task_project_relationship"
+    rule_type: "relationship"
+    relationship_type: "BELONGS_TO"
+    direction: "outgoing"
+    source_node:
+      type: "Task"
+      key: "id"
+      target_field: "id"
+    target_node:
+      type: "Project"
+      key: "project_id"
+      target_field: "id"
+
+  - name: "project_skill_requirements"
+    rule_type: "relationship"
+    relationship_type: "REQUIRES_SKILL"
+    direction: "outgoing"
+    source:
+      type: "query"
+      value: "SELECT ps.project_id, ps.skill_id, ps.importance FROM project_skills ps"
+    source_node:
+      type: "Project"
+      key: "project_id"
+      target_field: "id"
+    target_node:
+      type: "Skill"
+      key: "skill_id"
+      target_field: "id"
+    properties:
+      importance: "importance"
+
+  - name: "task_dependencies"
+    rule_type: "relationship"
+    relationship_type: "DEPENDS_ON"
+    direction: "outgoing"
+    source:
+      type: "query"
+      value: "SELECT td.dependent_task_id, td.prerequisite_task_id, td.dependency_type FROM task_dependencies td"
+    source_node:
+      type: "Task"
+      key: "dependent_task_id"
+      target_field: "id"
+    target_node:
+      type: "Task"
+      key: "prerequisite_task_id"
+      target_field: "id"
+    properties:
+      dependency_type: "dependency_type"
+
 processing:
   batch_size: 1000
   max_memory_mb: 1024
@@ -235,20 +257,18 @@ api:
 visualization:
   node_colors:
     User: "#3498db"
-    Product: "#e74c3c"
-    Category: "#f39c12"
-    Order: "#2ecc71"
     Team: "#9b59b6"
     Skill: "#1abc9c"
-    Project: "#34495e"
+    Project: "#e74c3c"
+    Task: "#f39c12"
   
   relationship_colors:
-    PLACED_ORDER: "#9b59b6"
-    CONTAINS_PRODUCT: "#34495e"
-    BELONGS_TO_CATEGORY: "#e67e22"
     MEMBER_OF: "#7ED321"
     HAS_SKILL: "#50E3C2"
     ASSIGNED_TO: "#BD10E0"
+    BELONGS_TO: "#E67E22"
+    REQUIRES_SKILL: "#F5A623"
+    DEPENDS_ON: "#D0021B"
   
   layout:
     algorithm: "force"
@@ -273,38 +293,33 @@ security:
   input_validation_enabled: true
 
 demo_info:
-  description: "Railway demo with e-commerce platform showing users, products, orders, and categories + project management data"
+  description: "Railway demo with comprehensive project management data - users, teams, skills, projects, and tasks"
   datasets:
-    mysql_ecommerce:
-      tables: ["users", "products", "categories", "orders", "order_items"]
-      estimated_records: 
-        users: 100
-        products: 50
-        categories: 10
-        orders: 200
-        order_items: 500
-    
     mysql_project_management:
-      tables: ["teams", "skills", "projects", "tasks", "team_members", "user_skills"]
+      tables: ["users", "teams", "skills", "projects", "tasks", "team_members", "user_skills", "project_skills", "task_dependencies", "activity_log"]
       estimated_records:
-        teams: 5
+        users: 12
+        teams: 6
         skills: 20
-        projects: 15
-        tasks: 50
+        projects: 10
+        tasks: 30
         team_members: 25
-        user_skills: 100
+        user_skills: 40
+        project_skills: 20
+        task_dependencies: 10
+        activity_log: 50
   
   transformation_examples:
-    - "Users → User nodes with profile information"
-    - "Products → Product nodes with pricing and inventory"
-    - "Orders → Order nodes with relationships to Users and Products"
-    - "Categories → Product classification nodes"
-    - "Teams → Project team nodes"
-    - "Skills → Skill nodes with proficiency relationships"
+    - "Users → User nodes with roles and profile information"
+    - "Teams → Team nodes with leadership relationships"
+    - "Skills → Skill nodes with proficiency levels"
+    - "Projects → Project nodes with status and budget"
+    - "Tasks → Task nodes with assignments and dependencies"
+    - "Complex many-to-many relationships between users, teams, skills, and projects"
   
   use_cases:
-    - "E-commerce customer behavior analysis"
-    - "Product recommendation systems"
-    - "Project team skill matching"
-    - "Order fulfillment optimization"
-    - "Cross-selling analysis"
+    - "Project resource allocation and planning"
+    - "Team skill gap analysis"
+    - "Task dependency visualization"
+    - "Project portfolio management"
+    - "Team collaboration analysis"
