@@ -1,0 +1,88 @@
+package deployment
+
+import (
+	"net/http"
+	"os"
+	"time"
+
+	"github.com/sirupsen/logrus"
+	"sql-graph-visualizer/internal/application/ports"
+)
+
+
+type LocalDeployment struct {
+	logger *logrus.Logger
+}
+
+
+func NewLocalDeployment(logger *logrus.Logger) ports.DeploymentPort {
+	return &LocalDeployment{
+		logger: logger,
+	}
+}
+
+
+func (l *LocalDeployment) GetAPIPort() string {
+	port := os.Getenv("API_PORT")
+	if port == "" {
+		port = "8080" 
+	}
+	l.logger.Infof("Local: Using API port %s", port)
+	return port
+}
+
+
+func (l *LocalDeployment) GetVisualizationPort() string {
+	port := os.Getenv("VIZ_PORT")
+	if port == "" {
+		port = "3000" 
+	}
+	l.logger.Infof("Local: Using visualization port %s", port)
+	return port
+}
+
+
+func (l *LocalDeployment) ShouldStartVisualizationServer() bool {
+	l.logger.Info("Local: Starting separate visualization server for local development")
+	return true
+}
+
+
+func (l *LocalDeployment) GetEnvironmentInfo() map[string]interface{} {
+	return map[string]interface{}{
+		"platform":     l.GetPlatformName(),
+		"api_port":     l.GetAPIPort(),
+		"viz_port":     l.GetVisualizationPort(),
+		"go_env":       l.getEnvOrDefault("GO_ENV", "development"),
+		"config_path":  l.getEnvOrDefault("CONFIG_PATH", "config/config.yml"),
+		"log_level":    l.getEnvOrDefault("LOG_LEVEL", "info"),
+	}
+}
+
+
+func (l *LocalDeployment) ConfigureServer(server *http.Server) *http.Server {
+	l.logger.Info("Local: Applying local development server configuration")
+	
+	
+	server.ReadTimeout = 15 * time.Second
+	server.ReadHeaderTimeout = 5 * time.Second
+	server.WriteTimeout = 15 * time.Second
+	server.IdleTimeout = 60 * time.Second
+	
+	l.logger.Infof("Local: Server configured for local development on %s", server.Addr)
+	
+	return server
+}
+
+
+func (l *LocalDeployment) GetPlatformName() string {
+	return "Local Development"
+}
+
+
+func (l *LocalDeployment) getEnvOrDefault(key, defaultValue string) string {
+	if value := os.Getenv(key); value != "" {
+		return value
+	}
+	return defaultValue
+}

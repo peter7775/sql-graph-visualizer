@@ -35,6 +35,7 @@ import (
 	"sql-graph-visualizer/internal/domain/models"
 	"sql-graph-visualizer/internal/domain/repositories/config"
 	"sql-graph-visualizer/internal/domain/repositories/configrule"
+	"sql-graph-visualizer/internal/infrastructure/deployment"
 	"sql-graph-visualizer/internal/infrastructure/middleware"
 	mysqlrepo "sql-graph-visualizer/internal/infrastructure/persistence/mysql"
 	"sql-graph-visualizer/internal/infrastructure/persistence/neo4j"
@@ -49,38 +50,16 @@ var addr = "127.0.0.1:3000"
 
 func main() {
 	ctx := context.Background()
+	logger := logrus.StandardLogger()
 
-	// Always log startup information first
+	deploymentAdapter := deployment.NewDeploymentAdapter(logger)
+
 	logrus.Infof("=== SQL Graph Visualizer Starting - Build timestamp: %s ===", time.Now().Format("2006-01-02 15:04:05"))
-	logrus.Infof("Environment: %s", os.Getenv("RAILWAY_ENVIRONMENT"))
-	logrus.Infof("DEMO_MODE: %s", os.Getenv("DEMO_MODE"))
-	logrus.Infof("PORT: %s", os.Getenv("PORT"))
-	logrus.Infof("CONFIG_PATH: %s", os.Getenv("CONFIG_PATH"))
-	logrus.Infof("FORCE_FULL_MODE: %s", os.Getenv("FORCE_FULL_MODE"))
+	logrus.Infof("Platform: %s", deploymentAdapter.GetPlatformName())
 
-	if os.Getenv("RAILWAY_ENVIRONMENT") != "" {
-		logrus.Info("Railway environment detected - attempting normal startup first...")
-		logrus.Info("Debug: Railway environment variables:")
-
-		logrus.Infof("  MYSQLHOST: %s", os.Getenv("MYSQLHOST"))
-		logrus.Infof("  MYSQL_HOST: %s", os.Getenv("MYSQL_HOST"))
-		logrus.Infof("  MYSQLUSER: %s", os.Getenv("MYSQLUSER"))
-		logrus.Infof("  MYSQL_USER: %s", os.Getenv("MYSQL_USER"))
-		logrus.Infof("  MYSQL_DATABASE: %s", os.Getenv("MYSQL_DATABASE"))
-		logrus.Infof("  MYSQLPORT: %s", os.Getenv("MYSQLPORT"))
-		logrus.Infof("  MYSQL_PORT: %s", os.Getenv("MYSQL_PORT"))
-		logrus.Infof("  MYSQLPASSWORD: [length=%d]", len(os.Getenv("MYSQLPASSWORD")))
-		logrus.Infof("  MYSQL_PASSWORD: [length=%d]", len(os.Getenv("MYSQL_PASSWORD")))
-
-		logrus.Infof("  NEO4J_URI: %s", func() string {
-			if uri := os.Getenv("NEO4J_URI"); uri != "" {
-				return "[SET]"
-			} else {
-				return "[NOT_SET]"
-			}
-		}())
-		logrus.Infof("  NEO4J_USER: %s", os.Getenv("NEO4J_USER"))
-		logrus.Infof("  NEO4J_PASSWORD: [length=%d]", len(os.Getenv("NEO4J_PASSWORD")))
+	envInfo := deploymentAdapter.GetEnvironmentInfo()
+	for key, value := range envInfo {
+		logrus.Infof("%s: %v", key, value)
 	}
 
 	logrus.Infof("Loading configuration...")
@@ -89,48 +68,12 @@ func main() {
 		logrus.Fatalf("Failed to load configuration: %v", err)
 	}
 
-	if os.Getenv("RAILWAY_ENVIRONMENT") != "" {
-		logrus.Info("Overriding configuration with Railway environment variables...")
-
-		if uri := os.Getenv("NEO4J_URI"); uri != "" && uri != "${NEO4J_URI}" {
-			cfg.Neo4j.URI = uri
-			logrus.Infof("Neo4j URI overridden: %s", uri)
-		}
-		if user := os.Getenv("NEO4J_USER"); user != "" && user != "${NEO4J_USER}" {
-			cfg.Neo4j.User = user
-			logrus.Infof("Neo4j user overridden: %s", user)
-		}
-		if password := os.Getenv("NEO4J_PASSWORD"); password != "" && password != "${NEO4J_PASSWORD}" {
-			cfg.Neo4j.Password = password
-			logrus.Info("Neo4j password overridden")
-		}
-
-		if cfg.Database != nil && cfg.Database.MySQL != nil {
-
-			if host := getEnvOrDefault("MYSQLHOST", os.Getenv("MYSQL_HOST")); host != "" {
-				cfg.Database.MySQL.Host = host
-				logrus.Infof("MySQL host overridden: %s", host)
-			}
-
-			if user := getEnvOrDefault("MYSQLUSER", os.Getenv("MYSQL_USER")); user != "" {
-				cfg.Database.MySQL.User = user
-				logrus.Infof("MySQL user overridden: %s", user)
-			}
-
-			if password := getEnvOrDefault("MYSQLPASSWORD", os.Getenv("MYSQL_PASSWORD")); password != "" {
-				cfg.Database.MySQL.Password = password
-				logrus.Info("MySQL password overridden")
-			}
-			if database := os.Getenv("MYSQL_DATABASE"); database != "" {
-				cfg.Database.MySQL.Database = database
-				logrus.Infof("MySQL database overridden: %s", database)
-			}
-
-			if port := getEnvOrDefault("MYSQLPORT", os.Getenv("MYSQL_PORT")); port != "" {
-				if portNum := parseInt(port); portNum > 0 {
-					cfg.Database.MySQL.Port = portNum
-					logrus.Infof("MySQL port overridden: %d", portNum)
-				}
+	if deploymentAdapter.GetPlatformName() == "Railway" {
+		logrus.Info("Applying Railway-specific configuration overrides...")
+		if railwayDeployment, ok := deploymentAdapter.(*deployment.RailwayDeployment); ok {
+			dbConfig := railwayDeployment.GetRailwayDatabaseConfig()
+			if err := overrideConfigWithDeploymentSettings(cfg, dbConfig); err != nil {
+				logrus.Warnf("Error applying deployment config: %v", err)
 			}
 		}
 	}
@@ -167,12 +110,6 @@ func main() {
 
 			db, err = sql.Open("mysql", dsn)
 			if err != nil {
-				if os.Getenv("RAILWAY_ENVIRONMENT") != "" {
-					logrus.Warnf("MySQL connection failed in Railway environment: %v", err)
-					logrus.Info("Falling back to Railway demo mode...")
-					startRailwayDemoServer()
-					return
-				}
 				logrus.Fatalf("Failed to connect to MySQL: %v", err)
 			}
 
@@ -215,12 +152,7 @@ func main() {
 	var neo4jRepo ports.Neo4jPort
 	realNeo4jRepo, err := neo4j.NewNeo4jRepository(cfg.Neo4j.URI, cfg.Neo4j.User, cfg.Neo4j.Password)
 	if err != nil {
-		if os.Getenv("RAILWAY_ENVIRONMENT") != "" && os.Getenv("FORCE_FULL_MODE") != "true" {
-			logrus.Warnf("Neo4j connection failed in Railway environment: %v", err)
-			logrus.Info("Neo4j URI appears to be placeholder or invalid, falling back to Railway demo mode...")
-			startRailwayDemoServer()
-			return
-		} else if os.Getenv("FORCE_FULL_MODE") == "true" {
+		if os.Getenv("FORCE_FULL_MODE") == "true" {
 			logrus.Warnf("Neo4j connection failed but FORCE_FULL_MODE is enabled, using Mock repository: %v", err)
 			neo4jRepo = neo4j.NewMockNeo4jRepository()
 			logrus.Info("Using Mock Neo4j repository for visualization")
@@ -255,29 +187,15 @@ func main() {
 		}); ok {
 			_, err = sessionRunner.Run("MATCH (n) DETACH DELETE n", nil)
 			if err != nil {
-
-				railwayEnv := os.Getenv("RAILWAY_ENVIRONMENT")
 				forceFullMode := os.Getenv("FORCE_FULL_MODE")
 				logrus.Warnf("Neo4j operation failed: %v", err)
-				logrus.Infof("Debug - RAILWAY_ENVIRONMENT: '%s'", railwayEnv)
-				logrus.Infof("Debug - FORCE_FULL_MODE: '%s'", forceFullMode)
-				logrus.Infof("Debug - Railway check: %v", railwayEnv != "")
-				logrus.Infof("Debug - FORCE_FULL_MODE check: %v", forceFullMode == "true")
-				logrus.Infof("Debug - Combined condition: %v", railwayEnv != "" && forceFullMode != "true")
 
-				if railwayEnv != "" && forceFullMode != "true" {
-					logrus.Info("Condition 1: Railway environment without FORCE_FULL_MODE - starting MySQL-only mode")
-					startMySQLVisualizationServer(dbPort, cfg)
-					return
-				} else if forceFullMode == "true" {
-					logrus.Info("Condition 2: FORCE_FULL_MODE enabled - switching to Mock Neo4j repository")
-
+				if forceFullMode == "true" {
+					logrus.Info("FORCE_FULL_MODE enabled - switching to Mock Neo4j repository")
 					neo4jRepo = neo4j.NewMockNeo4jRepository()
-					realNeo4jRepo = nil // Clear real repo reference
+					realNeo4jRepo = nil
 					logrus.Info("Successfully switched to Mock Neo4j repository - continuing with normal flow")
-
 				} else {
-					logrus.Info("Condition 3: Neither Railway fallback nor FORCE_FULL_MODE - fatal error")
 					logrus.Fatalf("Error deleting data in Neo4j: %v", err)
 				}
 			}
@@ -330,15 +248,18 @@ func main() {
 	}
 	logrus.Infof("Data transformation successful")
 
-	logrus.Infof("Starting server...")
-	vizServer := startVisualizationServer(neo4jRepo, cfg)
-	defer func() {
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancel()
-		if err := vizServer.Shutdown(ctx); err != nil {
-			logrus.Errorf("Error shutting down visualization server: %v", err)
-		}
-	}()
+	logrus.Infof("Starting servers...")
+	var vizServer *http.Server
+	if deploymentAdapter.ShouldStartVisualizationServer() {
+		vizServer = startVisualizationServer(neo4jRepo, cfg, deploymentAdapter)
+		defer func() {
+			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			defer cancel()
+			if err := vizServer.Shutdown(ctx); err != nil {
+				logrus.Errorf("Error shutting down visualization server: %v", err)
+			}
+		}()
+	}
 
 	router := mux.NewRouter()
 
@@ -362,7 +283,8 @@ func main() {
 		w.WriteHeader(http.StatusOK)
 
 		debugInfo := map[string]interface{}{
-			"RAILWAY_ENVIRONMENT": os.Getenv("RAILWAY_ENVIRONMENT"),
+			"platform":            deploymentAdapter.GetPlatformName(),
+			"environment":         deploymentAdapter.GetEnvironmentInfo(),
 			"FORCE_FULL_MODE":     os.Getenv("FORCE_FULL_MODE"),
 			"neo4j_repo_type":     fmt.Sprintf("%T", neo4jRepo),
 			"real_neo4j_repo_nil": realNeo4jRepo == nil,
@@ -392,22 +314,13 @@ func main() {
 		}
 
 		response := map[string]interface{}{
-			"status":    "healthy",
-			"timestamp": time.Now().Format(time.RFC3339),
-			"version":   "v1.1.0",
-			"database":  dbStatus,
-			"neo4j":     "connected",
-			"environment": map[string]string{
-				"railway":    getEnvOrDefault("RAILWAY_ENVIRONMENT", "not_set"),
-				"port":       getEnvOrDefault("PORT", "not_set"),
-				"mysql_host": getEnvOrDefault("MYSQL_HOST", "not_set"),
-				"neo4j_uri": func() string {
-					if uri := os.Getenv("NEO4J_URI"); uri != "" {
-						return "set"
-					}
-					return "not_set"
-				}(),
-			},
+			"status":      "healthy",
+			"timestamp":   time.Now().Format(time.RFC3339),
+			"version":     "v1.1.0",
+			"platform":    deploymentAdapter.GetPlatformName(),
+			"database":    dbStatus,
+			"neo4j":       "connected",
+			"environment": deploymentAdapter.GetEnvironmentInfo(),
 		}
 		if err := json.NewEncoder(w).Encode(response); err != nil {
 			logrus.Errorf("Error encoding health response: %v", err)
@@ -432,20 +345,15 @@ func main() {
 	corsHandler := middleware.NewCORSHandler(corsOptions)
 	handler := corsHandler(router)
 
-	apiPort := os.Getenv("PORT")
-	if apiPort == "" {
-		apiPort = "8080"
-	}
-	apiAddr := ":" + apiPort // Listen on all interfaces
+	apiPort := deploymentAdapter.GetAPIPort()
+	apiAddr := ":" + apiPort
 
 	server := &http.Server{
-		Handler:           handler,
-		Addr:              apiAddr,
-		ReadTimeout:       15 * time.Second,
-		ReadHeaderTimeout: 5 * time.Second,
-		WriteTimeout:      15 * time.Second,
-		IdleTimeout:       60 * time.Second,
+		Handler: handler,
+		Addr:    apiAddr,
 	}
+
+	server = deploymentAdapter.ConfigureServer(server)
 
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, os.Interrupt)
@@ -474,7 +382,7 @@ func main() {
 	}
 }
 
-func startVisualizationServer(neo4jRepo ports.Neo4jPort, cfg *models.Config) *http.Server {
+func startVisualizationServer(neo4jRepo ports.Neo4jPort, cfg *models.Config, deploymentAdapter ports.DeploymentPort) *http.Server {
 	logrus.Infof("Starting visualization server")
 	mux := http.NewServeMux()
 
@@ -572,14 +480,7 @@ func startVisualizationServer(neo4jRepo ports.Neo4jPort, cfg *models.Config) *ht
 		http.ServeFile(w, r, filepath.Join(webRoot, "templates", "visualization.html"))
 	})
 
-	
-	vizPort := "3000"
-	if os.Getenv("RAILWAY_ENVIRONMENT") == "" {
-		
-		if envPort := os.Getenv("VIZ_PORT"); envPort != "" {
-			vizPort = envPort
-		}
-	}
+	vizPort := deploymentAdapter.GetVisualizationPort()
 	vizAddr := ":" + vizPort
 
 	server := &http.Server{
@@ -621,424 +522,46 @@ func findProjectRoot() string {
 	}
 }
 
-func startMySQLVisualizationServer(dbPort ports.DatabasePort, cfg *models.Config) {
-	logrus.Info("Starting MySQL-only visualization server...")
-
-	router := mux.NewRouter()
-
-	router.HandleFunc("/api/health", func(w http.ResponseWriter, r *http.Request) {
-		logrus.Info("Health check requested")
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-
-		response := map[string]interface{}{
-			"status":    "healthy",
-			"timestamp": time.Now().Format(time.RFC3339),
-			"version":   "v1.1.0-mysql",
-			"mode":      "mysql_only",
-			"database":  "connected",
-			"neo4j":     "unavailable",
-			"message":   "Running with MySQL data, Neo4j unavailable",
+func overrideConfigWithDeploymentSettings(cfg *models.Config, dbConfig map[string]string) error {
+	if cfg.Database != nil && cfg.Database.MySQL != nil {
+		if host := dbConfig["mysql_host"]; host != "" {
+			cfg.Database.MySQL.Host = host
+			logrus.Infof("MySQL host overridden: %s", host)
 		}
-
-		if err := json.NewEncoder(w).Encode(response); err != nil {
-			logrus.Errorf("Error encoding health response: %v", err)
-			http.Error(w, "Health check failed", http.StatusInternalServerError)
+		if user := dbConfig["mysql_user"]; user != "" {
+			cfg.Database.MySQL.User = user
+			logrus.Infof("MySQL user overridden: %s", user)
 		}
-	}).Methods("GET")
-
-	router.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		logrus.Info("Root endpoint requested - MySQL visualization mode")
-		w.Header().Set("Content-Type", "text/html")
-		w.WriteHeader(http.StatusOK)
-
-		actors, _ := getSampleActors(dbPort)
-		films, _ := getSampleFilms(dbPort)
-		categories, _ := getSampleCategories(dbPort)
-
-		html := generateMySQLVisualizationHTML(actors, films, categories)
-		if _, err := w.Write([]byte(html)); err != nil {
-			logrus.Errorf("Error writing response: %v", err)
+		if password := dbConfig["mysql_password"]; password != "" {
+			cfg.Database.MySQL.Password = password
+			logrus.Info("MySQL password overridden")
 		}
-	}).Methods("GET")
-
-	router.HandleFunc("/api/debug", func(w http.ResponseWriter, r *http.Request) {
-		logrus.Info("Debug endpoint requested - MySQL mode")
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-
-		debugInfo := map[string]interface{}{
-			"server_mode":         "mysql_only",
-			"RAILWAY_ENVIRONMENT": os.Getenv("RAILWAY_ENVIRONMENT"),
-			"FORCE_FULL_MODE":     os.Getenv("FORCE_FULL_MODE"),
-			"timestamp":           time.Now().Format(time.RFC3339),
-			"message":             "This endpoint is served by startMySQLVisualizationServer",
+		if database := dbConfig["mysql_database"]; database != "" {
+			cfg.Database.MySQL.Database = database
+			logrus.Infof("MySQL database overridden: %s", database)
 		}
-
-		if err := json.NewEncoder(w).Encode(debugInfo); err != nil {
-			logrus.Errorf("Error encoding debug response: %v", err)
-			http.Error(w, "Debug endpoint failed", http.StatusInternalServerError)
+		if port := dbConfig["mysql_port"]; port != "" {
+			if portNum := parseInt(port); portNum > 0 {
+				cfg.Database.MySQL.Port = portNum
+				logrus.Infof("MySQL port overridden: %d", portNum)
+			}
 		}
-	}).Methods("GET")
-
-	router.HandleFunc("/api/data", func(w http.ResponseWriter, r *http.Request) {
-		logrus.Info("Data API requested - MySQL mode")
-		w.Header().Set("Content-Type", "application/json")
-		w.Header().Set("Access-Control-Allow-Origin", "*")
-
-		// Get data from MySQL based on transform rules
-		actors, _ := getSampleActors(dbPort)
-		films, _ := getSampleFilms(dbPort)
-		categories, _ := getSampleCategories(dbPort)
-
-		data := map[string]interface{}{
-			"actors":     actors,
-			"films":      films,
-			"categories": categories,
-			"meta": map[string]interface{}{
-				"source":    "mysql",
-				"mode":      "mysql_only",
-				"neo4j":     "unavailable",
-				"message":   "Data directly from MySQL database",
-				"timestamp": time.Now().Format(time.RFC3339),
-			},
-		}
-
-		if err := json.NewEncoder(w).Encode(data); err != nil {
-			logrus.Errorf("Error encoding data response: %v", err)
-			http.Error(w, "Failed to encode data", http.StatusInternalServerError)
-		}
-	}).Methods("GET")
-
-	corsOptions := middleware.CORSOptions{
-		AllowedOrigins:   []string{"*"},
-		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
-		AllowedHeaders:   []string{"Content-Type", "Authorization", "Accept"},
-		AllowCredentials: true,
-	}
-	corsHandler := middleware.NewCORSHandler(corsOptions)
-	handler := corsHandler(router)
-
-	apiPort := os.Getenv("PORT")
-	if apiPort == "" {
-		apiPort = "3000"
-	}
-	apiAddr := ":" + apiPort
-
-	server := &http.Server{
-		Handler:           handler,
-		Addr:              apiAddr,
-		ReadTimeout:       15 * time.Second,
-		ReadHeaderTimeout: 5 * time.Second,
-		WriteTimeout:      15 * time.Second,
-		IdleTimeout:       60 * time.Second,
 	}
 
-	logrus.Infof("Starting MySQL visualization server on %s", apiAddr)
-	if err := server.ListenAndServe(); err != nil {
-		logrus.Fatalf("Failed to start MySQL visualization server: %v", err)
+	if uri := dbConfig["neo4j_uri"]; uri != "" && uri != "${NEO4J_URI}" {
+		cfg.Neo4j.URI = uri
+		logrus.Infof("Neo4j URI overridden")
 	}
-}
-
-func getSampleActors(dbPort ports.DatabasePort) ([]map[string]interface{}, error) {
-	query := "SELECT actor_id, first_name, last_name, CONCAT(first_name, ' ', last_name) as full_name FROM actor LIMIT 20"
-	return executeQuery(dbPort, query)
-}
-
-func getSampleFilms(dbPort ports.DatabasePort) ([]map[string]interface{}, error) {
-	query := "SELECT film_id, title, description, release_year, rating, length FROM film LIMIT 20"
-	return executeQuery(dbPort, query)
-}
-
-func getSampleCategories(dbPort ports.DatabasePort) ([]map[string]interface{}, error) {
-	query := "SELECT category_id, name FROM category LIMIT 10"
-	return executeQuery(dbPort, query)
-}
-
-func executeQuery(dbPort ports.DatabasePort, query string) ([]map[string]interface{}, error) {
-	results, err := dbPort.ExecuteQuery(query)
-	if err != nil {
-		logrus.Errorf("Query failed: %v", err)
-		return nil, err
+	if user := dbConfig["neo4j_user"]; user != "" && user != "${NEO4J_USER}" {
+		cfg.Neo4j.User = user
+		logrus.Infof("Neo4j user overridden: %s", user)
+	}
+	if password := dbConfig["neo4j_password"]; password != "" && password != "${NEO4J_PASSWORD}" {
+		cfg.Neo4j.Password = password
+		logrus.Info("Neo4j password overridden")
 	}
 
-	converted := make([]map[string]interface{}, len(results))
-	for i, result := range results {
-		convertedRow := make(map[string]interface{})
-		for k, v := range result {
-			convertedRow[k] = v
-		}
-		converted[i] = convertedRow
-	}
-
-	return converted, nil
-}
-
-func generateMySQLVisualizationHTML(actors, films, categories []map[string]interface{}) string {
-	return `<!DOCTYPE html>
-<html>
-<head>
-    <title>SQL Graph Visualizer - MySQL Data</title>
-    <style>
-        body { font-family: Arial, sans-serif; max-width: 1200px; margin: 0 auto; padding: 20px; background: #f5f5f5; }
-        .container { background: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-        h1 { color: #333; text-align: center; }
-        .section { margin: 30px 0; }
-        .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
-        .card { background: #f8f9fa; padding: 20px; border-radius: 8px; border-left: 4px solid #007bff; }
-        .card h3 { margin: 0 0 10px 0; color: #007bff; }
-        .status { background: #d4edda; padding: 15px; border-left: 4px solid #28a745; margin: 20px 0; }
-        .warning { background: #fff3cd; padding: 15px; border-left: 4px solid #ffc107; margin: 20px 0; }
-        table { width: 100%; border-collapse: collapse; margin: 20px 0; }
-        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #ddd; }
-        th { background-color: #f8f9fa; font-weight: bold; }
-        .api-link { color: #007bff; text-decoration: none; font-weight: bold; }
-        .api-link:hover { text-decoration: underline; }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <h1>🎬 SQL Graph Visualizer - MySQL Data</h1>
-        
-        <div class="status">
-            <strong>✅ MySQL Connected:</strong> Successfully displaying data from Sakila movie database!
-        </div>
-        
-        <div class="warning">
-            <strong>⚠️ Neo4j Unavailable:</strong> Showing raw MySQL data instead of graph visualization.
-        </div>
-
-        <div class="section">
-            <h2>🎭 Actors (Sample)</h2>
-            <div class="cards">` +
-		generateActorCards(actors) + `
-            </div>
-        </div>
-
-        <div class="section">
-            <h2>🎥 Films (Sample)</h2>
-            <div class="cards">` +
-		generateFilmCards(films) + `
-            </div>
-        </div>
-
-        <div class="section">
-            <h2>📂 Categories</h2>
-            <div class="cards">` +
-		generateCategoryCards(categories) + `
-            </div>
-        </div>
-
-        <div class="section">
-            <h2>🔗 API Endpoints</h2>
-            <ul>
-                <li><a href="/api/health" class="api-link">/api/health</a> - Health status</li>
-                <li><a href="/api/data" class="api-link">/api/data</a> - Raw MySQL data (JSON)</li>
-            </ul>
-        </div>
-
-        <p style="text-align: center; color: #666; margin-top: 40px;">
-            SQL Graph Visualizer - MySQL Mode | Railway Deployment
-        </p>
-    </div>
-</body>
-</html>`
-}
-
-func generateActorCards(actors []map[string]interface{}) string {
-	cards := ""
-	for _, actor := range actors {
-		name := "N/A"
-		if fullName, ok := actor["full_name"]; ok && fullName != nil {
-			name = fmt.Sprintf("%v", fullName)
-		}
-		id := "N/A"
-		if actorID, ok := actor["actor_id"]; ok && actorID != nil {
-			id = fmt.Sprintf("%v", actorID)
-		}
-		cards += fmt.Sprintf(`<div class="card"><h3>%s</h3><p>ID: %s</p></div>`, name, id)
-	}
-	return cards
-}
-
-func generateFilmCards(films []map[string]interface{}) string {
-	cards := ""
-	for _, film := range films {
-		title := "N/A"
-		if filmTitle, ok := film["title"]; ok && filmTitle != nil {
-			title = fmt.Sprintf("%v", filmTitle)
-		}
-		year := "N/A"
-		if releaseYear, ok := film["release_year"]; ok && releaseYear != nil {
-			year = fmt.Sprintf("%v", releaseYear)
-		}
-		rating := "N/A"
-		if filmRating, ok := film["rating"]; ok && filmRating != nil {
-			rating = fmt.Sprintf("%v", filmRating)
-		}
-		cards += fmt.Sprintf(`<div class="card"><h3>%s</h3><p>Year: %s | Rating: %s</p></div>`, title, year, rating)
-	}
-	return cards
-}
-
-func generateCategoryCards(categories []map[string]interface{}) string {
-	cards := ""
-	for _, category := range categories {
-		name := "N/A"
-		if catName, ok := category["name"]; ok && catName != nil {
-			name = fmt.Sprintf("%v", catName)
-		}
-		id := "N/A"
-		if catID, ok := category["category_id"]; ok && catID != nil {
-			id = fmt.Sprintf("%v", catID)
-		}
-		cards += fmt.Sprintf(`<div class="card"><h3>%s</h3><p>ID: %s</p></div>`, name, id)
-	}
-	return cards
-}
-
-func startRailwayDemoServer() {
-	logrus.Info("Starting Railway demo server...")
-
-	router := mux.NewRouter()
-
-	router.HandleFunc("/api/health", func(w http.ResponseWriter, r *http.Request) {
-		logrus.Info("Health check requested")
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-
-		response := map[string]interface{}{
-			"status":    "healthy",
-			"timestamp": time.Now().Format(time.RFC3339),
-			"version":   "v1.1.0-railway",
-			"mode":      "demo",
-			"database":  "demo_mode",
-			"neo4j":     "demo_mode",
-			"environment": map[string]string{
-				"railway":    getEnvOrDefault("RAILWAY_ENVIRONMENT", "not_set"),
-				"port":       getEnvOrDefault("PORT", "not_set"),
-				"mysql_host": getEnvOrDefault("MYSQL_HOST", "not_set"),
-				"neo4j_uri":  "demo_mode",
-			},
-		}
-
-		if err := json.NewEncoder(w).Encode(response); err != nil {
-			logrus.Errorf("Error encoding health response: %v", err)
-			http.Error(w, "Health check failed", http.StatusInternalServerError)
-		}
-	}).Methods("GET")
-
-	router.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		logrus.Info("Root endpoint requested in demo mode")
-		w.Header().Set("Content-Type", "text/html")
-		w.WriteHeader(http.StatusOK)
-
-		html := `<!DOCTYPE html>
-<html>
-<head>
-    <title>SQL Graph Visualizer - Railway Demo</title>
-    <style>
-        body { font-family: Arial, sans-serif; max-width: 800px; margin: 50px auto; padding: 20px; background: #f5f5f5; }
-        .container { background: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-        h1 { color: #333; text-align: center; }
-        .status { background: #e8f5e8; padding: 15px; border-left: 4px solid #4CAF50; margin: 20px 0; }
-        .info { background: #e3f2fd; padding: 15px; border-left: 4px solid #2196F3; margin: 20px 0; }
-        a { color: #2196F3; text-decoration: none; }
-        a:hover { text-decoration: underline; }
-        code { background: #f5f5f5; padding: 2px 5px; border-radius: 3px; }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <h1>🚀 SQL Graph Visualizer</h1>
-        <h2>Railway Demo Mode</h2>
-        
-        <div class="status">
-            <strong>✅ Status:</strong> Demo mode is running successfully on Railway!
-        </div>
-        
-        <div class="info">
-            <strong>ℹ️ Demo Mode:</strong> This application is running in demonstration mode because database connections are not available.
-            <br><br>
-            <strong>Available endpoints:</strong>
-            <ul>
-                <li><code><a href="/api/health">/api/health</a></code> - Health check endpoint</li>
-                <li><code>/api/graph</code> - Graph data endpoint (demo data)</li>
-            </ul>
-        </div>
-        
-        <div class="info">
-            <strong>🔗 Links:</strong>
-            <ul>
-                <li><a href="https://github.com/peter7775/sql-graph-visualizer">GitHub Repository</a></li>
-                <li><a href="/api/health">Health Status</a></li>
-            </ul>
-        </div>
-        
-        <p style="text-align: center; color: #666; margin-top: 30px;">
-            SQL Graph Visualizer v1.1.0-railway | Deployed on Railway
-        </p>
-    </div>
-</body>
-</html>`
-
-		if _, err := w.Write([]byte(html)); err != nil {
-			logrus.Errorf("Error writing response: %v", err)
-		}
-	}).Methods("GET")
-
-	router.HandleFunc("/api/graph", func(w http.ResponseWriter, r *http.Request) {
-		logrus.Info("Graph endpoint requested in demo mode")
-		w.Header().Set("Content-Type", "application/json")
-		w.Header().Set("Access-Control-Allow-Origin", "*")
-
-		demoData := map[string]interface{}{
-			"nodes": []map[string]interface{}{
-				{"id": "demo1", "label": "DemoNode", "properties": map[string]interface{}{"name": "Railway Demo", "type": "demo"}},
-				{"id": "demo2", "label": "StatusNode", "properties": map[string]interface{}{"name": "Healthy", "status": "running"}},
-			},
-			"relationships": []map[string]interface{}{
-				{"from": "demo1", "to": "demo2", "type": "CONNECTS_TO", "properties": map[string]interface{}{"demo": true}},
-			},
-			"meta": map[string]interface{}{
-				"mode":    "demo",
-				"message": "This is demo data for Railway deployment",
-			},
-		}
-
-		if err := json.NewEncoder(w).Encode(demoData); err != nil {
-			logrus.Errorf("Error encoding demo graph data: %v", err)
-			http.Error(w, "Failed to encode demo data", http.StatusInternalServerError)
-		}
-	}).Methods("GET")
-
-	apiPort := os.Getenv("PORT")
-	if apiPort == "" {
-		apiPort = "8080"
-	}
-	apiAddr := ":" + apiPort
-	corsOptions := middleware.CORSOptions{
-		AllowedOrigins:   []string{"*"},
-		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
-		AllowedHeaders:   []string{"Content-Type", "Authorization", "Accept"},
-		AllowCredentials: true,
-	}
-	corsHandler := middleware.NewCORSHandler(corsOptions)
-	handler := corsHandler(router)
-
-	server := &http.Server{
-		Handler:           handler,
-		Addr:              apiAddr,
-		ReadTimeout:       15 * time.Second,
-		ReadHeaderTimeout: 5 * time.Second,
-		WriteTimeout:      15 * time.Second,
-		IdleTimeout:       60 * time.Second,
-	}
-
-	logrus.Infof("Starting Railway demo server on %s", apiAddr)
-	if err := server.ListenAndServe(); err != nil {
-		logrus.Fatalf("Failed to start Railway demo server: %v", err)
-	}
+	return nil
 }
 
 func getEnvOrDefault(key, defaultValue string) string {
@@ -1073,7 +596,6 @@ type PerformanceServiceContainer struct {
 	MetricsInjector     *performance.SimpleMetricsInjector
 }
 
-// initializePerformanceServices creates and configures all performance services
 func initializePerformanceServices(cfg *models.Config, db *sql.DB) *PerformanceServiceContainer {
 	logger := logrus.StandardLogger()
 
@@ -1224,52 +746,6 @@ func createRealtimeConfig(cfg *models.Config) *performance.RealtimeMonitorConfig
 	}
 
 	return config
-}
-
-func createMinimalRailwayConfig() *models.Config {
-	logrus.Info("Creating minimal Railway configuration from environment variables...")
-
-	mysqlHost := os.Getenv("MYSQL_HOST")
-	mysqlUser := os.Getenv("MYSQL_USER")
-	mysqlDatabase := os.Getenv("MYSQL_DATABASE")
-
-	logrus.Infof("MySQL env vars: HOST=%s, USER=%s, DB=%s", mysqlHost, mysqlUser, mysqlDatabase)
-
-	if mysqlHost == "${MYSQL_HOST}" || mysqlHost == "" || mysqlUser == "${MYSQL_USER}" || mysqlUser == "" {
-		logrus.Warn("MySQL environment variables not properly set - starting in demo mode")
-		startRailwayDemoServer()
-		return nil
-	}
-
-	return &models.Config{
-		MySQL: models.MySQLConfig{
-			Host:     mysqlHost,
-			Port:     3306,
-			User:     mysqlUser,
-			Password: os.Getenv("MYSQL_PASSWORD"),
-			Database: mysqlDatabase,
-		},
-		Neo4j: models.Neo4jConfig{
-			URI:      os.Getenv("NEO4J_URI"),
-			User:     getEnvOrDefault("NEO4J_USER", "neo4j"),
-			Password: os.Getenv("NEO4J_PASSWORD"),
-		},
-		TransformRules: []models.TransformationConfig{
-			{
-				Name:     "demo_rule",
-				RuleType: "node",
-				Source: models.SourceConfig{
-					Type:  "query",
-					Value: "SELECT 'Railway Demo' as name, 'demo' as type",
-				},
-				TargetType: "DemoNode",
-				FieldMappings: map[string]string{
-					"name": "name",
-					"type": "type",
-				},
-			},
-		},
-	}
 }
 
 func createBenchmarkConfig(cfg *models.Config) *performance.BenchmarkServiceConfig {
