@@ -182,22 +182,22 @@ func main() {
 			}
 		}()
 
-		if sessionRunner, ok := session.(interface {
-			Run(string, interface{}) (interface{}, error)
-		}); ok {
-			_, err = sessionRunner.Run("MATCH (n) DETACH DELETE n", nil)
-			if err != nil {
-				forceFullMode := os.Getenv("FORCE_FULL_MODE")
-				logrus.Warnf("Neo4j operation failed: %v", err)
+		result, err := session.Run("MATCH (n) DETACH DELETE n", nil)
+		if err != nil {
+			forceFullMode := os.Getenv("FORCE_FULL_MODE")
+			logrus.Warnf("Neo4j operation failed: %v", err)
 
-				if forceFullMode == "true" {
-					logrus.Info("FORCE_FULL_MODE enabled - switching to Mock Neo4j repository")
-					neo4jRepo = neo4j.NewMockNeo4jRepository()
-					realNeo4jRepo = nil
-					logrus.Info("Successfully switched to Mock Neo4j repository - continuing with normal flow")
-				} else {
-					logrus.Fatalf("Error deleting data in Neo4j: %v", err)
-				}
+			if forceFullMode == "true" {
+				logrus.Info("FORCE_FULL_MODE enabled - switching to Mock Neo4j repository")
+				neo4jRepo = neo4j.NewMockNeo4jRepository()
+				realNeo4jRepo = nil
+				logrus.Info("Successfully switched to Mock Neo4j repository - continuing with normal flow")
+			} else {
+				logrus.Fatalf("Error deleting data in Neo4j: %v", err)
+			}
+		} else {
+			if _, err := result.Consume(); err != nil {
+				logrus.Warnf("Error consuming result after deleting Neo4j data: %v", err)
 			}
 		}
 		logrus.Infof("All data in Neo4j deleted")
@@ -633,15 +633,15 @@ func initializePerformanceServices(cfg *models.Config, db *sql.DB) *PerformanceS
 
 	psAdapter := performance.NewPerformanceSchemaAdapter(db, logger, psConfig)
 
-	slowQueryThreshold := 200.0 // Default 200ms
+	slowQueryThreshold := 200.0
 	if cfg.Performance != nil && cfg.Performance.Monitoring != nil && cfg.Performance.Monitoring.Analysis != nil {
 		slowQueryThreshold = cfg.Performance.Monitoring.Analysis.SlowQueryThreshold
 	}
 
 	analyzerConfig := &performance.PerformanceAnalyzerConfig{
 		HighLatencyThreshold:      time.Duration(slowQueryThreshold) * time.Millisecond,
-		LowThroughputThreshold:    10.0, // Default value
-		HighErrorRateThreshold:    1.0,  // Default value
+		LowThroughputThreshold:    10.0,
+		HighErrorRateThreshold:    1.0,
 		HotspotLatencyWeight:      0.4,
 		HotspotFrequencyWeight:    0.4,
 		HotspotResourceWeight:     0.2,
