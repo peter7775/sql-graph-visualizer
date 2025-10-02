@@ -263,6 +263,12 @@ func main() {
 
 	router := mux.NewRouter()
 
+	
+	logrus.Info("Registering visualization routes via deployment adapter...")
+	if err := deploymentAdapter.RegisterVisualizationRoutes(router, neo4jRepo, cfg); err != nil {
+		logrus.Errorf("Failed to register visualization routes: %v", err)
+	}
+
 	if performanceServices != nil {
 		logrus.Info("Registering performance API routes...")
 		performanceHandlers := api.NewPerformanceHandlers(
@@ -335,161 +341,9 @@ func main() {
 		}
 	})
 
-	
-	if !deploymentAdapter.ShouldStartVisualizationServer() {
-		router.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-			logrus.Info("Root endpoint requested - Railway mode")
-			w.Header().Set("Content-Type", "text/html; charset=utf-8")
-			w.WriteHeader(http.StatusOK)
-
-			html := `<!DOCTYPE html>
-<html>
-<head>
-    <title>SQL Graph Visualizer - Railway</title>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <style>
-        body { 
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
-            max-width: 1000px; 
-            margin: 0 auto; 
-            padding: 2rem; 
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            color: white;
-        }
-        .container { 
-            background: rgba(255,255,255,0.1); 
-            backdrop-filter: blur(10px);
-            padding: 2rem; 
-            border-radius: 20px; 
-            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
-            border: 1px solid rgba(255,255,255,0.1);
-        }
-        h1 { 
-            color: white; 
-            text-align: center;
-            font-size: 2.5rem;
-            margin-bottom: 0.5rem;
-        }
-        .subtitle {
-            text-align: center;
-            opacity: 0.8;
-            margin-bottom: 2rem;
-        }
-        .status { 
-            background: rgba(76, 175, 80, 0.2);
-            padding: 1rem; 
-            border-left: 4px solid #4CAF50; 
-            margin: 1.5rem 0;
-            border-radius: 5px;
-        }
-        .info { 
-            background: rgba(33, 150, 243, 0.2);
-            padding: 1rem; 
-            border-left: 4px solid #2196F3; 
-            margin: 1.5rem 0;
-            border-radius: 5px;
-        }
-        .api-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: 1rem;
-            margin: 2rem 0;
-        }
-        .api-card {
-            background: rgba(255,255,255,0.1);
-            padding: 1.5rem;
-            border-radius: 10px;
-            border: 1px solid rgba(255,255,255,0.1);
-        }
-        .api-card h3 {
-            margin: 0 0 0.5rem 0;
-            color: #FFD54F;
-        }
-        a { 
-            color: #FFD54F; 
-            text-decoration: none;
-            font-weight: 500;
-        }
-        a:hover { 
-            text-decoration: underline;
-            color: #FFF176;
-        }
-        code { 
-            background: rgba(0,0,0,0.3); 
-            padding: 0.2rem 0.5rem; 
-            border-radius: 3px;
-            font-size: 0.9rem;
-        }
-        .footer {
-            text-align: center;
-            margin-top: 3rem;
-            opacity: 0.7;
-            font-size: 0.9rem;
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <h1>🚀 SQL Graph Visualizer</h1>
-        <p class="subtitle">Railway Production Deployment</p>
-        
-        <div class="status">
-            <strong>✅ Status:</strong> Application is running successfully on Railway!
-        </div>
-        
-        <div class="info">
-            <strong>ℹ️ Platform:</strong> ` + deploymentAdapter.GetPlatformName() + `<br>
-            <strong>🔧 Mode:</strong> API Server with Mock Neo4j (FORCE_FULL_MODE enabled)<br>
-            <strong>📊 Features:</strong> Health monitoring, GraphQL API, Performance metrics
-        </div>
-
-        <div class="api-grid">
-            <div class="api-card">
-                <h3>🩺 Health Check</h3>
-                <p><code><a href="/api/health">/api/health</a></code></p>
-                <p>Monitor application status and database connections</p>
-            </div>
-            
-            <div class="api-card">
-                <h3>🐛 Debug Info</h3>
-                <p><code><a href="/api/debug">/api/debug</a></code></p>
-                <p>Technical debugging information and environment details</p>
-            </div>
-            
-            <div class="api-card">
-                <h3>🔗 GraphQL</h3>
-                <p><code><a href="/api/graphql">/api/graphql</a></code></p>
-                <p>Interactive GraphQL playground for data queries</p>
-            </div>
-            
-            <div class="api-card">
-                <h3>⚙️ Configuration</h3>
-                <p><code><a href="/config">/config</a></code></p>
-                <p>Application configuration and transform rules</p>
-            </div>
-        </div>
-        
-        <div class="info">
-            <strong>🔗 External Links:</strong><br>
-            • <a href="https://github.com/petrms/sql-graph-visualizer" target="_blank">GitHub Repository</a><br>
-            • <a href="https://railway.app" target="_blank">Deployed on Railway</a><br>
-            • <a href="/api/health">API Status</a>
-        </div>
-        
-        <div class="footer">
-            SQL Graph Visualizer v1.1.0 | Railway Deployment<br>
-            Refactored with DDD Architecture & Deployment Modules
-        </div>
-    </div>
-</body>
-</html>`
-
-			if _, err := w.Write([]byte(html)); err != nil {
-				logrus.Errorf("Error writing root page response: %v", err)
-			}
-		}).Methods("GET")
+	if homepageHandler := deploymentAdapter.GetHomepageHandler(); homepageHandler != nil {
+		router.HandleFunc("/homepage", homepageHandler).Methods("GET")
+		logrus.Info("Platform-specific homepage handler registered at /homepage")
 	}
 
 	corsOptions := middleware.CORSOptions{
@@ -505,11 +359,10 @@ func main() {
 	apiPort := deploymentAdapter.GetAPIPort()
 	apiAddr := ":" + apiPort
 
-	
 	server := &http.Server{
 		Handler:           handler,
 		Addr:              apiAddr,
-		ReadHeaderTimeout: 10 * time.Second, 
+		ReadHeaderTimeout: 10 * time.Second,
 		ReadTimeout:       30 * time.Second,
 		WriteTimeout:      30 * time.Second,
 		IdleTimeout:       60 * time.Second,

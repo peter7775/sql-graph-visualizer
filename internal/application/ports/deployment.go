@@ -1,6 +1,10 @@
 package ports
 
-import "net/http"
+import (
+	"net/http"
+	"github.com/gorilla/mux"
+	"sql-graph-visualizer/internal/domain/models"
+)
 
 // DeploymentPort defines the interface for deployment platform-specific logic
 type DeploymentPort interface {
@@ -21,4 +25,10 @@ type DeploymentPort interface {
 	
 	// GetPlatformName returns the name of the deployment platform
 	GetPlatformName() string
+	
+	// RegisterVisualizationRoutes allows deployment to add visualization endpoints to API server
+	RegisterVisualizationRoutes(router *mux.Router, neo4jRepo Neo4jPort, cfg *models.Config) error
+	
+	// GetHomepageHandler returns platform-specific homepage handler (nil if not needed)
+	GetHomepageHandler() http.HandlerFunc
 }

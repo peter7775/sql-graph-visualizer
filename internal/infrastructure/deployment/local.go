@@ -5,8 +5,10 @@ import (
 	"os"
 	"time"
 
+	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
 	"sql-graph-visualizer/internal/application/ports"
+	"sql-graph-visualizer/internal/domain/models"
 )
 
 
@@ -85,4 +87,15 @@ func (l *LocalDeployment) getEnvOrDefault(key, defaultValue string) string {
 		return value
 	}
 	return defaultValue
+}
+
+
+func (l *LocalDeployment) RegisterVisualizationRoutes(router *mux.Router, neo4jRepo ports.Neo4jPort, cfg *models.Config) error {
+	l.logger.Info("Local: Visualization routes handled by separate server - no registration needed")
+	return nil
+}
+
+
+func (l *LocalDeployment) GetHomepageHandler() http.HandlerFunc {
+	return nil
 }
