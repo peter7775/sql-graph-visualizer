@@ -348,9 +348,14 @@ func main() {
 	apiPort := deploymentAdapter.GetAPIPort()
 	apiAddr := ":" + apiPort
 
+	
 	server := &http.Server{
-		Handler: handler,
-		Addr:    apiAddr,
+		Handler:           handler,
+		Addr:              apiAddr,
+		ReadHeaderTimeout: 10 * time.Second, 
+		ReadTimeout:       30 * time.Second,
+		WriteTimeout:      30 * time.Second,
+		IdleTimeout:       60 * time.Second,
 	}
 
 	server = deploymentAdapter.ConfigureServer(server)
