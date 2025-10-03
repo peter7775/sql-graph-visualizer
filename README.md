@@ -22,7 +22,7 @@
 
 > **Status: Active Development** - This project is under active development. APIs may change.
 
-<table>
+<table style="border-collapse: collapse; width: 100%; margin-top: 20px; border-style: hidden">
 <tr>
 <td width="60%">
 
@@ -37,15 +37,7 @@ A powerful Go application that transforms SQL database structures (MySQL, Postgr
 </tr>
 </table>
 
-<div align="center">
 
-**[Quick Start](#quick-start)** • 
-**<a href="https://sql-graph-visualizer-production.up.railway.app" target="_blank">Live Demo</a>** • 
-**[Documentation](https://docs.example.com)** • 
-**[Discussions](https://github.com/peter7775/sql-graph-visualizer/discussions)** • 
-**[Issues](https://github.com/peter7775/sql-graph-visualizer/issues)**
-
-</div>
 
 ---
 
