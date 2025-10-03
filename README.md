@@ -22,7 +22,20 @@
 
 > **Status: Active Development** - This project is under active development. APIs may change.
 
+<table>
+<tr>
+<td width="60%">
+
 A powerful Go application that transforms SQL database structures (MySQL, PostgresSQL) into Neo4j graph databases with interactive visualization and comprehensive performance analysis capabilities. Built with Domain Driven Design architecture and featuring flexible transformation rules, advanced performance benchmarking, and robust database connection management.
+
+</td>
+<td width="40%">
+
+<img src="SGV - screenshot.png" alt="SQL Graph Visualizer Screenshot" width="100%" style="border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
+
+</td>
+</tr>
+</table>
 
 <div align="center">
 
