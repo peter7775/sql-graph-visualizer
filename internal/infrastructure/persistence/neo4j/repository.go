@@ -54,7 +54,6 @@ func (r *Neo4jRepository) StoreGraph(graph *graph.GraphAggregate) error {
 		logrus.Infof("Node saved: type=%s, properties=%+v", node.Type, node.Properties)
 	}
 
-	// Store relationships
 	logrus.Infof("Number of relationships to save: %d", len(graph.GetRelationships()))
 	for _, rel := range graph.GetRelationships() {
 		// Get the actual IDs from node properties instead of node entity IDs
@@ -71,7 +70,6 @@ func (r *Neo4jRepository) StoreGraph(graph *graph.GraphAggregate) error {
 
 		logrus.Infof("Creating relationship %s: %v -> %v", rel.Type, sourceID, targetID)
 
-		// Create relationship with proper source and target matching
 		query := "MATCH (a {id: $sourceId}), (b {id: $targetId}) CREATE (a)-[r:" + rel.Type + "]->(b) SET r = $props"
 		params := map[string]any{
 			"sourceId": sourceID,
@@ -85,7 +83,6 @@ func (r *Neo4jRepository) StoreGraph(graph *graph.GraphAggregate) error {
 			return err
 		}
 
-		// Check if relationship was actually created
 		summary, err := result.Consume()
 		if err != nil {
 			logrus.Warnf("Error consuming result for relationship %s: %v", rel.Type, err)
@@ -158,7 +155,6 @@ func (r *Neo4jRepository) ExportGraph(query string) (any, error) {
 		}
 		processedNodes[node.Id] = true
 
-		// Add node to graph
 		nodeProps := make(map[string]any)
 		for key, value := range node.Props {
 			nodeProps[key] = value
@@ -196,13 +192,11 @@ func (r *Neo4jRepository) ExportGraph(query string) (any, error) {
 		rel := record.Values[1].(neo4j.Relationship)
 		targetNode := record.Values[2].(neo4j.Node)
 
-		// Create relationship properties
 		relProps := make(map[string]any)
 		for key, value := range rel.Props {
 			relProps[key] = value
 		}
 
-		// Add relationship to graph
 		err = graphAgg.AddDirectRelationship(
 			rel.Type,
 			sourceNode.Id,

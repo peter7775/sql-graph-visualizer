@@ -77,7 +77,6 @@ func (pa *PerformanceAnalyzer) IdentifyBottlenecks(ctx context.Context, results 
 	queryBottlenecks := pa.analyzeQueryBottlenecks(results.QueryResults)
 	bottlenecks = append(bottlenecks, queryBottlenecks...)
 
-	// Sort by severity and confidence
 	sort.Slice(bottlenecks, func(i, j int) bool {
 		if bottlenecks[i].Severity != bottlenecks[j].Severity {
 			return pa.severityToInt(bottlenecks[i].Severity) > pa.severityToInt(bottlenecks[j].Severity)
@@ -106,13 +105,11 @@ func (pa *PerformanceAnalyzer) AnalyzeCriticalPath(ctx context.Context, graphDat
 		AverageLatency: pa.calculateAverageNodeLatency(graphData.Nodes),
 	}
 
-	// Build adjacency graph from performance data
 	graph := pa.buildPerformanceGraph(graphData)
 
 	// Find critical paths using modified Floyd-Warshall algorithm
 	paths := pa.findCriticalPaths(graph, graphData)
 
-	// Filter and sort paths by impact
 	filteredPaths := pa.filterCriticalPaths(paths)
 	analysis.CriticalPaths = filteredPaths
 
@@ -168,7 +165,6 @@ func (pa *PerformanceAnalyzer) DetectHotspots(ctx context.Context, metrics []*po
 		}
 	}
 
-	// Sort hotspots by score
 	sort.Slice(hotspots, func(i, j int) bool {
 		return hotspots[i].HotspotScore > hotspots[j].HotspotScore
 	})
@@ -213,7 +209,6 @@ func (pa *PerformanceAnalyzer) AnalyzeQueryPatterns(ctx context.Context, queryRe
 	antiPatterns := pa.detectAntiPatterns(queryResults)
 	analysis.AntiPatterns = antiPatterns
 
-	// Generate recommendations
 	recommendations := pa.generatePatternRecommendations(patternGroups, antiPatterns)
 	analysis.Recommendations = recommendations
 
@@ -236,7 +231,6 @@ func (pa *PerformanceAnalyzer) IdentifyInefficiencies(ctx context.Context, query
 		issues = append(issues, queryIssues...)
 	}
 
-	// Sort by priority and impact
 	sort.Slice(issues, func(i, j int) bool {
 		if issues[i].Priority != issues[j].Priority {
 			return issues[i].Priority > issues[j].Priority
@@ -257,23 +251,18 @@ func (pa *PerformanceAnalyzer) IdentifyInefficiencies(ctx context.Context, query
 func (pa *PerformanceAnalyzer) GenerateOptimizationSuggestions(ctx context.Context, analysis *ports.PerformanceAnalysis) ([]ports.OptimizationSuggestion, error) {
 	suggestions := make([]ports.OptimizationSuggestion, 0)
 
-	// Generate index suggestions
 	indexSuggestions := pa.generateIndexSuggestions(analysis)
 	suggestions = append(suggestions, indexSuggestions...)
 
-	// Generate query optimization suggestions
 	querySuggestions := pa.generateQueryOptimizationSuggestions(analysis)
 	suggestions = append(suggestions, querySuggestions...)
 
-	// Generate schema optimization suggestions
 	schemaSuggestions := pa.generateSchemaOptimizationSuggestions(analysis)
 	suggestions = append(suggestions, schemaSuggestions...)
 
-	// Generate configuration suggestions
 	configSuggestions := pa.generateConfigurationSuggestions(analysis)
 	suggestions = append(suggestions, configSuggestions...)
 
-	// Sort by priority and expected impact
 	sort.Slice(suggestions, func(i, j int) bool {
 		if suggestions[i].Priority != suggestions[j].Priority {
 			return suggestions[i].Priority > suggestions[j].Priority
@@ -312,7 +301,6 @@ func (pa *PerformanceAnalyzer) ValidateOptimization(ctx context.Context, suggest
 		pa.validateConfigurationOptimization(suggestion, validation)
 	}
 
-	// Validate general constraints
 	pa.validateGeneralConstraints(suggestion, validation)
 
 	if len(validation.ValidationErrors) > 0 {
@@ -329,7 +317,6 @@ func (pa *PerformanceAnalyzer) AnalyzeTrends(ctx context.Context, historicalData
 			pa.config.MinDataPoints, len(historicalData))
 	}
 
-	// Sort data by timestamp
 	sort.Slice(historicalData, func(i, j int) bool {
 		return historicalData[i].Timestamp.Before(historicalData[j].Timestamp)
 	})
@@ -356,7 +343,6 @@ func (pa *PerformanceAnalyzer) AnalyzeTrends(ctx context.Context, historicalData
 	anomalies := pa.detectAnomalies(historicalData)
 	analysis.Anomalies = anomalies
 
-	// Generate predictions (simple implementation)
 	predictions := pa.generatePredictions(historicalData)
 	analysis.Predictions = predictions
 
@@ -473,7 +459,6 @@ func (pa *PerformanceAnalyzer) CalculatePerformanceScore(ctx context.Context, me
 	totalScore += throughputScore * throughputWeight
 	totalWeight += throughputWeight
 
-	// Error rate factor (weight: 0.25)
 	errorScore := pa.calculateErrorScore(metrics.ErrorRate)
 	errorWeight := 0.25
 	factors = append(factors, ports.PerformanceScoreFactor{
@@ -504,7 +489,6 @@ func (pa *PerformanceAnalyzer) CalculatePerformanceScore(ctx context.Context, me
 		totalScore = totalScore / totalWeight
 	}
 
-	// Create component scores map
 	componentScores := make(map[string]float64)
 	for _, factor := range factors {
 		componentScores[factor.Name] = factor.Value

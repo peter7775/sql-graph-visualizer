@@ -124,7 +124,6 @@ func (s *SimpleMetricsInjector) injectMetrics(ctx context.Context) error {
 		return nil
 	}
 
-	// Generate and inject metrics between nodes
 	metricsCount := 0
 	for i, sourceResult := range results {
 		for j, targetResult := range results {

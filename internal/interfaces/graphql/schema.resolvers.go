@@ -16,7 +16,6 @@ import (
 // TransformData is the resolver for the transformData field.
 func (r *mutationResolver) TransformData(ctx context.Context) (bool, error) {
 	// This would trigger the data transformation process
-	// For now, we'll return true to indicate success
 	// In a full implementation, this would call the transformation service
 	return true, nil
 }
@@ -35,7 +34,6 @@ func (r *queryResolver) Graph(ctx context.Context) (*models.Graph, error) {
 		return nil, fmt.Errorf("invalid graph type")
 	}
 
-	// Convert to GraphQL models
 	graphQLNodes := make([]*models.Node, 0)
 	for _, node := range graphAggregate.GetNodes() {
 		// Convert properties to JSON string
@@ -87,7 +85,6 @@ func (r *queryResolver) NodesByType(ctx context.Context, typeArg string) ([]*mod
 		return nil, fmt.Errorf("invalid graph type")
 	}
 
-	// Convert nodes to GraphQL models
 	graphQLNodes := make([]*models.Node, 0)
 	for _, node := range graphAggregate.GetNodes() {
 		if node.Type == typeArg {
@@ -154,7 +151,6 @@ func (r *queryResolver) RelationshipsByType(ctx context.Context, typeArg string)
 		return nil, fmt.Errorf("invalid graph type")
 	}
 
-	// Convert relationships to GraphQL models
 	graphQLRelationships := make([]*models.Relationship, 0)
 	for _, rel := range graphAggregate.GetRelationships() {
 		if rel.Type == typeArg {
@@ -203,7 +199,6 @@ func (r *queryResolver) SearchNodes(ctx context.Context, query string) ([]*model
 		return nil, fmt.Errorf("invalid graph type")
 	}
 
-	// Convert matching nodes to GraphQL models
 	graphQLNodes := make([]*models.Node, 0)
 	for _, node := range graphAggregate.GetNodes() {
 		propertiesJSON, err := json.Marshal(node.Properties)

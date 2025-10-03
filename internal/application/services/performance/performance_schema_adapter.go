@@ -202,7 +202,6 @@ func NewPerformanceSchemaAdapter(db *sql.DB, logger *logrus.Logger, config *Perf
 		queryCache: make(map[string]*sql.Stmt),
 	}
 
-	// Test connection and Performance Schema availability
 	adapter.testConnection()
 
 	return adapter
@@ -306,7 +305,6 @@ func (p *PerformanceSchemaAdapter) ConvertToPerformanceMetrics(data *Performance
 
 	if data.GlobalStatus != nil {
 		metrics.QueriesPerSecond = data.GlobalStatus.QueriesPerSecond
-		// Additional global metrics mapping
 	}
 
 	// Aggregate statement statistics

@@ -302,7 +302,6 @@ func (gpm *GraphPerformanceMapper) MapPerformanceToGraph(
 		return nil, fmt.Errorf("performance data is required")
 	}
 
-	// Create performance graph data structure
 	perfGraph := &PerformanceGraphData{
 		ID:          fmt.Sprintf("perf-graph-%d", time.Now().Unix()),
 		GeneratedAt: time.Now(),
@@ -312,7 +311,6 @@ func (gpm *GraphPerformanceMapper) MapPerformanceToGraph(
 		Bottlenecks: make([]BottleneckInfo, 0),
 	}
 
-	// Build table performance map
 	tablePerformanceMap := gpm.buildTablePerformanceMap(performanceData)
 
 	// Map nodes with performance data
@@ -331,7 +329,6 @@ func (gpm *GraphPerformanceMapper) MapPerformanceToGraph(
 	// Identify hotspots and bottlenecks
 	gpm.identifyHotspotsAndBottlenecks(perfGraph)
 
-	// Set metadata
 	perfGraph.Metadata = GraphMetadata{
 		NodeCount:        len(perfGraph.Nodes),
 		EdgeCount:        len(perfGraph.Edges),
@@ -430,7 +427,6 @@ func (gpm *GraphPerformanceMapper) createPerformanceNode(
 		}
 	}
 
-	// Generate ID from label if not directly available
 	nodeID := fmt.Sprintf("%s_%s", node.Label, tableName)
 	if idProp, exists := node.Properties["id"]; exists {
 		nodeID = fmt.Sprintf("%v", idProp)
@@ -493,7 +489,6 @@ func (gpm *GraphPerformanceMapper) createPerformanceEdge(
 	// Calculate visual properties
 	visual := gpm.calculateEdgeVisualProperties(edgePerf)
 
-	// Generate edge ID from type and endpoints
 	edgeID := fmt.Sprintf("%s_%s_%s", edge.Type, edge.From, edge.To)
 	if idProp, exists := edge.Properties["id"]; exists {
 		edgeID = fmt.Sprintf("%v", idProp)

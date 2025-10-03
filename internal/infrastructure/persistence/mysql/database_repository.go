@@ -41,7 +41,6 @@ func (r *MySQLDatabaseRepository) Connect(ctx context.Context, config models.Dat
 		return nil, fmt.Errorf("expected MySQLConfig, got %T", config)
 	}
 
-	// Use Username if set, otherwise fallback to User
 	username := mysqlConfig.GetUsername()
 
 	dsn := fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?parseTime=true&timeout=%ds&readTimeout=%ds&writeTimeout=%ds",
@@ -55,7 +54,6 @@ func (r *MySQLDatabaseRepository) Connect(ctx context.Context, config models.Dat
 		mysqlConfig.GetSecurity().QueryTimeout,
 	)
 
-	// Add SSL configuration if enabled
 	sslConfig := mysqlConfig.GetSSLConfig()
 	if sslConfig.Enabled {
 		dsn += "&tls=true"
@@ -71,13 +69,11 @@ func (r *MySQLDatabaseRepository) Connect(ctx context.Context, config models.Dat
 		return nil, fmt.Errorf("failed to open MySQL database connection: %w", err)
 	}
 
-	// Set connection pool limits
 	security := mysqlConfig.GetSecurity()
 	db.SetMaxOpenConns(security.MaxConnections)
 	db.SetMaxIdleConns(security.MaxConnections / 2)
 	db.SetConnMaxLifetime(10 * time.Minute)
 
-	// Test connection
 	ctxTimeout, cancel := context.WithTimeout(ctx, time.Duration(security.ConnectionTimeout)*time.Second)
 	defer cancel()
 

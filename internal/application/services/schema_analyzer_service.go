@@ -179,7 +179,6 @@ func (s *SchemaAnalyzerService) isJunctionTable(table *models.TableInfo) bool {
 		return true
 	}
 
-	// Check naming patterns
 	junctionPatterns := []string{
 		`.*_.*`,   // contains underscore
 		`.*s_.*s`, // plural_plural pattern
@@ -329,7 +328,6 @@ func (s *SchemaAnalyzerService) generateRelationshipRule(table *models.TableInfo
 		return nil
 	}
 
-	// For junction tables, create relationships between the referenced entities
 	rel1 := table.Relationships[0]
 	rel2 := table.Relationships[1]
 
@@ -369,8 +367,6 @@ func (s *SchemaAnalyzerService) generateRelationshipType(junctionTable, table1, 
 	cleanJunction := strings.TrimSuffix(strings.ToUpper(junctionTable), "S")
 	cleanJunction = strings.ReplaceAll(cleanJunction, "_", "_")
 
-	// If junction table name doesn't provide clear relationship name,
-	// generate one based on the connected tables
 	if !strings.Contains(cleanJunction, strings.ToUpper(table1)) &&
 		!strings.Contains(cleanJunction, strings.ToUpper(table2)) {
 		return fmt.Sprintf("%s_TO_%s", strings.ToUpper(table1), strings.ToUpper(table2))

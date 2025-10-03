@@ -45,7 +45,6 @@ func (suite *DirectDatabaseIntegrationTestSuite) SetupSuite() {
 		suite.T().Skip("Integration tests skipped - set INTEGRATION_TESTS=true to enable")
 	}
 
-	// Setup configuration for Sakila test database
 	suite.config = &models.MySQLConfig{
 		Host:           "127.0.0.1",
 		Port:           3308,
@@ -80,12 +79,10 @@ func (suite *DirectDatabaseIntegrationTestSuite) SetupSuite() {
 		},
 	}
 
-	// Initialize repository and service
 	mysqlRepo := mysql.NewMySQLRepository(nil)
 	suite.mysqlRepo = mysqlRepo.(*mysql.MySQLRepository)
 	suite.dbService = services.NewDirectDatabaseService(mysqlRepo, suite.config)
 
-	// Validate that test database is available
 	err := suite.validateTestDatabase()
 	require.NoError(suite.T(), err, "Test database should be available")
 }
@@ -152,23 +149,19 @@ func (suite *DirectDatabaseIntegrationTestSuite) TestSchemaAnalysis() {
 		require.NoError(suite.T(), err)
 		require.NotNil(suite.T(), result)
 
-		// Validate basic result structure
 		assert.True(suite.T(), result.Success)
 		assert.Empty(suite.T(), result.ErrorMessage)
 		assert.NotNil(suite.T(), result.DatabaseInfo)
 		assert.NotNil(suite.T(), result.SchemaAnalysis)
 		assert.NotNil(suite.T(), result.Summary)
 
-		// Validate database info
 		assert.Equal(suite.T(), "sakila", result.DatabaseInfo.Database)
 		assert.Equal(suite.T(), 3308, result.DatabaseInfo.Port)
 		assert.Contains(suite.T(), result.DatabaseInfo.Version, "8.0")
 
-		// Validate schema analysis
 		assert.Greater(suite.T(), len(result.SchemaAnalysis.Tables), 10)
 		assert.Equal(suite.T(), "sakila", result.SchemaAnalysis.DatabaseName)
 
-		// Validate processing time
 		assert.Greater(suite.T(), result.ProcessingDuration, time.Millisecond*10)
 		assert.Less(suite.T(), result.ProcessingDuration, time.Second*30)
 	})
@@ -180,7 +173,6 @@ func (suite *DirectDatabaseIntegrationTestSuite) TestSchemaAnalysis() {
 		tables := result.SchemaAnalysis.Tables
 		assert.Greater(suite.T(), len(tables), 10)
 
-		// Check for expected Sakila tables
 		expectedTables := []string{"actor", "film", "customer", "rental", "inventory"}
 		foundTables := make(map[string]bool)
 

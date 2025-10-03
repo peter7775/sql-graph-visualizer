@@ -45,7 +45,6 @@ type Config struct {
 func LoadConfig(filePath string) (*Config, error) {
 	logrus.Debugf("Attempting to load config from: %s", filePath)
 
-	// Validate path to prevent directory traversal
 	cleanPath := filepath.Clean(filePath)
 	if strings.Contains(cleanPath, "..") {
 		return nil, fmt.Errorf("invalid config path: %s", filePath)
@@ -80,7 +79,6 @@ func Load() (*Config, error) {
 	// Check for environment-specific config
 	if configPath := os.Getenv("CONFIG_PATH"); configPath != "" {
 		logrus.Debugf("Using CONFIG_PATH: %s", configPath)
-		// If path is not absolute, make it relative to project root
 		if !filepath.IsAbs(configPath) {
 			configPath = filepath.Join(findProjectRoot(), configPath)
 			logrus.Debugf("Resolved to absolute path: %s", configPath)
@@ -95,7 +93,6 @@ func Load() (*Config, error) {
 		return LoadConfig(configPath)
 	}
 
-	// Default config
 	configPath := findProjectRoot() + "/config/config.yml"
 	logrus.Debugf("Using default config: %s", configPath)
 	return LoadConfig(configPath)
@@ -134,7 +131,6 @@ func findProjectRoot() string {
 		wd = parent
 	}
 
-	// If we can't find go.mod, return original working directory
 	logrus.Warnf("Cannot find project root directory with go.mod, using: %s", originalWd)
 	return originalWd
 }

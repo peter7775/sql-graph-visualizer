@@ -76,7 +76,6 @@ func NewSysbenchAdapter(logger *logrus.Logger, config *SysbenchConfig) *Sysbench
 		config: config,
 	}
 
-	// Check availability during initialization
 	adapter.checkAvailability()
 
 	return adapter
@@ -90,7 +89,6 @@ func (s *SysbenchAdapter) Execute(ctx context.Context, config ports.BenchmarkCon
 
 	startTime := time.Now()
 
-	// Build sysbench command
 	cmd, err := s.buildCommand(config)
 	if err != nil {
 		return nil, fmt.Errorf("failed to build command: %w", err)
@@ -103,7 +101,6 @@ func (s *SysbenchAdapter) Execute(ctx context.Context, config ports.BenchmarkCon
 		"command":   strings.Join(cmd.Args, " "),
 	}).Info("Starting sysbench benchmark")
 
-	// Execute sysbench
 	output, err := s.executeCommand(ctx, cmd)
 	if err != nil {
 		return nil, fmt.Errorf("sysbench execution failed: %w", err)
@@ -112,7 +109,6 @@ func (s *SysbenchAdapter) Execute(ctx context.Context, config ports.BenchmarkCon
 	endTime := time.Now()
 	duration := endTime.Sub(startTime)
 
-	// Parse results
 	metrics, queryResults, err := s.parseOutput(output, config)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse sysbench output: %w", err)
@@ -222,7 +218,6 @@ func (s *SysbenchAdapter) checkAvailability() {
 		binaryPath = "sysbench"
 	}
 
-	// Check if sysbench binary exists
 	// #nosec G204 - binaryPath is configured and validated
 	cmd := exec.Command(binaryPath, "--version")
 	output, err := cmd.Output()
@@ -251,16 +246,13 @@ func (s *SysbenchAdapter) buildCommand(config ports.BenchmarkConfig) (*exec.Cmd,
 		binaryPath = "sysbench"
 	}
 
-	// Parse database URL for connection parameters
 	dbParams, err := s.parseDatabaseURL(config.DatabaseURL, config.DatabaseType)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse database URL: %w", err)
 	}
 
-	// Build command arguments
 	args := []string{binaryPath}
 
-	// Add database connection parameters
 	args = append(args, dbParams...)
 
 	// Add test-specific parameters
@@ -297,7 +289,6 @@ func (s *SysbenchAdapter) buildCommand(config ports.BenchmarkConfig) (*exec.Cmd,
 		}
 	}
 
-	// Add common parameters
 	args = append(args, fmt.Sprintf("--threads=%d", config.Threads))
 	args = append(args, fmt.Sprintf("--time=%d", int(config.Duration.Seconds())))
 
@@ -315,7 +306,6 @@ func (s *SysbenchAdapter) buildCommand(config ports.BenchmarkConfig) (*exec.Cmd,
 		}
 	}
 
-	// Add test type and run command
 	args = append(args, config.TestType, "run")
 
 	// #nosec G204 - args are validated and constructed internally
@@ -396,7 +386,6 @@ func (s *SysbenchAdapter) executeCommand(ctx context.Context, cmd *exec.Cmd) (st
 	// #nosec G204 - cmd.Args are validated and constructed internally
 	cmd = exec.CommandContext(ctx, cmd.Args[0], cmd.Args[1:]...)
 
-	// Execute command and capture output
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		s.logger.WithFields(logrus.Fields{
@@ -487,7 +476,6 @@ func (s *SysbenchAdapter) parseOutput(output string, config ports.BenchmarkConfi
 		}
 	}
 
-	// Create synthetic query performance data based on test type
 	queryResults = s.createQueryPerformanceData(config, metrics)
 
 	return metrics, queryResults, nil

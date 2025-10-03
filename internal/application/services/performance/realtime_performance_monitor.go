@@ -222,7 +222,6 @@ func (rpm *RealtimePerformanceMonitor) Stop() error {
 	// Signal stop
 	close(rpm.stopChannel)
 
-	// Close all WebSocket connections
 	rpm.clientMutex.Lock()
 	for conn := range rpm.clients {
 		conn.Close()
@@ -246,14 +245,12 @@ func (rpm *RealtimePerformanceMonitor) HandleWebSocket(w http.ResponseWriter, r 
 		return
 	}
 
-	// Upgrade connection
 	conn, err := rpm.upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		rpm.logger.WithError(err).Error("Failed to upgrade WebSocket connection")
 		return
 	}
 
-	// Create client info
 	clientInfo := &ClientInfo{
 		ID:               fmt.Sprintf("client-%d", time.Now().UnixNano()),
 		ConnectedAt:      time.Now(),
@@ -355,11 +352,9 @@ func (rpm *RealtimePerformanceMonitor) collectAndBroadcastPerformanceData(ctx co
 		}
 	}
 
-	// Generate metrics summary
 	metrics := rpm.generateRealtimeMetrics(perfData)
 	rpm.broadcastToClients("metrics", metrics)
 
-	// Check for alerts
 	rpm.checkAndGenerateAlerts(perfData)
 
 	return nil
@@ -518,7 +513,6 @@ func (rpm *RealtimePerformanceMonitor) handleClientMessages(conn *websocket.Conn
 			break
 		}
 
-		// Process client message
 		rpm.processClientMessage(conn, clientInfo, msg)
 	}
 }

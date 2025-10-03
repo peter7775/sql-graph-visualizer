@@ -200,7 +200,6 @@ func (c *PostgreSQLConfig) Validate() error {
 		return NewValidationError("postgresql.port", "Port must be between 1 and 65535")
 	}
 
-	// Validate SSL mode
 	validSSLModes := []string{"disable", "allow", "prefer", "require", "verify-ca", "verify-full"}
 	if c.SSLConfig.Mode != "" {
 		valid := false

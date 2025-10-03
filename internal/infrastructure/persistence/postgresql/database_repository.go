@@ -41,7 +41,6 @@ func (r *PostgreSQLDatabaseRepository) Connect(ctx context.Context, config model
 		return nil, fmt.Errorf("expected PostgreSQLConfig, got %T", config)
 	}
 
-	// Use Username if set, otherwise fallback to User
 	username := pgConfig.GetUsername()
 
 	// Build PostgreSQL connection string
@@ -66,7 +65,6 @@ func (r *PostgreSQLDatabaseRepository) Connect(ctx context.Context, config model
 		connString.WriteString(fmt.Sprintf(" sslrootcert=%s", pgConfig.SSLConfig.CAFile))
 	}
 
-	// Add timeout configurations
 	security := pgConfig.GetSecurity()
 	if security.ConnectionTimeout > 0 {
 		connString.WriteString(fmt.Sprintf(" connect_timeout=%d", security.ConnectionTimeout))
@@ -75,7 +73,6 @@ func (r *PostgreSQLDatabaseRepository) Connect(ctx context.Context, config model
 		connString.WriteString(fmt.Sprintf(" statement_timeout=%dms", pgConfig.StatementTimeout*1000))
 	}
 
-	// Set application name for .monitoring
 	appName := pgConfig.ApplicationName
 	if appName == "" {
 		appName = "sql-graph-visualizer"
@@ -89,12 +86,10 @@ func (r *PostgreSQLDatabaseRepository) Connect(ctx context.Context, config model
 		return nil, fmt.Errorf("failed to open PostgreSQL database connection: %w", err)
 	}
 
-	// Set connection pool limits
 	db.SetMaxOpenConns(security.MaxConnections)
 	db.SetMaxIdleConns(security.MaxConnections / 2)
 	db.SetConnMaxLifetime(10 * time.Minute)
 
-	// Test connection
 	ctxTimeout, cancel := context.WithTimeout(ctx, time.Duration(security.ConnectionTimeout)*time.Second)
 	defer cancel()
 
@@ -212,7 +207,6 @@ func (r *PostgreSQLDatabaseRepository) GetColumns(ctx context.Context, tableName
 			col.Comment = fmt.Sprintf("max_length: %s", maxLength.String)
 		}
 
-		// Check if this column is part of primary key
 		r.enrichColumnWithConstraintInfo(ctx, tableName, &col)
 
 		columns = append(columns, &col)

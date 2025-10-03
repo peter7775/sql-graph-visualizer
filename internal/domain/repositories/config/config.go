@@ -82,7 +82,6 @@ func findProjectRoot() string {
 			logrus.Info("Railway deployment detected, using /app as project root")
 			return "/app"
 		}
-		// Fallback to current working directory in Railway
 		wd, err := os.Getwd()
 		if err == nil {
 			logrus.Infof("Using current working directory as project root: %s", wd)

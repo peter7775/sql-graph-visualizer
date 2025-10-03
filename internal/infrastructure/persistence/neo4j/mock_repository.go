@@ -1,6 +1,3 @@
-/*
- * Mock Neo4j Repository for Railway deployment when Neo4j service is unavailable
- */
 
 package neo4j
 
@@ -40,7 +37,6 @@ func (m *MockNeo4jRepository) SearchNodes(criteria string) ([]*graph.GraphAggreg
 func (m *MockNeo4jRepository) ExportGraph(query string) (any, error) {
 	logrus.Info("Mock: Exporting graph data")
 
-	// Create sample graph data for visualization
 	sampleNodes := []*entities.Node{
 		entities.NewNode("1", "Actor"),
 		entities.NewNode("2", "Actor"),
@@ -50,7 +46,6 @@ func (m *MockNeo4jRepository) ExportGraph(query string) (any, error) {
 		entities.NewNode("6", "Category"),
 	}
 
-	// Set properties
 	sampleNodes[0].Properties["name"] = "Tom Hanks"
 	sampleNodes[0].Properties["actor_id"] = "1"
 	sampleNodes[1].Properties["name"] = "Brad Pitt"

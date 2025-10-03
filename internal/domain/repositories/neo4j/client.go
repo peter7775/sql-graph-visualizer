@@ -110,7 +110,6 @@ func (c *Client) StoreGraph(graph *graph.GraphAggregate) error {
 		logrus.Infof("Node saved: type=%s, properties=%+v", node.Type, node.Properties)
 	}
 
-	// Store relationships
 	logrus.Infof("Number of relationships to save: %d", len(graph.GetRelationships()))
 	for _, rel := range graph.GetRelationships() {
 		// Get the actual IDs from node properties instead of node entity IDs
@@ -127,7 +126,6 @@ func (c *Client) StoreGraph(graph *graph.GraphAggregate) error {
 
 		logrus.Infof("Creating relationship %s: %v -> %v", rel.Type, sourceID, targetID)
 
-		// Create relationship with proper name (not generic RELATION)
 		query := "MATCH (a:Node {id: $fromId}), (b:Node {id: $toId}) CREATE (a)-[r:" + rel.Type + "]->(b) SET r = $props"
 		params := map[string]any{
 			"fromId": sourceID,
@@ -141,7 +139,6 @@ func (c *Client) StoreGraph(graph *graph.GraphAggregate) error {
 			return err
 		}
 
-		// Check if relationship was actually created
 		summary, err := result.Consume()
 		if err != nil {
 			logrus.Warnf("Error consuming result for relationship %s: %v", rel.Type, err)

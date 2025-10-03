@@ -189,7 +189,6 @@ func (c *Config) GetDatabaseConfig() DatabaseConfig {
 		return c.Database.GetActiveConfig()
 	}
 
-	// Fall back to legacy MySQL config for backward compatibility
 	return &c.MySQL
 }
 

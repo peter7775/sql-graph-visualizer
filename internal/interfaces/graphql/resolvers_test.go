@@ -81,14 +81,12 @@ func setupTestResolver() (*Resolver, *MockNeo4jPort) {
 func createTestGraphAggregate() *graph.GraphAggregate {
 	graphAgg := graph.NewGraphAggregate("test-graph")
 
-	// Add test nodes
 	node1Props := map[string]any{"id": "1", "name": "Test User", "email": "test@example.com"}
 	node2Props := map[string]any{"id": "2", "title": "Test Post", "content": "This is a test post"}
 
 	graphAgg.AddNode("User", node1Props)
 	graphAgg.AddNode("Post", node2Props)
 
-	// Add test relationship
 	relProps := map[string]any{"created_at": "2025-01-01"}
 	graphAgg.AddDirectRelationship("CREATED", "1", "2", relProps)
 
@@ -104,7 +102,6 @@ func TestQueryResolver_Graph(t *testing.T) {
 	// Mock the ExportGraph call
 	mockNeo4j.On("ExportGraph", "MATCH (n)-[r]->(m) RETURN n, r, m").Return(testGraph, nil)
 
-	// Execute the query
 	ctx := context.Background()
 	result, err := queryResolver.Graph(ctx)
 
@@ -114,7 +111,6 @@ func TestQueryResolver_Graph(t *testing.T) {
 	assert.Len(t, result.Nodes, 2)
 	assert.Len(t, result.Relationships, 1)
 
-	// Check node details
 	assert.Equal(t, "User_1", result.Nodes[0].ID)
 	assert.Equal(t, "User", result.Nodes[0].Label)
 
@@ -123,7 +119,6 @@ func TestQueryResolver_Graph(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, "Test User", node1Props["name"])
 
-	// Check relationship details
 	assert.Equal(t, "User_1", result.Relationships[0].From)
 	assert.Equal(t, "Post_2", result.Relationships[0].To)
 	assert.Equal(t, "CREATED", result.Relationships[0].Type)
@@ -140,7 +135,6 @@ func TestQueryResolver_NodesByType(t *testing.T) {
 	// Mock the ExportGraph call for User nodes
 	mockNeo4j.On("ExportGraph", "MATCH (n:User) RETURN n").Return(testGraph, nil)
 
-	// Execute the query
 	ctx := context.Background()
 	result, err := queryResolver.NodesByType(ctx, "User")
 
@@ -169,7 +163,6 @@ func TestQueryResolver_Node(t *testing.T) {
 	// Mock the ExportGraph call
 	mockNeo4j.On("ExportGraph", "MATCH (n) WHERE id(n) = $nodeId RETURN n").Return(testGraph, nil)
 
-	// Execute the query
 	ctx := context.Background()
 	result, err := queryResolver.Node(ctx, "User_1")
 
@@ -196,7 +189,6 @@ func TestQueryResolver_Node_NotFound(t *testing.T) {
 	// Mock the ExportGraph call
 	mockNeo4j.On("ExportGraph", "MATCH (n) WHERE id(n) = $nodeId RETURN n").Return(testGraph, nil)
 
-	// Execute the query for non-existent node
 	ctx := context.Background()
 	result, err := queryResolver.Node(ctx, "NonExistent_999")
 
@@ -217,7 +209,6 @@ func TestQueryResolver_RelationshipsByType(t *testing.T) {
 	// Mock the ExportGraph call
 	mockNeo4j.On("ExportGraph", "MATCH (n)-[r:CREATED]->(m) RETURN n, r, m").Return(testGraph, nil)
 
-	// Execute the query
 	ctx := context.Background()
 	result, err := queryResolver.RelationshipsByType(ctx, "CREATED")
 
@@ -248,7 +239,6 @@ func TestQueryResolver_SearchNodes(t *testing.T) {
 	expectedCypher := "MATCH (n) WHERE ANY(prop IN keys(n) WHERE toString(n[prop]) CONTAINS 'Test') RETURN n"
 	mockNeo4j.On("ExportGraph", expectedCypher).Return(testGraph, nil)
 
-	// Execute the query
 	ctx := context.Background()
 	result, err := queryResolver.SearchNodes(ctx, "Test")
 
@@ -264,7 +254,6 @@ func TestQueryResolver_Config(t *testing.T) {
 	resolver, _ := setupTestResolver()
 	queryResolver := &queryResolver{resolver}
 
-	// Execute the query
 	ctx := context.Background()
 	result, err := queryResolver.Config(ctx)
 
@@ -281,7 +270,6 @@ func TestMutationResolver_TransformData(t *testing.T) {
 	resolver, _ := setupTestResolver()
 	mutationResolver := &mutationResolver{resolver}
 
-	// Execute the mutation
 	ctx := context.Background()
 	result, err := mutationResolver.TransformData(ctx)
 
@@ -297,7 +285,6 @@ func TestQueryResolver_Graph_InvalidType(t *testing.T) {
 	// Mock the ExportGraph call to return invalid type
 	mockNeo4j.On("ExportGraph", "MATCH (n)-[r]->(m) RETURN n, r, m").Return("invalid-type", nil)
 
-	// Execute the query
 	ctx := context.Background()
 	result, err := queryResolver.Graph(ctx)
 
@@ -316,7 +303,6 @@ func TestQueryResolver_Graph_ExportError(t *testing.T) {
 	// Mock the ExportGraph call to return an error
 	mockNeo4j.On("ExportGraph", "MATCH (n)-[r]->(m) RETURN n, r, m").Return(nil, assert.AnError)
 
-	// Execute the query
 	ctx := context.Background()
 	result, err := queryResolver.Graph(ctx)
 

@@ -17,18 +17,14 @@ type DeploymentPort interface {
 	// ShouldStartVisualizationServer determines if visualization server should be started
 	ShouldStartVisualizationServer() bool
 	
-	// GetEnvironmentInfo returns environment-specific information for debugging
 	GetEnvironmentInfo() map[string]interface{}
 	
-	// ConfigureServer applies deployment-specific server configuration
 	ConfigureServer(server *http.Server) *http.Server
 	
-	// GetPlatformName returns the name of the deployment platform
 	GetPlatformName() string
 	
 	// RegisterVisualizationRoutes allows deployment to add visualization endpoints to API server
 	RegisterVisualizationRoutes(router *mux.Router, neo4jRepo Neo4jPort, cfg *models.Config) error
 	
-	// GetHomepageHandler returns platform-specific homepage handler (nil if not needed)
 	GetHomepageHandler() http.HandlerFunc
 }

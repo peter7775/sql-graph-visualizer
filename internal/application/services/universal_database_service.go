@@ -133,7 +133,6 @@ func (s *UniversalDatabaseService) ConnectAndAnalyze(ctx context.Context) (*mode
 		return result, nil
 	}
 
-	// Populate database connection info
 	result.DatabaseInfo.Host = s.config.GetHost()
 	result.DatabaseInfo.Port = s.config.GetPort()
 	result.DatabaseInfo.User = s.config.GetUsername()
@@ -206,7 +205,6 @@ func (s *UniversalDatabaseService) TestConnection(ctx context.Context) (*models.
 		}
 	}
 
-	// Attempt connection
 	db, err := s.repo.Connect(ctx, s.config)
 	if err != nil {
 		testResult.ErrorMessage = fmt.Sprintf("Connection failed: %v", err)
@@ -220,7 +218,6 @@ func (s *UniversalDatabaseService) TestConnection(ctx context.Context) (*models.
 		return testResult, nil
 	}
 
-	// Get database information
 	dbName, err := s.repo.GetDatabaseName(ctx)
 	if err == nil {
 		testResult.DatabaseName = dbName
@@ -233,7 +230,6 @@ func (s *UniversalDatabaseService) TestConnection(ctx context.Context) (*models.
 
 	testResult.UserName = s.config.GetUsername()
 
-	// Get table count
 	tables, err := s.repo.GetTables(ctx, s.config.GetDataFiltering())
 	if err != nil {
 		testResult.Warnings = append(testResult.Warnings, "Could not list tables")
@@ -256,13 +252,11 @@ func (s *UniversalDatabaseService) analyzeSchema(ctx context.Context, db *sql.DB
 		DiscoveredAt: time.Now(),
 	}
 
-	// Get current database name
 	dbName, err := s.repo.GetDatabaseName(ctx)
 	if err == nil {
 		result.DatabaseName = dbName
 	}
 
-	// Get all tables
 	tableNames, err := s.repo.GetTables(ctx, s.config.GetDataFiltering())
 	if err != nil {
 		return nil, fmt.Errorf("failed to get tables: %w", err)
@@ -294,14 +288,12 @@ func (s *UniversalDatabaseService) analyzeTable(ctx context.Context, tableName s
 		Recommendations: []string{},
 	}
 
-	// Get column information
 	columns, err := s.repo.GetColumns(ctx, tableName)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get columns for table %s: %w", tableName, err)
 	}
 	tableInfo.Columns = columns
 
-	// Get row count estimate
 	rowCount, err := s.repo.GetTableRowCount(ctx, tableName)
 	if err == nil {
 		tableInfo.EstimatedRows = rowCount
@@ -342,7 +334,6 @@ func (s *UniversalDatabaseService) generateAnalysisSummary(result *models.Univer
 			"Large number of tables detected - consider using table filtering to focus on important entities")
 	}
 
-	// Check for potential issues
 	totalRows := int64(0)
 	for _, table := range result.SchemaAnalysis.Tables {
 		totalRows += table.EstimatedRows

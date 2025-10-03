@@ -27,7 +27,6 @@ func main() {
 	logrus.SetLevel(logrus.InfoLevel)
 	logrus.Info("🚀 Starting PostgreSQL connection test for Issue #7")
 
-	// Test configuration
 	config := &models.PostgreSQLConfig{
 		Host:     getEnvOrDefault("POSTGRES_HOST", "localhost"),
 		Port:     5432,
@@ -65,14 +64,12 @@ func main() {
 	logrus.Infof("📡 Testing PostgreSQL connection to %s@%s:%d/%s",
 		config.GetUsername(), config.GetHost(), config.GetPort(), config.GetDatabase())
 
-	// Create repository factory
 	factory := factories.NewDatabaseRepositoryFactory()
 
 	// Test supported database types
 	supportedTypes := factory.GetSupportedDatabaseTypes()
 	logrus.Infof("✅ Supported database types: %v", supportedTypes)
 
-	// Create PostgreSQL repository
 	repo, err := factory.CreateRepository(models.DatabaseTypePostgreSQL)
 	if err != nil {
 		log.Fatalf("❌ Failed to create PostgreSQL repository: %v", err)
@@ -80,7 +77,6 @@ func main() {
 
 	logrus.Info("🔧 Created PostgreSQL repository successfully")
 
-	// Test connection
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Minute)
 	defer cancel()
 
@@ -92,7 +88,6 @@ func main() {
 
 	logrus.Info("✅ PostgreSQL connection established successfully")
 
-	// Test basic operations
 	testBasicOperations(ctx, repo)
 
 	logrus.Info("🎉 PostgreSQL test completed successfully - Issue #7 implementation working!")
@@ -106,7 +101,6 @@ func testBasicOperations(ctx context.Context, repo interface{}) {
 
 	logrus.Info("📊 Testing database metadata retrieval...")
 
-	// Test would include:
 	// - repo.GetDatabaseName()
 	// - repo.GetDatabaseVersion()
 	// - repo.GetTables()

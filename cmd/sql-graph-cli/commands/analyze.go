@@ -278,17 +278,14 @@ func runAnalyze(cmd *cobra.Command, opts analyzeOptions) error {
 		return fmt.Errorf("unsupported database type: %s", opts.DBType)
 	}
 
-	// Create database repository based on type
 	factory := factories.NewDatabaseRepositoryFactory()
 	repo, err := factory.CreateRepository(opts.DBType)
 	if err != nil {
 		return fmt.Errorf("failed to create database repository: %w", err)
 	}
 
-	// Create universal database service
 	dbService := services.NewUniversalDatabaseService(repo, config)
 
-	// Validate configuration
 	fmt.Printf("🔧 Validating configuration...\n")
 	if err := dbService.ValidateConfiguration(); err != nil {
 		return fmt.Errorf("configuration validation failed: %w", err)
@@ -296,7 +293,6 @@ func runAnalyze(cmd *cobra.Command, opts analyzeOptions) error {
 
 	ctx := context.Background()
 
-	// Show connection info
 	fmt.Printf("📡 Connecting to %s database: %s@%s:%d/%s\n", strings.ToUpper(string(opts.DBType)), opts.Username, opts.Host, opts.Port, opts.Database)
 	if opts.DBType == models.DatabaseTypePostgreSQL && opts.Schema != "" {
 		fmt.Printf("   Schema: %s\n", opts.Schema)
@@ -317,7 +313,6 @@ func runAnalyze(cmd *cobra.Command, opts analyzeOptions) error {
 		fmt.Printf("Dry run mode: analysis only, no rule generation\n")
 	}
 
-	// Start analysis
 	fmt.Printf("\n🔍 Starting database analysis...\n")
 	startTime := time.Now()
 

@@ -28,7 +28,6 @@ func NewConfigCmd() *cobra.Command {
 		Long:  `Validate, display, and manage SQL Graph Visualizer configurations.`,
 	}
 
-	// Add subcommands
 	cmd.AddCommand(newConfigValidateCmd())
 	cmd.AddCommand(newConfigShowCmd())
 	cmd.AddCommand(newConfigInitCmd())
@@ -247,7 +246,6 @@ func runConfigInit(outputFile string, template string, force bool) error {
 	fmt.Printf("📄 Output file: %s\n", outputFile)
 	fmt.Printf("TARGET Template: %s\n", template)
 
-	// Generate config based on template
 	outputDir := filepath.Dir(outputFile)
 
 	// Create output directory if needed
@@ -329,7 +327,6 @@ func validateConfigStructure(config map[string]interface{}) []string {
 func validateMySQLConfig(mysqlConfig map[interface{}]interface{}) {
 	fmt.Println("\nDETAIL MySQL Configuration:")
 
-	// Check required fields
 	requiredFields := []string{"host", "port", "username", "password", "database"}
 	for _, field := range requiredFields {
 		if _, ok := mysqlConfig[field]; !ok {

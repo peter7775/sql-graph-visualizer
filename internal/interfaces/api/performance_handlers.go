@@ -168,7 +168,6 @@ func (ph *PerformanceHandlers) StartBenchmark(w http.ResponseWriter, r *http.Req
 		CustomParams: req.Config,
 	}
 
-	// Start benchmark
 	executionID, err := ph.benchmarkService.ExecuteBenchmark(r.Context(), config, req.BenchmarkType)
 	if err != nil {
 		ph.sendErrorResponse(w, http.StatusInternalServerError, "benchmark_error", "Failed to start benchmark", err.Error())
@@ -202,7 +201,6 @@ func (ph *PerformanceHandlers) GetBenchmark(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	// Get benchmark status
 	status := ph.benchmarkService.GetBenchmarkStatus(r.Context(), benchmarkID)
 	if status == nil {
 		ph.sendErrorResponse(w, http.StatusNotFound, "not_found", "Benchmark not found", "")
@@ -289,7 +287,6 @@ func (ph *PerformanceHandlers) GetCurrentPerformanceData(w http.ResponseWriter, 
 	includeGraph := r.URL.Query().Get("include_graph") == "true"
 	includeAnalysis := r.URL.Query().Get("include_analysis") == "true"
 
-	// Collect current performance data
 	perfData, err := ph.psAdapter.CollectPerformanceData(r.Context())
 	if err != nil {
 		ph.sendErrorResponse(w, http.StatusInternalServerError, "collection_error", "Failed to collect performance data", err.Error())
@@ -421,7 +418,6 @@ func (ph *PerformanceHandlers) GetPerformanceGraph(w http.ResponseWriter, r *htt
 		return
 	}
 
-	// Map performance data to graph
 	graphData, err := ph.graphMapper.MapPerformanceToGraph(r.Context(), baseGraph, perfData)
 	if err != nil {
 		ph.sendErrorResponse(w, http.StatusInternalServerError, "mapping_error", "Failed to map performance to graph", err.Error())
@@ -514,7 +510,6 @@ func (ph *PerformanceHandlers) GetQueryMetrics(w http.ResponseWriter, r *http.Re
 		}
 	}
 
-	// Collect current performance data
 	perfData, err := ph.psAdapter.CollectPerformanceData(r.Context())
 	if err != nil {
 		ph.sendErrorResponse(w, http.StatusInternalServerError, "collection_error", "Failed to collect performance data", err.Error())

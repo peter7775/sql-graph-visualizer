@@ -32,7 +32,6 @@ func init() {
 	rootCmd.PersistentFlags().BoolP("verbose", "v", false, "Enable verbose logging")
 	rootCmd.PersistentFlags().BoolP("quiet", "q", false, "Suppress output except errors")
 
-	// Add commands
 	rootCmd.AddCommand(commands.NewAnalyzeCmd())
 	rootCmd.AddCommand(commands.NewTestCmd())
 	rootCmd.AddCommand(commands.NewGenerateCmd())

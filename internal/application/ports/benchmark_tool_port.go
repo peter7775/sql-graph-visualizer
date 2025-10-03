@@ -10,7 +10,6 @@ type BenchmarkToolPort interface {
 	// Execute runs a benchmark with the given configuration
 	Execute(ctx context.Context, config BenchmarkConfig) (*BenchmarkResult, error)
 
-	// Validate checks if the benchmark configuration is valid
 	Validate(config BenchmarkConfig) error
 
 	// GetSupportedTests returns list of supported test types
@@ -19,7 +18,6 @@ type BenchmarkToolPort interface {
 	// IsAvailable checks if the benchmark tool is available and configured
 	IsAvailable() bool
 
-	// GetVersion returns the version of the benchmark tool
 	GetVersion() (string, error)
 }
 

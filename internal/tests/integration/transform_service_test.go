@@ -278,7 +278,6 @@ func TestIntegrationTransformRulesAndVisualization(t *testing.T) {
 	}
 	defer neo4jClient.Close()
 
-	// Convert config to models.Config
 	modelsConfig := &models.Config{
 		Neo4j: models.Neo4jConfig{
 			URI:      cfg.Neo4j.URI,
