@@ -5,7 +5,7 @@ database:
     port: 3307
     user: "root"
     password: "testpass"
-    database: "testdata"
+    database: "data"
     
     connection_mode: existing
     

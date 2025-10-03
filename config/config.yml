@@ -5,7 +5,7 @@ database:
     port: 3307
     user: "testuser"
     password: "testpass"
-    database: "testdata"
+    database: "data"
     
     charset: "utf8mb4"
     parseTime: true

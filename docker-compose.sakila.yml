@@ -12,8 +12,8 @@ services:
     ports:
       - "3308:3306"
     volumes:
-      - ./testdata/sakila/sakila-schema.sql:/docker-entrypoint-initdb.d/01-sakila-schema.sql:ro
-      - ./testdata/sakila/sakila-data.sql:/docker-entrypoint-initdb.d/02-sakila-data.sql:ro
+      - ./data/sakila/sakila-schema.sql:/docker-entrypoint-initdb.d/01-sakila-schema.sql:ro
+      - ./data/sakila/sakila-data.sql:/docker-entrypoint-initdb.d/02-sakila-data.sql:ro
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-psakila123"]
       interval: 10s
