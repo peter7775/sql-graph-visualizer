@@ -25,7 +25,7 @@ Thumbs.db
 
 # Test files
 *_test.go
-testdata/
+data/
 test/
 tests/
 

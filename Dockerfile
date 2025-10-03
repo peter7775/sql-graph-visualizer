@@ -50,7 +50,7 @@ COPY config ./config
 COPY internal/interfaces/web ./internal/interfaces/web
 
 # Copy init SQL for optional DB bootstrap
-COPY railway-mysql-init.sql ./railway-mysql-init.sql
+COPY data/railway-mysql-init.sql ./railway-mysql-init.sql
 
 # Copy entrypoint
 COPY start.sh ./start.sh
