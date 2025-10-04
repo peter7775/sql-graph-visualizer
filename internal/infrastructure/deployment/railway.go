@@ -8,25 +8,23 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/gorilla/mux"
-	"github.com/sirupsen/logrus"
 	"sql-graph-visualizer/internal/application/ports"
 	"sql-graph-visualizer/internal/domain/aggregates/graph"
 	"sql-graph-visualizer/internal/domain/models"
-)
 
+	"github.com/gorilla/mux"
+	"github.com/sirupsen/logrus"
+)
 
 type RailwayDeployment struct {
 	logger *logrus.Logger
 }
-
 
 func NewRailwayDeployment(logger *logrus.Logger) ports.DeploymentPort {
 	return &RailwayDeployment{
 		logger: logger,
 	}
 }
-
 
 func (r *RailwayDeployment) GetAPIPort() string {
 	port := os.Getenv("PORT")
@@ -36,7 +34,6 @@ func (r *RailwayDeployment) GetAPIPort() string {
 	r.logger.Infof("Railway: Using API port %s", port)
 	return port
 }
-
 
 func (r *RailwayDeployment) GetVisualizationPort() string {
 	if r.isRailwayEnvironment() {
@@ -49,10 +46,9 @@ func (r *RailwayDeployment) GetVisualizationPort() string {
 	return "3000"
 }
 
-
 func (r *RailwayDeployment) ShouldStartVisualizationServer() bool {
 	if r.isRailwayEnvironment() {
-	
+
 		r.logger.Info("Railway: Visualization integrated into API server (single port deployment)")
 		return false
 	}
@@ -61,7 +57,6 @@ func (r *RailwayDeployment) ShouldStartVisualizationServer() bool {
 	return true
 }
 
-
 func (r *RailwayDeployment) GetEnvironmentInfo() map[string]interface{} {
 	return map[string]interface{}{
 		"platform":            r.GetPlatformName(),
@@ -69,34 +64,30 @@ func (r *RailwayDeployment) GetEnvironmentInfo() map[string]interface{} {
 		"railway_service_id":  r.getEnvOrDefault("RAILWAY_SERVICE_ID", "not_set"),
 		"railway_project_id":  r.getEnvOrDefault("RAILWAY_PROJECT_ID", "not_set"),
 		"port":                r.getEnvOrDefault("PORT", "not_set"),
-		"force_full_mode":     r.getEnvOrDefault("FORCE_FULL_MODE", "not_set"),
+		"force_full_mode":     r.getEnvOrDefault("FORCE_FULL_MODE", "true"),
 	}
 }
-
 
 func (r *RailwayDeployment) ConfigureServer(server *http.Server) *http.Server {
 	if r.isRailwayEnvironment() {
 		r.logger.Info("Railway: Applying Railway-specific server configuration")
-		
-	
+
 		server.ReadTimeout = 30 * time.Second
 		server.ReadHeaderTimeout = 10 * time.Second
 		server.WriteTimeout = 30 * time.Second
 		server.IdleTimeout = 120 * time.Second
-		
-	
+
 		if server.Addr == "" || server.Addr[0] != ':' {
 			server.Addr = ":" + r.GetAPIPort()
 		}
-		
+
 		r.logger.Infof("Railway: Server configured for Railway deployment on %s", server.Addr)
 	} else {
 		r.logger.Info("Railway: Local development mode - using default configuration")
 	}
-	
+
 	return server
 }
-
 
 func (r *RailwayDeployment) GetPlatformName() string {
 	if r.isRailwayEnvironment() {
@@ -105,11 +96,9 @@ func (r *RailwayDeployment) GetPlatformName() string {
 	return "Local"
 }
 
-
 func (r *RailwayDeployment) isRailwayEnvironment() bool {
 	return os.Getenv("RAILWAY_ENVIRONMENT") != ""
 }
-
 
 func (r *RailwayDeployment) getEnvOrDefault(key, defaultValue string) string {
 	if value := os.Getenv(key); value != "" {
@@ -120,64 +109,57 @@ func (r *RailwayDeployment) getEnvOrDefault(key, defaultValue string) string {
 
 func (r *RailwayDeployment) GetRailwayDatabaseConfig() map[string]string {
 	config := make(map[string]string)
-	
+
 	if r.isRailwayEnvironment() {
 		r.logger.Info("Railway: Loading Railway database configuration")
-		
-	
+
 		config["mysql_host"] = r.getEnvOrDefault("MYSQL_HOST", "")
 		config["mysql_port"] = r.getEnvOrDefault("MYSQL_PORT", "3306")
 		config["mysql_user"] = r.getEnvOrDefault("MYSQL_USER", "")
 		config["mysql_password"] = r.getEnvOrDefault("MYSQL_PASSWORD", "")
 		config["mysql_database"] = r.getEnvOrDefault("MYSQL_DATABASE", "")
-		
-	
+
 		config["neo4j_uri"] = r.getEnvOrDefault("NEO4J_URI", "")
 		config["neo4j_user"] = r.getEnvOrDefault("NEO4J_USER", "neo4j")
 		config["neo4j_password"] = r.getEnvOrDefault("NEO4J_PASSWORD", "")
-		
-		r.logger.Infof("Railway: Database config loaded - MySQL host: %s, Neo4j URI set: %t", 
+
+		r.logger.Infof("Railway: Database config loaded - MySQL host: %s, Neo4j URI set: %t",
 			config["mysql_host"], config["neo4j_uri"] != "")
 	}
-	
+
 	return config
 }
-
 
 func (r *RailwayDeployment) IsProductionMode() bool {
 	railwayEnv := os.Getenv("RAILWAY_ENVIRONMENT")
 	return railwayEnv == "production"
 }
 
-
 func (r *RailwayDeployment) GetMemoryLimit() int64 {
 	if !r.isRailwayEnvironment() {
 		return 0
 	}
-	
 
 	if memStr := os.Getenv("RAILWAY_MEMORY_LIMIT"); memStr != "" {
 		if mem, err := strconv.ParseInt(memStr, 10, 64); err == nil {
 			return mem
 		}
 	}
-	
 
 	return 512
 }
 
 func (r *RailwayDeployment) GetHealthCheckConfig() map[string]interface{} {
 	return map[string]interface{}{
-		"enabled":     true,
-		"path":        "/api/health",
-		"port":        r.GetAPIPort(),
-		"timeout":     30,
-		"interval":    10,
-		"retries":     3,
+		"enabled":      true,
+		"path":         "/api/health",
+		"port":         r.GetAPIPort(),
+		"timeout":      30,
+		"interval":     10,
+		"retries":      3,
 		"start_period": 60,
 	}
 }
-
 
 func (r *RailwayDeployment) RegisterVisualizationRoutes(router *mux.Router, neo4jRepo ports.Neo4jPort, cfg *models.Config) error {
 	if !r.isRailwayEnvironment() {
@@ -186,7 +168,6 @@ func (r *RailwayDeployment) RegisterVisualizationRoutes(router *mux.Router, neo4
 	}
 
 	r.logger.Info("Railway: Registering visualization routes in API server for single-port deployment")
-
 
 	router.HandleFunc("/api/graph", func(w http.ResponseWriter, req *http.Request) {
 		r.logger.Info("Railway: Request to API endpoint /api/graph")
@@ -243,7 +224,6 @@ func (r *RailwayDeployment) RegisterVisualizationRoutes(router *mux.Router, neo4
 		}
 	}).Methods("GET")
 
-	
 	router.HandleFunc("/config", func(w http.ResponseWriter, req *http.Request) {
 		r.logger.Info("Railway: Request to /config endpoint")
 		w.Header().Set("Content-Type", "application/json")
@@ -263,7 +243,6 @@ func (r *RailwayDeployment) RegisterVisualizationRoutes(router *mux.Router, neo4
 		}
 	}).Methods("GET")
 
-	
 	webRoot := r.findProjectRoot()
 	if webRoot != "" {
 		staticPath := filepath.Join(webRoot, "internal", "interfaces", "web", "static")
@@ -274,7 +253,6 @@ func (r *RailwayDeployment) RegisterVisualizationRoutes(router *mux.Router, neo4
 		} else {
 			r.logger.Warnf("Railway: Static files directory not found: %s", staticPath)
 		}
-
 
 		visualizationPath := filepath.Join(webRoot, "internal", "interfaces", "web", "templates", "visualization.html")
 		if _, err := os.Stat(visualizationPath); err == nil {
@@ -287,7 +265,6 @@ func (r *RailwayDeployment) RegisterVisualizationRoutes(router *mux.Router, neo4
 			r.logger.Warnf("Railway: Visualization template not found: %s", visualizationPath)
 		}
 
-	
 		performancePath := filepath.Join(webRoot, "internal", "interfaces", "web", "templates", "performance_dashboard.html")
 		if _, err := os.Stat(performancePath); err == nil {
 			r.logger.Infof("Railway: Registering performance dashboard at /performance")
@@ -299,7 +276,6 @@ func (r *RailwayDeployment) RegisterVisualizationRoutes(router *mux.Router, neo4
 			r.logger.Warnf("Railway: Performance dashboard template not found: %s", performancePath)
 		}
 
-	
 		if _, err := os.Stat(visualizationPath); err == nil {
 			r.logger.Info("Railway: Registering root visualization endpoint at /")
 			router.HandleFunc("/", func(w http.ResponseWriter, req *http.Request) {
@@ -318,7 +294,6 @@ func (r *RailwayDeployment) RegisterVisualizationRoutes(router *mux.Router, neo4
 	r.logger.Info("Railway: Successfully registered all visualization routes")
 	return nil
 }
-
 
 func (r *RailwayDeployment) findProjectRoot() string {
 	wd, err := os.Getwd()
@@ -341,12 +316,11 @@ func (r *RailwayDeployment) findProjectRoot() string {
 	}
 }
 
-
 func (r *RailwayDeployment) GetHomepageHandler() http.HandlerFunc {
 	if !r.isRailwayEnvironment() {
 		return nil
 	}
-	
+
 	return func(w http.ResponseWriter, req *http.Request) {
 		r.logger.Info("Railway: Root endpoint requested - serving Railway homepage")
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
