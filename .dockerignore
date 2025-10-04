@@ -25,7 +25,10 @@ Thumbs.db
 
 # Test files
 *_test.go
-data/
+# Exclude most data files but keep essential ones for deployment
+data/*
+!data/railway-mysql-init.sql
+!data/railway-init.sql
 test/
 tests/
 
