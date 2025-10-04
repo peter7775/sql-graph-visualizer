@@ -1,4 +1,3 @@
-
 package neo4j
 
 import (

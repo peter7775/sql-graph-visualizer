@@ -73,4 +73,3 @@ func (h *VisualizationHandler) GetConfig(w http.ResponseWriter, r *http.Request)
 		return
 	}
 }
-
