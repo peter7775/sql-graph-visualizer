@@ -137,7 +137,11 @@ func (r *PostgreSQLDatabaseRepository) GetTables(ctx context.Context, filters mo
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() {
+		if err := rows.Close(); err != nil {
+			logrus.WithError(err).Error("Failed to close rows")
+		}
+	}()
 
 	var allTables []string
 	for rows.Next() {
@@ -179,7 +183,11 @@ func (r *PostgreSQLDatabaseRepository) GetColumns(ctx context.Context, tableName
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() {
+		if err := rows.Close(); err != nil {
+			logrus.WithError(err).Error("Failed to close rows")
+		}
+	}()
 
 	var columns []*models.ColumnInfo
 	for rows.Next() {
@@ -266,7 +274,11 @@ func (r *PostgreSQLDatabaseRepository) GetForeignKeys(ctx context.Context, table
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() {
+		if err := rows.Close(); err != nil {
+			logrus.WithError(err).Error("Failed to close rows")
+		}
+	}()
 
 	var foreignKeys []models.ForeignKeyInfo
 	for rows.Next() {
@@ -312,7 +324,11 @@ func (r *PostgreSQLDatabaseRepository) GetIndexes(ctx context.Context, tableName
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() {
+		if err := rows.Close(); err != nil {
+			logrus.WithError(err).Error("Failed to close rows")
+		}
+	}()
 
 	indexMap := make(map[string]*models.IndexInfo)
 	for rows.Next() {
@@ -368,7 +384,11 @@ func (r *PostgreSQLDatabaseRepository) GetConstraints(ctx context.Context, table
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() {
+		if err := rows.Close(); err != nil {
+			logrus.WithError(err).Error("Failed to close rows")
+		}
+	}()
 
 	var constraints []models.Constraint
 	for rows.Next() {
@@ -436,7 +456,11 @@ func (r *PostgreSQLDatabaseRepository) GetSchemaNames(ctx context.Context) ([]st
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() {
+		if err := rows.Close(); err != nil {
+			logrus.WithError(err).Error("Failed to close rows")
+		}
+	}()
 
 	var schemas []string
 	for rows.Next() {

@@ -84,11 +84,17 @@ func createTestGraphAggregate() *graph.GraphAggregate {
 	node1Props := map[string]any{"id": "1", "name": "Test User", "email": "test@example.com"}
 	node2Props := map[string]any{"id": "2", "title": "Test Post", "content": "This is a test post"}
 
-	graphAgg.AddNode("User", node1Props)
-	graphAgg.AddNode("Post", node2Props)
+	if err := graphAgg.AddNode("User", node1Props); err != nil {
+		panic("Failed to add User node: " + err.Error())
+	}
+	if err := graphAgg.AddNode("Post", node2Props); err != nil {
+		panic("Failed to add Post node: " + err.Error())
+	}
 
 	relProps := map[string]any{"created_at": "2025-01-01"}
-	graphAgg.AddDirectRelationship("CREATED", "1", "2", relProps)
+	if err := graphAgg.AddDirectRelationship("CREATED", "1", "2", relProps); err != nil {
+		panic("Failed to add relationship: " + err.Error())
+	}
 
 	return graphAgg
 }

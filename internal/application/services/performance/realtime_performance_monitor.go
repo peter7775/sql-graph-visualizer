@@ -224,7 +224,9 @@ func (rpm *RealtimePerformanceMonitor) Stop() error {
 
 	rpm.clientMutex.Lock()
 	for conn := range rpm.clients {
-		conn.Close()
+		if err := conn.Close(); err != nil {
+			rpm.logger.WithError(err).Error("Failed to close client connection")
+		}
 	}
 	rpm.clients = make(map[*websocket.Conn]*ClientInfo)
 	rpm.clientMutex.Unlock()
@@ -492,13 +494,19 @@ func (rpm *RealtimePerformanceMonitor) handleClientMessages(conn *websocket.Conn
 		rpm.clientMutex.Lock()
 		delete(rpm.clients, conn)
 		rpm.clientMutex.Unlock()
-		conn.Close()
+		if err := conn.Close(); err != nil {
+			rpm.logger.WithError(err).Error("Failed to close client connection")
+		}
 	}()
 
 	conn.SetReadLimit(rpm.config.MaxMessageSize)
-	conn.SetReadDeadline(time.Now().Add(rpm.config.ReadTimeout))
+	if err := conn.SetReadDeadline(time.Now().Add(rpm.config.ReadTimeout)); err != nil {
+		rpm.logger.WithError(err).Error("Failed to set read deadline")
+	}
 	conn.SetPongHandler(func(string) error {
-		conn.SetReadDeadline(time.Now().Add(rpm.config.ReadTimeout))
+		if err := conn.SetReadDeadline(time.Now().Add(rpm.config.ReadTimeout)); err != nil {
+			rpm.logger.WithError(err).Error("Failed to set read deadline")
+		}
 		clientInfo.LastPingAt = time.Now()
 		return nil
 	})
@@ -542,7 +550,9 @@ func (rpm *RealtimePerformanceMonitor) processClientMessage(conn *websocket.Conn
 }
 
 func (rpm *RealtimePerformanceMonitor) sendMessageToClient(conn *websocket.Conn, clientInfo *ClientInfo, message *WebSocketMessage) {
-	conn.SetWriteDeadline(time.Now().Add(rpm.config.WriteTimeout))
+	if err := conn.SetWriteDeadline(time.Now().Add(rpm.config.WriteTimeout)); err != nil {
+		rpm.logger.WithError(err).Error("Failed to set write deadline")
+	}
 	if err := conn.WriteJSON(message); err != nil {
 		rpm.logger.WithError(err).WithField("client_id", clientInfo.ID).Error("Failed to send message to client")
 	}
@@ -588,7 +598,9 @@ func (rpm *RealtimePerformanceMonitor) cleanupInactiveClients() {
 	cutoff := time.Now().Add(-rpm.config.PingTimeout)
 	for conn, clientInfo := range rpm.clients {
 		if clientInfo.LastPingAt.Before(cutoff) {
-			conn.Close()
+			if err := conn.Close(); err != nil {
+				rpm.logger.WithError(err).Error("Failed to close inactive client connection")
+			}
 			delete(rpm.clients, conn)
 			rpm.logger.WithField("client_id", clientInfo.ID).Info("Cleaned up inactive client")
 		}

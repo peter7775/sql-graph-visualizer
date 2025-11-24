@@ -135,7 +135,11 @@ func (m *realMySQLRepo) ExecuteQuery(query string) ([]map[string]any, error) {
 	if err != nil {
 		return nil, fmt.Errorf("Error executing query: %v", err)
 	}
-	defer rows.Close()
+	defer func() {
+		if err := rows.Close(); err != nil {
+			logrus.WithError(err).Error("Failed to close MySQL rows")
+		}
+	}()
 
 	columns, err := rows.Columns()
 	if err != nil {
@@ -195,7 +199,11 @@ func setupNeo4jConnection() (neo4jDriver.Driver, error) {
 
 func (m *realNeo4jRepo) StoreGraph(g *graph.GraphAggregate) error {
 	session := m.driver.NewSession(neo4jDriver.SessionConfig{AccessMode: neo4jDriver.AccessModeWrite})
-	defer session.Close()
+	defer func() {
+		if err := session.Close(); err != nil {
+			logrus.WithError(err).Error("Failed to close Neo4j session")
+		}
+	}()
 
 	_, err := session.WriteTransaction(func(tx neo4jDriver.Transaction) (any, error) {
 		for _, node := range g.GetNodes() {
@@ -276,7 +284,11 @@ func TestIntegrationTransformRulesAndVisualization(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error creating Neo4j client: %v", err)
 	}
-	defer neo4jClient.Close()
+	defer func() {
+		if err := neo4jClient.Close(); err != nil {
+			logrus.WithError(err).Error("Failed to close Neo4j client")
+		}
+	}()
 
 	modelsConfig := &models.Config{
 		Neo4j: models.Neo4jConfig{
@@ -293,7 +305,11 @@ func TestIntegrationTransformRulesAndVisualization(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error connecting to MySQL: %v", err)
 	}
-	defer db.Close()
+	defer func() {
+		if err := db.Close(); err != nil {
+			logrus.WithError(err).Error("Failed to close database")
+		}
+	}()
 
 	err = db.Ping()
 	if err != nil {
@@ -304,7 +320,11 @@ func TestIntegrationTransformRulesAndVisualization(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Cannot execute SHOW TABLES: %v", err)
 	}
-	defer rows.Close()
+	defer func() {
+		if err := rows.Close(); err != nil {
+			logrus.WithError(err).Error("Failed to close rows")
+		}
+	}()
 
 	tables := []string{}
 	for rows.Next() {
@@ -321,7 +341,7 @@ func TestIntegrationTransformRulesAndVisualization(t *testing.T) {
 	results1, err := mysqlRepo.ExecuteQuery("SELECT DISTINCT id, id_typu, infix, nazev, prefix FROM testdata_uzly WHERE id_typu = 17")
 	if err != nil {
 		t.Logf("Test table testdata_uzly not found (expected in CI): %v", err)
-		results1 = []map[string]any{}
+		// Ignore missing test table - expected in CI
 	} else {
 		t.Logf("First SQL query returned %d records: %v", len(results1), results1)
 	}
@@ -329,19 +349,25 @@ func TestIntegrationTransformRulesAndVisualization(t *testing.T) {
 	results2, err := mysqlRepo.ExecuteQuery("SELECT DISTINCT id_node as id, php_code FROM testdata_uzly_php_action au JOIN testdata_uzly aupa ON au.id_node = aupa.id")
 	if err != nil {
 		t.Logf("Test table testdata_uzly_php_action not found (expected in CI): %v", err)
-		results2 = []map[string]any{}
+		// Ignore missing test table - expected in CI
 	} else {
 		t.Logf("Second SQL query returned %d records: %v", len(results2), results2)
 	}
 
 	session := neo4jClient.GetDriver().NewSession(neo4jDriver.SessionConfig{})
-	defer session.Close()
+	defer func() {
+		if err := session.Close(); err != nil {
+			logrus.WithError(err).Error("Failed to close session")
+		}
+	}()
 
 	cleanupResult, err := session.Run(`MATCH (n) DETACH DELETE n`, map[string]any{})
 	if err != nil {
 		t.Logf("Could not clean Neo4j data: %v", err)
 	} else {
-		cleanupResult.Consume()
+		if _, err := cleanupResult.Consume(); err != nil {
+			logrus.WithError(err).Error("Failed to consume cleanup result")
+		}
 		t.Logf("Neo4j data cleaned for test")
 	}
 
@@ -361,14 +387,14 @@ func TestIntegrationTransformRulesAndVisualization(t *testing.T) {
 	countResult, err := session.Run("MATCH (n) RETURN count(n) as nodeCount", map[string]any{})
 	assert.NoError(t, err, "Should be able to count nodes")
 	if countResult.Next() {
-		nodeCount := countResult.Record().GetByIndex(0)
+		nodeCount := countResult.Record().Values[0]
 		t.Logf("Found %v nodes in Neo4j after transformation", nodeCount)
 	}
 
 	relCountResult, err := session.Run("MATCH ()-[r]->() RETURN count(r) as relCount", map[string]any{})
 	assert.NoError(t, err, "Should be able to count relationships")
 	if relCountResult.Next() {
-		relCount := relCountResult.Record().GetByIndex(0)
+		relCount := relCountResult.Record().Values[0]
 		t.Logf("Found %v relationships in Neo4j after transformation", relCount)
 	}
 
@@ -442,7 +468,9 @@ func startVisualizationServer(t *testing.T) *http.Server {
 	listener, err := net.Listen("tcp", addr)
 	if err != nil {
 		logrus.Warnf("Port %s is occupied: %v", addr, err)
-		exec.Command("fuser", "-k", "3000/tcp").Run()
+		if err := exec.Command("fuser", "-k", "3000/tcp").Run(); err != nil {
+			logrus.WithError(err).Warn("Failed to kill process on port 3000")
+		}
 		time.Sleep(time.Second)
 		listener, err = net.Listen("tcp", addr)
 		if err != nil {
@@ -493,5 +521,8 @@ func GetConfig(w http.ResponseWriter, r *http.Request) {
 		},
 	}
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(config)
+	if err := json.NewEncoder(w).Encode(config); err != nil {
+		logrus.WithError(err).Error("Failed to encode config JSON")
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+	}
 }

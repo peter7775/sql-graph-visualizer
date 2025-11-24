@@ -3,8 +3,9 @@ package deployment
 import (
 	"os"
 
-	"github.com/sirupsen/logrus"
 	"sql-graph-visualizer/internal/application/ports"
+
+	"github.com/sirupsen/logrus"
 )
 
 func NewDeploymentAdapter(logger *logrus.Logger) ports.DeploymentPort {

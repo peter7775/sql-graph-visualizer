@@ -168,7 +168,10 @@ func (s *SecurityValidationService) validateNetworkSecurity(
 		result.Validations["network_security"] = networkCheck
 		return nil
 	}
-	defer conn.Close()
+	defer func() {
+		// Ignore connection close error for validation
+		_ = conn.Close()
+	}()
 
 	// Check if connection is over public network
 	if s.isPublicIP(dbConfig.Host) && !dbConfig.SSLConfig.Enabled {

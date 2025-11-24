@@ -139,9 +139,15 @@ Supports both MySQL and PostgreSQL databases with database-specific optimization
 	cmd.Flags().IntVar(&statementTimeout, "stmt-timeout", 30, "PostgreSQL statement timeout in seconds")
 
 	// Required flags
-	cmd.MarkFlagRequired("username")
-	cmd.MarkFlagRequired("password")
-	cmd.MarkFlagRequired("database")
+	if err := cmd.MarkFlagRequired("username"); err != nil {
+		fmt.Printf("Warning: Failed to mark username flag as required: %v\n", err)
+	}
+	if err := cmd.MarkFlagRequired("password"); err != nil {
+		fmt.Printf("Warning: Failed to mark password flag as required: %v\n", err)
+	}
+	if err := cmd.MarkFlagRequired("database"); err != nil {
+		fmt.Printf("Warning: Failed to mark database flag as required: %v\n", err)
+	}
 
 	return cmd
 }

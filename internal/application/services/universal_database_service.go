@@ -210,7 +210,11 @@ func (s *UniversalDatabaseService) TestConnection(ctx context.Context) (*models.
 		testResult.ErrorMessage = fmt.Sprintf("Connection failed: %v", err)
 		return testResult, nil
 	}
-	defer db.Close()
+	defer func() {
+		if err := db.Close(); err != nil {
+			logrus.WithError(err).Error("Failed to close database connection")
+		}
+	}()
 
 	// Test connectivity
 	if err := db.PingContext(ctx); err != nil {

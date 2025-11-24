@@ -8,8 +8,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/sirupsen/logrus"
 	"sql-graph-visualizer/internal/application/ports"
+
+	"github.com/sirupsen/logrus"
 )
 
 // SimpleMetricsInjector injects simulated performance metrics as Neo4j relationships

@@ -5,10 +5,11 @@ import (
 	"os"
 	"time"
 
-	"github.com/gorilla/mux"
-	"github.com/sirupsen/logrus"
 	"sql-graph-visualizer/internal/application/ports"
 	"sql-graph-visualizer/internal/domain/models"
+
+	"github.com/gorilla/mux"
+	"github.com/sirupsen/logrus"
 )
 
 type LocalDeployment struct {

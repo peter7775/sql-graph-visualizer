@@ -231,7 +231,11 @@ func (r *PostgreSQLRepository) checkDatabasePermissions(ctx context.Context, db 
 	if err != nil {
 		return err
 	}
-	defer rows.Close()
+	defer func() {
+		if err := rows.Close(); err != nil {
+			logrus.WithError(err).Error("Failed to close rows")
+		}
+	}()
 
 	for rows.Next() {
 		var privilege string
@@ -305,7 +309,11 @@ func (r *PostgreSQLRepository) GetTables(ctx context.Context, db *sql.DB, filter
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() {
+		if err := rows.Close(); err != nil {
+			logrus.WithError(err).Error("Failed to close rows")
+		}
+	}()
 
 	var allTables []string
 	for rows.Next() {
@@ -401,7 +409,11 @@ func (r *PostgreSQLRepository) getTableColumns(ctx context.Context, db *sql.DB, 
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() {
+		if err := rows.Close(); err != nil {
+			logrus.WithError(err).Error("Failed to close rows")
+		}
+	}()
 
 	var columns []*models.ColumnInfo
 	for rows.Next() {

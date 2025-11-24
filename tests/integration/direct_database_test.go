@@ -101,7 +101,10 @@ func (suite *DirectDatabaseIntegrationTestSuite) validateTestDatabase() error {
 	if err != nil {
 		return fmt.Errorf("failed to open database connection: %w", err)
 	}
-	defer db.Close()
+	defer func() {
+		// Ignore database close error in test setup
+		_ = db.Close()
+	}()
 
 	ctx, cancel := context.WithTimeout(suite.ctx, 5*time.Second)
 	defer cancel()

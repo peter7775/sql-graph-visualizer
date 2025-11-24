@@ -195,7 +195,11 @@ func (r *MySQLRepository) checkDatabasePermissions(ctx context.Context, db *sql.
 	if err != nil {
 		return err
 	}
-	defer rows.Close()
+	defer func() {
+		if err := rows.Close(); err != nil {
+			logrus.WithError(err).Error("Failed to close rows")
+		}
+	}()
 
 	for rows.Next() {
 		var grant string
@@ -262,7 +266,11 @@ func (r *MySQLRepository) GetTables(ctx context.Context, db *sql.DB, filters *mo
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() {
+		if err := rows.Close(); err != nil {
+			logrus.WithError(err).Error("Failed to close rows")
+		}
+	}()
 
 	var allTables []string
 	for rows.Next() {
@@ -359,7 +367,11 @@ func (r *MySQLRepository) getTableColumns(ctx context.Context, db *sql.DB, table
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() {
+		if err := rows.Close(); err != nil {
+			logrus.WithError(err).Error("Failed to close rows")
+		}
+	}()
 
 	var columns []*models.ColumnInfo
 	for rows.Next() {

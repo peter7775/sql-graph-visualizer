@@ -46,8 +46,6 @@ import (
 	_ "github.com/lib/pq"
 )
 
-var addr = "127.0.0.1:3000"
-
 func main() {
 	ctx := context.Background()
 	logger := logrus.StandardLogger()
@@ -302,15 +300,14 @@ func main() {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 
-		dbStatus := "unknown"
+		// Check database status
+		dbStatus := "not_initialized"
 		if db != nil {
 			if err := db.Ping(); err == nil {
 				dbStatus = "connected"
 			} else {
 				dbStatus = "error: " + err.Error()
 			}
-		} else {
-			dbStatus = "not_initialized"
 		}
 
 		response := map[string]interface{}{
@@ -570,13 +567,6 @@ func overrideConfigWithDeploymentSettings(cfg *models.Config, dbConfig map[strin
 	}
 
 	return nil
-}
-
-func getEnvOrDefault(key, defaultValue string) string {
-	if value := os.Getenv(key); value != "" {
-		return value
-	}
-	return defaultValue
 }
 
 func parseInt(s string) int {

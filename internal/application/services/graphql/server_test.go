@@ -94,7 +94,8 @@ func setupTestServer() (*Server, *MockNeo4jPort, *httptest.Server) {
 		// Here we would normally call the GraphQL handler
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
+		// Ignore encoding error for test setup
+		_ = json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
 	})
 
 	testServer := httptest.NewServer(mux)
@@ -109,11 +110,17 @@ func createTestGraphAggregate() *graph.GraphAggregate {
 	node1Props := map[string]any{"id": "1", "name": "Test User", "email": "test@example.com"}
 	node2Props := map[string]any{"id": "2", "title": "Test Post", "content": "This is a test post"}
 
-	graphAgg.AddNode("User", node1Props)
-	graphAgg.AddNode("Post", node2Props)
+	if err := graphAgg.AddNode("User", node1Props); err != nil {
+		panic("Failed to add User node: " + err.Error())
+	}
+	if err := graphAgg.AddNode("Post", node2Props); err != nil {
+		panic("Failed to add Post node: " + err.Error())
+	}
 
 	relProps := map[string]any{"created_at": "2025-01-01"}
-	graphAgg.AddDirectRelationship("CREATED", "1", "2", relProps)
+	if err := graphAgg.AddDirectRelationship("CREATED", "1", "2", relProps); err != nil {
+		panic("Failed to add relationship: " + err.Error())
+	}
 
 	return graphAgg
 }
@@ -189,7 +196,11 @@ func TestGraphQLIntegration_ConfigQuery(t *testing.T) {
 	// Make HTTP request to GraphQL endpoint
 	resp, err := http.Post(testServer.URL+"/graphql", "application/json", bytes.NewBuffer(jsonBody))
 	assert.NoError(t, err)
-	defer resp.Body.Close()
+	defer func() {
+		if err := resp.Body.Close(); err != nil {
+			t.Logf("Failed to close response body: %v", err)
+		}
+	}()
 
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 	assert.NotNil(t, server)
@@ -231,7 +242,11 @@ func TestGraphQLIntegration_GraphQuery(t *testing.T) {
 	// Make HTTP request to GraphQL endpoint
 	resp, err := http.Post(testServer.URL+"/graphql", "application/json", bytes.NewBuffer(jsonBody))
 	assert.NoError(t, err)
-	defer resp.Body.Close()
+	defer func() {
+		if err := resp.Body.Close(); err != nil {
+			t.Logf("Failed to close response body: %v", err)
+		}
+	}()
 
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 	assert.NotNil(t, server)
@@ -268,7 +283,11 @@ func TestGraphQLIntegration_NodesByTypeQuery(t *testing.T) {
 	// Make HTTP request to GraphQL endpoint
 	resp, err := http.Post(testServer.URL+"/graphql", "application/json", bytes.NewBuffer(jsonBody))
 	assert.NoError(t, err)
-	defer resp.Body.Close()
+	defer func() {
+		if err := resp.Body.Close(); err != nil {
+			t.Logf("Failed to close response body: %v", err)
+		}
+	}()
 
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 	assert.NotNil(t, server)
@@ -295,7 +314,11 @@ func TestGraphQLIntegration_TransformDataMutation(t *testing.T) {
 	// Make HTTP request to GraphQL endpoint
 	resp, err := http.Post(testServer.URL+"/graphql", "application/json", bytes.NewBuffer(jsonBody))
 	assert.NoError(t, err)
-	defer resp.Body.Close()
+	defer func() {
+		if err := resp.Body.Close(); err != nil {
+			t.Logf("Failed to close response body: %v", err)
+		}
+	}()
 
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 	assert.NotNil(t, server)
@@ -324,7 +347,11 @@ func TestGraphQLIntegration_InvalidQuery(t *testing.T) {
 	// Make HTTP request to GraphQL endpoint
 	resp, err := http.Post(testServer.URL+"/graphql", "application/json", bytes.NewBuffer(jsonBody))
 	assert.NoError(t, err)
-	defer resp.Body.Close()
+	defer func() {
+		if err := resp.Body.Close(); err != nil {
+			t.Logf("Failed to close response body: %v", err)
+		}
+	}()
 
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 }
@@ -339,7 +366,11 @@ func TestGraphQLIntegration_MalformedJSON(t *testing.T) {
 	// Make HTTP request to GraphQL endpoint
 	resp, err := http.Post(testServer.URL+"/graphql", "application/json", bytes.NewBuffer([]byte(malformedJSON)))
 	assert.NoError(t, err)
-	defer resp.Body.Close()
+	defer func() {
+		if err := resp.Body.Close(); err != nil {
+			t.Logf("Failed to close response body: %v", err)
+		}
+	}()
 
 	assert.Equal(t, http.StatusOK, resp.StatusCode) // GraphQL typically returns 200 even for errors
 }

@@ -397,31 +397,6 @@ func (p *PerformanceSchemaAdapter) testConnection() {
 	p.logger.Info("Connected to MySQL Performance Schema")
 }
 
-func (p *PerformanceSchemaAdapter) getOrCreateStatement(query string) (*sql.Stmt, error) {
-	p.queryCacheMux.RLock()
-	if stmt, exists := p.queryCache[query]; exists {
-		p.queryCacheMux.RUnlock()
-		return stmt, nil
-	}
-	p.queryCacheMux.RUnlock()
-
-	p.queryCacheMux.Lock()
-	defer p.queryCacheMux.Unlock()
-
-	// Double-check after acquiring write lock
-	if stmt, exists := p.queryCache[query]; exists {
-		return stmt, nil
-	}
-
-	stmt, err := p.db.Prepare(query)
-	if err != nil {
-		return nil, err
-	}
-
-	p.queryCache[query] = stmt
-	return stmt, nil
-}
-
 func (p *PerformanceSchemaAdapter) collectGlobalStatus(ctx context.Context) (*GlobalStatusData, error) {
 	query := `
 		SELECT 
@@ -440,7 +415,11 @@ func (p *PerformanceSchemaAdapter) collectGlobalStatus(ctx context.Context) (*Gl
 	if err != nil {
 		return nil, fmt.Errorf("failed to query global status: %w", err)
 	}
-	defer rows.Close()
+	defer func() {
+		if err := rows.Close(); err != nil {
+			logrus.WithError(err).Error("Failed to close rows")
+		}
+	}()
 
 	statusMap := make(map[string]string)
 	for rows.Next() {
@@ -532,7 +511,11 @@ func (p *PerformanceSchemaAdapter) collectStatementStats(ctx context.Context) ([
 	if err != nil {
 		return nil, fmt.Errorf("failed to query statement statistics: %w", err)
 	}
-	defer rows.Close()
+	defer func() {
+		if err := rows.Close(); err != nil {
+			logrus.WithError(err).Error("Failed to close rows")
+		}
+	}()
 
 	var statements []StatementStatistic
 	for rows.Next() {
@@ -610,7 +593,11 @@ func (p *PerformanceSchemaAdapter) collectTableIOStats(ctx context.Context) ([]T
 	if err != nil {
 		return nil, fmt.Errorf("failed to query table I/O statistics: %w", err)
 	}
-	defer rows.Close()
+	defer func() {
+		if err := rows.Close(); err != nil {
+			p.logger.WithError(err).Error("Failed to close rows")
+		}
+	}()
 
 	var tableStats []TableIOStatistic
 	for rows.Next() {
@@ -776,7 +763,9 @@ func (p *PerformanceSchemaAdapter) Close() error {
 	defer p.queryCacheMux.Unlock()
 
 	for _, stmt := range p.queryCache {
-		stmt.Close()
+		if err := stmt.Close(); err != nil {
+			logrus.WithError(err).Error("Failed to close prepared statement")
+		}
 	}
 	p.queryCache = make(map[string]*sql.Stmt)
 

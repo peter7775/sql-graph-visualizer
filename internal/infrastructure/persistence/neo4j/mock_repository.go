@@ -77,7 +77,9 @@ func (m *MockNeo4jRepository) ExportGraph(query string) (any, error) {
 
 	// Add nodes using proper GraphAggregate method
 	for _, node := range allNodes {
-		graphAggregate.AddNode(node.Label, node.Properties)
+		if err := graphAggregate.AddNode(node.Label, node.Properties); err != nil {
+			logrus.WithError(err).Error("Failed to add node to graph")
+		}
 	}
 
 	// Add relationships using direct relationship method
@@ -100,7 +102,9 @@ func (m *MockNeo4jRepository) ExportGraph(query string) (any, error) {
 		}
 
 		if sourceID != nil && targetID != nil {
-			graphAggregate.AddDirectRelationship(rel.Type, sourceID, targetID, rel.Properties)
+			if err := graphAggregate.AddDirectRelationship(rel.Type, sourceID, targetID, rel.Properties); err != nil {
+				logrus.WithError(err).Error("Failed to add relationship to graph")
+			}
 		}
 	}
 

@@ -13,7 +13,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"os"
 	"sql-graph-visualizer/internal/domain/models"
@@ -84,7 +83,11 @@ func main() {
 	if err != nil {
 		log.Fatalf("❌ Failed to connect to PostgreSQL: %v", err)
 	}
-	defer db.Close()
+	defer func() {
+		if err := db.Close(); err != nil {
+			log.Printf("Failed to close database: %v", err)
+		}
+	}()
 
 	logrus.Info("✅ PostgreSQL connection established successfully")
 
@@ -115,43 +118,4 @@ func getEnvOrDefault(envVar, defaultValue string) string {
 		return value
 	}
 	return defaultValue
-}
-
-// Demo function to show how to use the new multi-database configuration
-func demonstrateMultiDatabaseConfig() {
-	logrus.Info("📝 Demonstrating multi-database configuration...")
-
-	// Example 1: MySQL configuration
-	mysqlConfig := &models.Config{
-		Database: &models.DatabaseSelector{
-			Type: models.DatabaseTypeMySQL,
-			MySQL: &models.MySQLConfig{
-				Host:     "localhost",
-				Port:     3306,
-				User:     "root",
-				Password: "password",
-				Database: "sakila",
-			},
-		},
-	}
-
-	// Example 2: PostgreSQL configuration
-	postgresConfig := &models.Config{
-		Database: &models.DatabaseSelector{
-			Type: models.DatabaseTypePostgreSQL,
-			PostgreSQL: &models.PostgreSQLConfig{
-				Host:     "localhost",
-				Port:     5432,
-				User:     "postgres",
-				Password: "password",
-				Database: "chinook",
-			},
-		},
-	}
-
-	// Show how to get active configuration
-	fmt.Printf("MySQL config type: %s\n", mysqlConfig.GetDatabaseType())
-	fmt.Printf("PostgreSQL config type: %s\n", postgresConfig.GetDatabaseType())
-
-	logrus.Info("✅ Multi-database configuration demo completed")
 }

@@ -183,7 +183,11 @@ func (s *DirectDatabaseService) TestConnection(ctx context.Context) (*models.Con
 		testResult.ErrorMessage = fmt.Sprintf("Connection failed: %v", err)
 		return testResult, nil
 	}
-	defer db.Close()
+	defer func() {
+		if err := db.Close(); err != nil {
+			logrus.WithError(err).Error("Failed to close database connection")
+		}
+	}()
 
 	connValidation, err := s.mysqlPort.ValidateConnection(ctx, db)
 	if err != nil || !connValidation.IsValid {
@@ -217,7 +221,11 @@ func (s *DirectDatabaseService) GetDataSizeEstimation(ctx context.Context) (*mod
 	if err != nil {
 		return nil, fmt.Errorf("connection failed: %w", err)
 	}
-	defer db.Close()
+	defer func() {
+		if err := db.Close(); err != nil {
+			logrus.WithError(err).Error("Failed to close database connection")
+		}
+	}()
 
 	datasetInfo, err := s.mysqlPort.EstimateDataSize(ctx, db, &s.config.DataFiltering)
 	if err != nil {

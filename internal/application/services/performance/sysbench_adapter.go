@@ -404,7 +404,6 @@ func (s *SysbenchAdapter) parseOutput(output string, config ports.BenchmarkConfi
 	lines := strings.Split(output, "\n")
 
 	metrics := &ports.PerformanceMetrics{}
-	queryResults := make([]ports.QueryPerformance, 0)
 
 	// Parse metrics from sysbench output
 	for _, line := range lines {
@@ -476,7 +475,7 @@ func (s *SysbenchAdapter) parseOutput(output string, config ports.BenchmarkConfi
 		}
 	}
 
-	queryResults = s.createQueryPerformanceData(config, metrics)
+	queryResults := s.createQueryPerformanceData(config, metrics)
 
 	return metrics, queryResults, nil
 }

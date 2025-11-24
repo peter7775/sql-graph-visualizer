@@ -114,7 +114,11 @@ func (r *MySQLDatabaseRepository) GetTables(ctx context.Context, filters models.
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() {
+		if err := rows.Close(); err != nil {
+			logrus.WithError(err).Error("Failed to close rows")
+		}
+	}()
 
 	var allTables []string
 	for rows.Next() {
@@ -153,7 +157,11 @@ func (r *MySQLDatabaseRepository) GetColumns(ctx context.Context, tableName stri
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() {
+		if err := rows.Close(); err != nil {
+			logrus.WithError(err).Error("Failed to close rows")
+		}
+	}()
 
 	var columns []*models.ColumnInfo
 	for rows.Next() {
@@ -205,7 +213,11 @@ func (r *MySQLDatabaseRepository) GetForeignKeys(ctx context.Context, tableName 
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() {
+		if err := rows.Close(); err != nil {
+			logrus.WithError(err).Error("Failed to close rows")
+		}
+	}()
 
 	var foreignKeys []models.ForeignKeyInfo
 	for rows.Next() {
@@ -247,7 +259,11 @@ func (r *MySQLDatabaseRepository) GetIndexes(ctx context.Context, tableName stri
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() {
+		if err := rows.Close(); err != nil {
+			logrus.WithError(err).Error("Failed to close rows")
+		}
+	}()
 
 	indexMap := make(map[string]*models.IndexInfo)
 	for rows.Next() {
@@ -302,7 +318,11 @@ func (r *MySQLDatabaseRepository) GetConstraints(ctx context.Context, tableName 
 
 	rows, err := r.db.QueryContext(ctx, checkQuery, tableName)
 	if err == nil { // Ignore error for older MySQL versions
-		defer rows.Close()
+		defer func() {
+			if err := rows.Close(); err != nil {
+				logrus.WithError(err).Error("Failed to close rows")
+			}
+		}()
 		for rows.Next() {
 			var name, condition string
 			if err := rows.Scan(&name, &condition); err == nil {
@@ -352,7 +372,11 @@ func (r *MySQLDatabaseRepository) GetSchemaNames(ctx context.Context) ([]string,
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() {
+		if err := rows.Close(); err != nil {
+			logrus.WithError(err).Error("Failed to close rows")
+		}
+	}()
 
 	var schemas []string
 	for rows.Next() {
