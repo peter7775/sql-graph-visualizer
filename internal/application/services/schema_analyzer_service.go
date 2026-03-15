@@ -290,11 +290,12 @@ func (s *SchemaAnalyzerService) generateTransformationRules(result *models.Schem
 	var rules []*models.TransformationRule
 
 	for _, table := range result.Tables {
-		if table.GraphType == "NODE" {
+		switch table.GraphType {
+		case "NODE":
 			// Generate node creation rule
 			nodeRule := s.generateNodeRule(table)
 			rules = append(rules, nodeRule)
-		} else if table.GraphType == "RELATIONSHIP" {
+		case "RELATIONSHIP":
 			// Generate relationship creation rule
 			relRule := s.generateRelationshipRule(table)
 			rules = append(rules, relRule)

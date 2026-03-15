@@ -9,6 +9,7 @@
  * and graph visualization. Commercial use requires separate licensing.
  */
 
+// Package transform provides data transformation services.
 package transform
 
 import (
@@ -25,12 +26,14 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+// TransformService handles data transformation operations.
 type TransformService struct {
 	databasePort ports.DatabasePort
 	neo4jPort    ports.Neo4jPort
 	ruleRepo     ports.TransformRuleRepository
 }
 
+// NewTransformService creates a new transform service instance.
 func NewTransformService(
 	databasePort ports.DatabasePort,
 	neo4jPort ports.Neo4jPort,
@@ -43,6 +46,7 @@ func NewTransformService(
 	}
 }
 
+// TransformAndStore transforms data according to rules and stores the result.
 func (s *TransformService) TransformAndStore(ctx context.Context) error {
 	data, err := s.databasePort.FetchData()
 	if err != nil {

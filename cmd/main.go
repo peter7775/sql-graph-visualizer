@@ -9,6 +9,7 @@
  * and graph visualization. Commercial use requires separate licensing.
  */
 
+// Package main provides the SQL Graph Visualizer application entry point.
 package main
 
 import (

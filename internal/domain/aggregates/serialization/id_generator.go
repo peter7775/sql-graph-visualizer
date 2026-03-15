@@ -9,12 +9,14 @@
  * and graph visualization. Commercial use requires separate licensing.
  */
 
+// Package serialization provides data serialization and ID generation utilities.
 package serialization
 
 import (
 	"github.com/google/uuid"
 )
 
+// GenerateUniqueID generates a unique identifier string.
 func GenerateUniqueID() string {
 	return uuid.New().String()
 }

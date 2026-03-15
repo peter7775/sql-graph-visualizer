@@ -9,6 +9,7 @@
  * and graph visualization. Commercial use requires separate licensing.
  */
 
+// Package models defines domain model types and configuration structures.
 package models
 
 // TransformationConfig represents a single transformation rule configuration.
@@ -65,8 +66,11 @@ type SourceConfig struct {
 type ConnectionMode string
 
 const (
+	// ConnectionModeExisting uses an existing database connection
 	ConnectionModeExisting ConnectionMode = "existing"
+	// ConnectionModeTestData uses test data for connections
 	ConnectionModeTestData ConnectionMode = "test_data"
+	// ConnectionModeSQLFile loads data from SQL file
 	ConnectionModeSQLFile  ConnectionMode = "sql_file"
 )
 

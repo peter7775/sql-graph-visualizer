@@ -420,22 +420,27 @@ func (r *MySQLDatabaseRepository) GetTableRowCount(ctx context.Context, tableNam
 	return 0, nil
 }
 
+// SampleTableData retrieves a sample of data from the specified table.
 func (r *MySQLDatabaseRepository) SampleTableData(ctx context.Context, tableName string, limit int) ([]map[string]interface{}, error) {
 	return nil, fmt.Errorf("not implemented yet")
 }
 
+// AnalyzeColumnStatistics analyzes statistical information for table columns.
 func (r *MySQLDatabaseRepository) AnalyzeColumnStatistics(ctx context.Context, tableName, columnName string) (*models.ColumnStatistics, error) {
 	return nil, fmt.Errorf("not implemented yet")
 }
 
+// GetTableSize returns the size of the specified table in bytes.
 func (r *MySQLDatabaseRepository) GetTableSize(ctx context.Context, tableName string) (*models.TableSize, error) {
 	return nil, fmt.Errorf("not implemented yet")
 }
 
+// GetQueryExecutionPlan returns the execution plan for the given query.
 func (r *MySQLDatabaseRepository) GetQueryExecutionPlan(ctx context.Context, query string) (string, error) {
 	return "", fmt.Errorf("not implemented yet")
 }
 
+// ValidatePermissions validates database connection permissions.
 func (r *MySQLDatabaseRepository) ValidatePermissions(ctx context.Context, requiredPerms []string) error {
 	return fmt.Errorf("not implemented yet")
 }
@@ -445,7 +450,7 @@ func (r *MySQLDatabaseRepository) CheckUserPrivileges(ctx context.Context) (*mod
 }
 
 func (r *MySQLDatabaseRepository) EscapeIdentifier(identifier string) string {
-	return fmt.Sprintf("`%s`", strings.Replace(identifier, "`", "``", -1))
+	return fmt.Sprintf("`%s`", strings.ReplaceAll(identifier, "`", "``"))
 }
 
 func (r *MySQLDatabaseRepository) GetQuoteChar() string {

@@ -1,3 +1,4 @@
+// Package ports defines interfaces for application layer dependencies.
 package ports
 
 import (
@@ -129,10 +130,15 @@ type QueryPerformance struct {
 type BenchmarkStatus string
 
 const (
+	// BenchmarkStatusPending indicates the benchmark is queued but not yet started
 	BenchmarkStatusPending   BenchmarkStatus = "pending"
+	// BenchmarkStatusRunning indicates the benchmark is currently executing
 	BenchmarkStatusRunning   BenchmarkStatus = "running"
+	// BenchmarkStatusCompleted indicates the benchmark finished successfully
 	BenchmarkStatusCompleted BenchmarkStatus = "completed"
+	// BenchmarkStatusFailed indicates the benchmark encountered an error
 	BenchmarkStatusFailed    BenchmarkStatus = "failed"
+	// BenchmarkStatusCancelled indicates the benchmark was stopped before completion
 	BenchmarkStatusCancelled BenchmarkStatus = "cancelled"
 )
 

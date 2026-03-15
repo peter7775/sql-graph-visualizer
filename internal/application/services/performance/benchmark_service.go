@@ -1,3 +1,4 @@
+// Package performance provides performance benchmarking and analysis services.
 package performance
 
 import (
@@ -538,6 +539,7 @@ type PerformanceEnhancedGraph struct {
 	Edges         []PerformanceEdge         `json:"edges"`
 }
 
+// PerformanceNode represents a table node with performance metrics.
 type PerformanceNode struct {
 	ID              string  `json:"id"`
 	TableName       string  `json:"table_name"`
@@ -549,6 +551,7 @@ type PerformanceNode struct {
 	IndexEfficiency float64 `json:"index_efficiency"`
 }
 
+// PerformanceEdge represents a relationship between tables with performance data.
 type PerformanceEdge struct {
 	ID              string  `json:"id"`
 	SourceTable     string  `json:"source_table"`
@@ -583,6 +586,7 @@ func (s *BenchmarkService) extractTableRelationships(queryResults []ports.QueryP
 	return relationships, nil
 }
 
+// TableRelationship represents a relationship between database tables.
 type TableRelationship struct {
 	SourceTable string
 	TargetTable string

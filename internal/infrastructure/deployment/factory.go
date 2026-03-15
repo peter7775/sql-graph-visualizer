@@ -1,3 +1,4 @@
+// Package deployment provides deployment adapter implementations.
 package deployment
 
 import (
@@ -8,6 +9,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+// NewDeploymentAdapter creates a new deployment adapter instance.
 func NewDeploymentAdapter(logger *logrus.Logger) ports.DeploymentPort {
 
 	if os.Getenv("RAILWAY_ENVIRONMENT") != "" {

@@ -9,6 +9,7 @@
  * and graph visualization. Commercial use requires separate licensing.
  */
 
+// Package repositories defines domain repository interfaces.
 package repositories
 
 import (

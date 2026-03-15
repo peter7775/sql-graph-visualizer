@@ -17,6 +17,7 @@ import (
 	"sql-graph-visualizer/internal/domain/models"
 )
 
+// MySQLPort defines the interface for MySQL database operations
 type MySQLPort interface {
 	FetchData() ([]map[string]any, error)
 	Close() error

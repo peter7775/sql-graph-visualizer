@@ -87,7 +87,7 @@ func (r *PostgreSQLRepository) ExecuteQuery(query string) ([]map[string]any, err
 
 // EscapeIdentifier escapes PostgreSQL identifiers (table names, column names)
 func (r *PostgreSQLRepository) EscapeIdentifier(identifier string) string {
-	return fmt.Sprintf(`"%s"`, strings.Replace(identifier, `"`, `""`, -1))
+	return fmt.Sprintf(`"%s"`, strings.ReplaceAll(identifier, `"`, `""`))
 }
 
 // ConnectToExisting creates a new connection to existing PostgreSQL database

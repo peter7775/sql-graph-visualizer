@@ -7,6 +7,7 @@
  * Patent Pending - Application filed for innovative database transformation techniques
  */
 
+// Package commands provides CLI command implementations.
 package commands
 
 import (

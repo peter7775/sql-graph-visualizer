@@ -9,6 +9,7 @@
  * and graph visualization. Commercial use requires separate licensing.
  */
 
+// Package transform contains transformation rule aggregates.
 package transform
 
 import (

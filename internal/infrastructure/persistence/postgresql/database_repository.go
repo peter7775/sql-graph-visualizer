@@ -531,7 +531,7 @@ func (r *PostgreSQLDatabaseRepository) CheckUserPrivileges(ctx context.Context) 
 }
 
 func (r *PostgreSQLDatabaseRepository) EscapeIdentifier(identifier string) string {
-	return fmt.Sprintf(`"%s"`, strings.Replace(identifier, `"`, `""`, -1))
+	return fmt.Sprintf(`"%s"`, strings.ReplaceAll(identifier, `"`, `""`))
 }
 
 func (r *PostgreSQLDatabaseRepository) GetQuoteChar() string {

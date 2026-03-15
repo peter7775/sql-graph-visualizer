@@ -18,10 +18,12 @@ import (
 	"sql-graph-visualizer/internal/domain/valueobjects"
 )
 
+// VisualizationService provides graph visualization capabilities.
 type VisualizationService struct {
 	neo4jPort ports.Neo4jPort
 }
 
+// NewVisualizationService creates a new visualization service instance.
 func NewVisualizationService(neo4jPort ports.Neo4jPort) *VisualizationService {
 	return &VisualizationService{
 		neo4jPort: neo4jPort,
@@ -66,6 +68,7 @@ func (s *VisualizationService) buildExportQuery(format string) string {
 	}
 }
 
+// GetConfig returns visualization configuration options.
 func (s *VisualizationService) GetConfig() map[string]any {
 	return map[string]any{
 		"nodeTypes":         []string{"Table", "Column", "ForeignKey"},

@@ -23,7 +23,7 @@ func (r *mutationResolver) TransformData(ctx context.Context) (bool, error) {
 // Graph is the resolver for the graph field.
 func (r *queryResolver) Graph(ctx context.Context) (*models.Graph, error) {
 	// Get graph data from Neo4j
-	graphInterface, err := r.Resolver.Neo4jRepo.ExportGraph("MATCH (n)-[r]->(m) RETURN n, r, m")
+	graphInterface, err := r.Neo4jRepo.ExportGraph("MATCH (n)-[r]->(m) RETURN n, r, m")
 	if err != nil {
 		return nil, fmt.Errorf("failed to export graph: %w", err)
 	}
@@ -75,7 +75,7 @@ func (r *queryResolver) Graph(ctx context.Context) (*models.Graph, error) {
 func (r *queryResolver) NodesByType(ctx context.Context, typeArg string) ([]*models.Node, error) {
 	// Query Neo4j for nodes of specific type/label
 	cypher := fmt.Sprintf("MATCH (n:%s) RETURN n", typeArg)
-	graphInterface, err := r.Resolver.Neo4jRepo.ExportGraph(cypher)
+	graphInterface, err := r.Neo4jRepo.ExportGraph(cypher)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch nodes by type: %w", err)
 	}
@@ -108,7 +108,7 @@ func (r *queryResolver) NodesByType(ctx context.Context, typeArg string) ([]*mod
 func (r *queryResolver) Node(ctx context.Context, id string) (*models.Node, error) {
 	// Query Neo4j for specific node by ID
 	cypher := "MATCH (n) WHERE id(n) = $nodeId RETURN n"
-	graphInterface, err := r.Resolver.Neo4jRepo.ExportGraph(cypher)
+	graphInterface, err := r.Neo4jRepo.ExportGraph(cypher)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch node by ID: %w", err)
 	}
@@ -141,7 +141,7 @@ func (r *queryResolver) Node(ctx context.Context, id string) (*models.Node, erro
 func (r *queryResolver) RelationshipsByType(ctx context.Context, typeArg string) ([]*models.Relationship, error) {
 	// Query Neo4j for relationships of specific type
 	cypher := fmt.Sprintf("MATCH (n)-[r:%s]->(m) RETURN n, r, m", typeArg)
-	graphInterface, err := r.Resolver.Neo4jRepo.ExportGraph(cypher)
+	graphInterface, err := r.Neo4jRepo.ExportGraph(cypher)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch relationships by type: %w", err)
 	}
@@ -189,7 +189,7 @@ func (r *queryResolver) SearchNodes(ctx context.Context, query string) ([]*model
 		"MATCH (n) WHERE ANY(prop IN keys(n) WHERE toString(n[prop]) CONTAINS '%s') RETURN n",
 		query,
 	)
-	graphInterface, err := r.Resolver.Neo4jRepo.ExportGraph(cypher)
+	graphInterface, err := r.Neo4jRepo.ExportGraph(cypher)
 	if err != nil {
 		return nil, fmt.Errorf("failed to search nodes: %w", err)
 	}

@@ -9,6 +9,7 @@
  * and graph visualization. Commercial use requires separate licensing.
  */
 
+// Package config provides application configuration loading and validation.
 package config
 
 import (
@@ -23,6 +24,7 @@ import (
 	yaml "gopkg.in/yaml.v2"
 )
 
+// Config represents the main application configuration structure.
 type Config struct {
 	Neo4j struct {
 		URI      string
@@ -42,6 +44,7 @@ type Config struct {
 	TransformRules []models.TransformationConfig `yaml:"transform_rules"`
 }
 
+// LoadConfig loads configuration from a specified file path.
 func LoadConfig(filePath string) (*Config, error) {
 	logrus.Debugf("Attempting to load config from: %s", filePath)
 
@@ -70,6 +73,7 @@ func LoadConfig(filePath string) (*Config, error) {
 	return &config, nil
 }
 
+// Load loads configuration using default logic and environment variables.
 func Load() (*Config, error) {
 	// Debug info
 	logrus.Debugf("Config loading - GO_ENV: %s, CONFIG_PATH: %s", os.Getenv("GO_ENV"), os.Getenv("CONFIG_PATH"))

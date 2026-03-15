@@ -16,20 +16,24 @@ import (
 	"sql-graph-visualizer/internal/domain/repositories"
 )
 
+// GraphService defines the interface for graph operations.
 type GraphService interface {
 	SearchNodes(term string) ([]models.SearchResult, error)
 	ExportImage() ([]byte, error)
 	ExportJSON() (any, error)
 }
 
+// Neo4jGraphService implements GraphService for Neo4j database.
 type Neo4jGraphService struct {
 	repo repositories.Neo4jRepository
 }
 
+// NewNeo4jGraphService creates a new Neo4j graph service instance.
 func NewNeo4jGraphService(repo repositories.Neo4jRepository) GraphService {
 	return &Neo4jGraphService{repo: repo}
 }
 
+// SearchNodes searches for nodes matching the given term.
 func (s *Neo4jGraphService) SearchNodes(term string) ([]models.SearchResult, error) {
 	criteria := "(?i).*" + term + ".*"
 	graphs, err := s.repo.SearchNodes(criteria)
@@ -52,10 +56,12 @@ func (s *Neo4jGraphService) SearchNodes(term string) ([]models.SearchResult, err
 	return results, nil
 }
 
+// ExportImage exports the graph as an image.
 func (s *Neo4jGraphService) ExportImage() ([]byte, error) {
 	return nil, nil
 }
 
+// ExportJSON exports the graph as JSON data.
 func (s *Neo4jGraphService) ExportJSON() (any, error) {
 	query := `
 		MATCH (n)-[r]->(m)

@@ -9,8 +9,10 @@
  * and graph visualization. Commercial use requires separate licensing.
  */
 
+// Package mysql provides MySQL database persistence implementations.
 package mysql
 
+// MySQLConfig represents MySQL database connection configuration.
 type MySQLConfig struct {
 	Host     string
 	Port     int

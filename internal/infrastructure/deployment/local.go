@@ -12,16 +12,19 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+// LocalDeployment provides local deployment capabilities.
 type LocalDeployment struct {
 	logger *logrus.Logger
 }
 
+// NewLocalDeployment creates a new local deployment instance.
 func NewLocalDeployment(logger *logrus.Logger) ports.DeploymentPort {
 	return &LocalDeployment{
 		logger: logger,
 	}
 }
 
+// GetAPIPort returns the API server port for local deployment.
 func (l *LocalDeployment) GetAPIPort() string {
 	port := os.Getenv("API_PORT")
 	if port == "" {
@@ -31,6 +34,7 @@ func (l *LocalDeployment) GetAPIPort() string {
 	return port
 }
 
+// GetVisualizationPort returns the visualization server port.
 func (l *LocalDeployment) GetVisualizationPort() string {
 	port := os.Getenv("VIZ_PORT")
 	if port == "" {
@@ -40,11 +44,13 @@ func (l *LocalDeployment) GetVisualizationPort() string {
 	return port
 }
 
+// ShouldStartVisualizationServer indicates if a separate visualization server should start.
 func (l *LocalDeployment) ShouldStartVisualizationServer() bool {
 	l.logger.Info("Local: Starting separate visualization server for local development")
 	return true
 }
 
+// GetEnvironmentInfo returns local environment configuration information.
 func (l *LocalDeployment) GetEnvironmentInfo() map[string]interface{} {
 	return map[string]interface{}{
 		"platform":    l.GetPlatformName(),
@@ -56,6 +62,7 @@ func (l *LocalDeployment) GetEnvironmentInfo() map[string]interface{} {
 	}
 }
 
+// ConfigureServer applies local development server configuration.
 func (l *LocalDeployment) ConfigureServer(server *http.Server) *http.Server {
 	l.logger.Info("Local: Applying local development server configuration")
 
@@ -69,6 +76,7 @@ func (l *LocalDeployment) ConfigureServer(server *http.Server) *http.Server {
 	return server
 }
 
+// GetPlatformName returns the platform name for local deployment.
 func (l *LocalDeployment) GetPlatformName() string {
 	return "Local Development"
 }

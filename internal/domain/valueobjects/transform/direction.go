@@ -9,6 +9,7 @@
  * and graph visualization. Commercial use requires separate licensing.
  */
 
+// Package transform contains value objects for data transformation rules.
 package transform
 
 type Direction int

@@ -1,3 +1,5 @@
+version: 2
+
 run:
   timeout: 10m
   tests: true
@@ -11,25 +13,19 @@ linters-settings:
     line-length: 120
 
 linters:
+  # Use default enabled linters plus some additional useful ones
   enable:
-    - errcheck
-    - gosimple
-    - govet
-    - ineffassign
-    - staticcheck
-    - typecheck
-    - unused
-    - gofmt
-    - goimports
-    - misspell
+    - errcheck      # Check for unchecked errors
+    - govet         # Vet examines Go source code
+    - ineffassign   # Detects ineffectual assignments
+    - staticcheck   # Staticcheck is a go vet on steroids
+    - unused        # Checks for unused constants, variables, functions and types
+    - misspell      # Finds commonly misspelled English words
+    - revive        # Fast, configurable, extensible linter
 
 issues:
   exclude-use-default: false
   exclude-rules:
     - path: _test\.go
       linters:
-        - typecheck
-        - deadcode
         - unused
-        - structcheck
-        - varcheck

@@ -275,14 +275,15 @@ func (s *SysbenchAdapter) buildCommand(config ports.BenchmarkConfig) (*exec.Cmd,
 		}
 
 		// Database-specific parameters
-		if config.DatabaseType == "mysql" {
+		switch config.DatabaseType {
+		case "mysql":
 			if s.config.MySQLDefaults.Engine != "" {
 				args = append(args, fmt.Sprintf("--mysql-engine=%s", s.config.MySQLDefaults.Engine))
 			}
 			if s.config.MySQLDefaults.StorageEngine != "" {
 				args = append(args, fmt.Sprintf("--mysql-storage-engine=%s", s.config.MySQLDefaults.StorageEngine))
 			}
-		} else if config.DatabaseType == "postgresql" {
+		case "postgresql":
 			if s.config.PostgreSQLDefaults.Schema != "" {
 				args = append(args, fmt.Sprintf("--pgsql-schema=%s", s.config.PostgreSQLDefaults.Schema))
 			}
@@ -372,9 +373,10 @@ func (s *SysbenchAdapter) parseDatabaseURL(dbURL, dbType string) ([]string, erro
 	}
 
 	// Add database driver
-	if dbType == "mysql" {
+	switch dbType {
+	case "mysql":
 		args = append(args, "--db-driver=mysql")
-	} else if dbType == "postgresql" {
+	case "postgresql":
 		args = append(args, "--db-driver=pgsql")
 	}
 

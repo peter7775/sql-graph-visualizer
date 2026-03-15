@@ -21,19 +21,22 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+// RuleRepository manages transformation rule configuration.
 type RuleRepository struct {
 	rules []*transformAgg.RuleAggregate
 }
 
+// NewRuleRepository creates a new rule repository instance.
 func NewRuleRepository() *RuleRepository {
 	return &RuleRepository{rules: []*transformAgg.RuleAggregate{}}
 }
 
+// GetAllRules retrieves all transformation rules from configuration.
 func (r *RuleRepository) GetAllRules(ctx context.Context) ([]*transformAgg.RuleAggregate, error) {
 	logrus.Infof("GetAllRules called - current rules count: %d", len(r.rules))
 	if len(r.rules) == 0 {
 		logrus.Infof("Loading rules from config file...")
-		loadedRules, err := r.LoadRulesFromConfig("config/config.yml")
+		loadedRules, err := r.LoadRulesFromConfig()
 		if err != nil {
 			logrus.Errorf("Failed to load rules: %v", err)
 			return nil, err
@@ -45,11 +48,13 @@ func (r *RuleRepository) GetAllRules(ctx context.Context) ([]*transformAgg.RuleA
 	return r.rules, nil
 }
 
+// SaveRule saves a transformation rule to configuration.
 func (r *RuleRepository) SaveRule(ctx context.Context, rule *transformAgg.RuleAggregate) error {
 	r.rules = append(r.rules, rule)
 	return nil
 }
 
+// DeleteRule removes a transformation rule from configuration.
 func (r *RuleRepository) DeleteRule(ctx context.Context, ruleID string) error {
 	for i, rule := range r.rules {
 		if rule.ID == ruleID {
@@ -60,6 +65,7 @@ func (r *RuleRepository) DeleteRule(ctx context.Context, ruleID string) error {
 	return fmt.Errorf("rule with ID %s not found", ruleID)
 }
 
+// UpdateRulePriority updates the priority of a transformation rule.
 func (r *RuleRepository) UpdateRulePriority(ctx context.Context, ruleID string, priority int) error {
 	for _, rule := range r.rules {
 		if rule.ID == ruleID {
@@ -70,8 +76,9 @@ func (r *RuleRepository) UpdateRulePriority(ctx context.Context, ruleID string, 
 	return fmt.Errorf("rule with ID %s not found", ruleID)
 }
 
-func (r *RuleRepository) LoadRulesFromConfig(filePath string) ([]*transformAgg.RuleAggregate, error) {
-	logrus.Infof("Loading rules from %s", filePath)
+// LoadRulesFromConfig loads transformation rules from the configuration file.
+func (r *RuleRepository) LoadRulesFromConfig() ([]*transformAgg.RuleAggregate, error) {
+	logrus.Infof("Loading rules from configuration file")
 
 	cfg, err := config.Load()
 	if err != nil {

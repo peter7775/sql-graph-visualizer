@@ -32,7 +32,6 @@ import (
 	graphqlServer "sql-graph-visualizer/internal/application/services/graphql"
 
 	transformService "sql-graph-visualizer/internal/application/services/transform"
-	"sql-graph-visualizer/internal/domain/aggregates/graph"
 	transformAggregates "sql-graph-visualizer/internal/domain/aggregates/transform"
 	"sql-graph-visualizer/internal/domain/models"
 	transformObjects "sql-graph-visualizer/internal/domain/valueobjects/transform"
@@ -43,8 +42,6 @@ import (
 	"sql-graph-visualizer/internal/domain/repositories/neo4j"
 
 	_ "github.com/go-sql-driver/mysql"
-
-	"sql-graph-visualizer/internal/domain/aggregates/serialization"
 
 	neo4jDriver "github.com/neo4j/neo4j-go-driver/v4/neo4j"
 )
@@ -181,92 +178,6 @@ func (m *realMySQLRepo) Close() error {
 	return nil
 }
 
-type realNeo4jRepo struct {
-	driver neo4jDriver.Driver
-}
-
-func setupNeo4jConnection() (neo4jDriver.Driver, error) {
-	cfg, err := config.Load()
-	if err != nil {
-		return nil, fmt.Errorf("Error loading configuration: %v", err)
-	}
-	driver, err := neo4jDriver.NewDriver(cfg.Neo4j.URI, neo4jDriver.BasicAuth(cfg.Neo4j.User, cfg.Neo4j.Password, ""))
-	if err != nil {
-		return nil, fmt.Errorf("Error connecting to Neo4j: %v", err)
-	}
-	return driver, nil
-}
-
-func (m *realNeo4jRepo) StoreGraph(g *graph.GraphAggregate) error {
-	session := m.driver.NewSession(neo4jDriver.SessionConfig{AccessMode: neo4jDriver.AccessModeWrite})
-	defer func() {
-		if err := session.Close(); err != nil {
-			logrus.WithError(err).Error("Failed to close Neo4j session")
-		}
-	}()
-
-	_, err := session.WriteTransaction(func(tx neo4jDriver.Transaction) (any, error) {
-		for _, node := range g.GetNodes() {
-			nodeID := serialization.GenerateUniqueID()
-			node.Properties["id"] = nodeID
-			_, err := tx.Run(
-				"CREATE (n:Node {id: $id, type: $type, properties: $properties})",
-				map[string]any{
-					"id":         nodeID,
-					"type":       node.Type,
-					"properties": node.Properties,
-				},
-			)
-			if err != nil {
-				return nil, fmt.Errorf("Error creating node: %v", err)
-			}
-		}
-
-		for _, rel := range g.GetRelationships() {
-			_, err := tx.Run(
-				"MATCH (a:Node {id: $fromId}), (b:Node {id: $toId}) CREATE (a)-[r:RELATION {type: $type, properties: $properties}]->(b)",
-				map[string]any{
-					"fromId":     rel.SourceNode.ID,
-					"toId":       rel.TargetNode.ID,
-					"type":       rel.Type,
-					"properties": rel.Properties,
-				},
-			)
-			if err != nil {
-				return nil, fmt.Errorf("Error creating relationship: %v", err)
-			}
-		}
-
-		return nil, nil
-	})
-
-	if err != nil {
-		return fmt.Errorf("Error storing graph: %v", err)
-	}
-
-	return nil
-}
-
-func (m *realNeo4jRepo) SearchNodes(criteria string) ([]*graph.GraphAggregate, error) {
-	return []*graph.GraphAggregate{}, nil
-}
-
-func (m *realNeo4jRepo) ExportGraph(query string) (any, error) {
-	return graph.NewGraphAggregate(""), nil
-}
-
-func (m *realNeo4jRepo) Close() error {
-	return nil
-}
-
-func (m *realNeo4jRepo) FetchNodes(nodeType string) ([]map[string]any, error) {
-	return []map[string]any{
-		{"id": 1, "type": nodeType, "properties": map[string]any{"name": "Node1"}},
-		{"id": 2, "type": nodeType, "properties": map[string]any{"name": "Node2"}},
-	}, nil
-}
-
-const addr = "localhost:3000"
 
 func TestIntegrationTransformRulesAndVisualization(t *testing.T) {
 	ctx := context.Background()

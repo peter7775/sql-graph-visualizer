@@ -9,6 +9,7 @@
  * and graph visualization. Commercial use requires separate licensing.
  */
 
+// Package main provides PostgreSQL connection testing utilities.
 package main
 
 import (
