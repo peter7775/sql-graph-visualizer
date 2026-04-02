@@ -1,16 +1,8 @@
-version: 2
+version: "2"
 
 run:
   timeout: 10m
   tests: true
-  skip-dirs:
-    - vendor
-  skip-files:
-    - ".*/generated/.*"
-
-linters-settings:
-  lll:
-    line-length: 120
 
 linters:
   # Use default enabled linters plus some additional useful ones
@@ -22,10 +14,15 @@ linters:
     - unused        # Checks for unused constants, variables, functions and types
     - misspell      # Finds commonly misspelled English words
     - revive        # Fast, configurable, extensible linter
-
-issues:
-  exclude-use-default: false
-  exclude-rules:
-    - path: _test\.go
-      linters:
-        - unused
+  settings:
+    lll:
+      line-length: 120
+  exclusions:
+    generated: lax
+    rules:
+      - path: _test\.go
+        linters:
+          - unused
+    paths:
+      - vendor
+      - ".*/generated/.*"
