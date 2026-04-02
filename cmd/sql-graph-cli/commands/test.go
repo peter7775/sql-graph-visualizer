@@ -68,7 +68,7 @@ This command provides immediate feedback on:
 
   # Detailed connection test with security validation
   sql-graph-cli test --db-type mysql --host remote-db.com --port 3306 --username user --password pass --database prod --detailed`,
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, _ []string) error {
 			return runTest(testOptions{
 				DBType:            models.DatabaseType(dbType),
 				Host:              host,

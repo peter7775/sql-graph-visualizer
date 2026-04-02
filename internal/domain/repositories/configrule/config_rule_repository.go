@@ -32,7 +32,7 @@ func NewRuleRepository() *RuleRepository {
 }
 
 // GetAllRules retrieves all transformation rules from configuration.
-func (r *RuleRepository) GetAllRules(ctx context.Context) ([]*transformAgg.RuleAggregate, error) {
+func (r *RuleRepository) GetAllRules(_ context.Context) ([]*transformAgg.RuleAggregate, error) {
 	logrus.Infof("GetAllRules called - current rules count: %d", len(r.rules))
 	if len(r.rules) == 0 {
 		logrus.Infof("Loading rules from config file...")
@@ -49,13 +49,13 @@ func (r *RuleRepository) GetAllRules(ctx context.Context) ([]*transformAgg.RuleA
 }
 
 // SaveRule saves a transformation rule to configuration.
-func (r *RuleRepository) SaveRule(ctx context.Context, rule *transformAgg.RuleAggregate) error {
+func (r *RuleRepository) SaveRule(_ context.Context, rule *transformAgg.RuleAggregate) error {
 	r.rules = append(r.rules, rule)
 	return nil
 }
 
 // DeleteRule removes a transformation rule from configuration.
-func (r *RuleRepository) DeleteRule(ctx context.Context, ruleID string) error {
+func (r *RuleRepository) DeleteRule(_ context.Context, ruleID string) error {
 	for i, rule := range r.rules {
 		if rule.ID == ruleID {
 			r.rules = append(r.rules[:i], r.rules[i+1:]...)
@@ -66,7 +66,7 @@ func (r *RuleRepository) DeleteRule(ctx context.Context, ruleID string) error {
 }
 
 // UpdateRulePriority updates the priority of a transformation rule.
-func (r *RuleRepository) UpdateRulePriority(ctx context.Context, ruleID string, priority int) error {
+func (r *RuleRepository) UpdateRulePriority(_ context.Context, ruleID string, priority int) error {
 	for _, rule := range r.rules {
 		if rule.ID == ruleID {
 			rule.Priority = priority

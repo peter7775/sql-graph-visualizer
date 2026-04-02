@@ -506,11 +506,11 @@ func (r *PostgreSQLDatabaseRepository) GetTableRowCount(ctx context.Context, tab
 	return 0, nil
 }
 
-func (r *PostgreSQLDatabaseRepository) SampleTableData(ctx context.Context, tableName string, limit int) ([]map[string]interface{}, error) {
+func (r *PostgreSQLDatabaseRepository) SampleTableData(_ context.Context, tableName string, limit int) ([]map[string]interface{}, error) {
 	return nil, fmt.Errorf("not implemented yet")
 }
 
-func (r *PostgreSQLDatabaseRepository) AnalyzeColumnStatistics(ctx context.Context, tableName, columnName string) (*models.ColumnStatistics, error) {
+func (r *PostgreSQLDatabaseRepository) AnalyzeColumnStatistics(_ context.Context, tableName, columnName string) (*models.ColumnStatistics, error) {
 	return nil, fmt.Errorf("not implemented yet")
 }
 

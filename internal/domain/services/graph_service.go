@@ -9,6 +9,7 @@
  * and graph visualization. Commercial use requires separate licensing.
  */
 
+// Package services provides domain service implementations.
 package services
 
 import (

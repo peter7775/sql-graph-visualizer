@@ -138,9 +138,10 @@ func (r *queryResolver) Node(ctx context.Context, id string) (*models.Node, erro
 }
 
 // RelationshipsByType is the resolver for the relationshipsByType field.
-func (r *queryResolver) RelationshipsByType(ctx context.Context, typeArg string) ([]*models.Relationship, error) {
+func (r *queryResolver) RelationshipsByType(_ context.Context, relationshipType string) ([]*models.Relationship, error) {
 	// Query Neo4j for relationships of specific type
-	cypher := fmt.Sprintf("MATCH (n)-[r:%s]->(m) RETURN n, r, m", typeArg)
+	relType := relationshipType
+	cypher := fmt.Sprintf("MATCH (n)-[r:%s]->(m) RETURN n, r, m", relType)
 	graphInterface, err := r.Neo4jRepo.ExportGraph(cypher)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch relationships by type: %w", err)
@@ -153,7 +154,7 @@ func (r *queryResolver) RelationshipsByType(ctx context.Context, typeArg string)
 
 	graphQLRelationships := make([]*models.Relationship, 0)
 	for _, rel := range graphAggregate.GetRelationships() {
-		if rel.Type == typeArg {
+	if rel.Type == relType {
 			propertiesJSON, err := json.Marshal(rel.Properties)
 			if err != nil {
 				propertiesJSON = []byte("{}")
@@ -171,20 +172,10 @@ func (r *queryResolver) RelationshipsByType(ctx context.Context, typeArg string)
 	return graphQLRelationships, nil
 }
 
-// Config is the resolver for the config field.
-func (r *queryResolver) Config(ctx context.Context) (*models.Config, error) {
-	return &models.Config{
-		Neo4j: &models.Neo4jConfig{
-			URI:      r.Resolver.Config.Neo4j.URI,
-			Username: r.Resolver.Config.Neo4j.User,
-			Password: r.Resolver.Config.Neo4j.Password,
-		},
-	}, nil
-}
 
 // SearchNodes is the resolver for the searchNodes field.
-func (r *queryResolver) SearchNodes(ctx context.Context, query string) ([]*models.Node, error) {
-	// Search nodes by property values using CONTAINS or regex
+func (r *queryResolver) SearchNodes(_ context.Context, query string) ([]*models.Node, error) {
+	// Search nodes by property values using CONTAINS
 	cypher := fmt.Sprintf(
 		"MATCH (n) WHERE ANY(prop IN keys(n) WHERE toString(n[prop]) CONTAINS '%s') RETURN n",
 		query,
@@ -233,3 +224,14 @@ func (r *Resolver) Subscription() generated.SubscriptionResolver { return &subsc
 type mutationResolver struct{ *Resolver }
 type queryResolver struct{ *Resolver }
 type subscriptionResolver struct{ *Resolver }
+
+// Config returns the configuration.
+func (r *queryResolver) Config(_ context.Context) (*models.Config, error) {
+	return &models.Config{
+		Neo4j: &models.Neo4jConfig{
+			URI:      r.Resolver.Config.Neo4j.URI,
+			Username: r.Resolver.Config.Neo4j.User,
+			Password: r.Resolver.Config.Neo4j.Password,
+		},
+	}, nil
+}

@@ -90,7 +90,7 @@ func setupTestServer() (*Server, *MockNeo4jPort, *httptest.Server) {
 	server := NewServer(mockNeo4j, config)
 
 	mux := http.NewServeMux()
-	mux.HandleFunc("/graphql", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/graphql", func(w http.ResponseWriter, _ *http.Request) {
 		// Here we would normally call the GraphQL handler
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)

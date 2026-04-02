@@ -433,14 +433,14 @@ func (s *SysbenchAdapter) parseOutput(output string, config ports.BenchmarkConfi
 		}
 
 		if strings.Contains(line, "min:") {
-			if min := s.extractFloat(line, `min:\s*([0-9]+\.?[0-9]*)`); min > 0 {
-				metrics.MinLatency = min
+			if minVal := s.extractFloat(line, `min:\s*([0-9]+\.?[0-9]*)`); minVal > 0 {
+				metrics.MinLatency = minVal
 			}
 		}
 
 		if strings.Contains(line, "max:") {
-			if max := s.extractFloat(line, `max:\s*([0-9]+\.?[0-9]*)`); max > 0 {
-				metrics.MaxLatency = max
+			if maxVal := s.extractFloat(line, `max:\s*([0-9]+\.?[0-9]*)`); maxVal > 0 {
+				metrics.MaxLatency = maxVal
 			}
 		}
 

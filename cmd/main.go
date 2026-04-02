@@ -276,7 +276,7 @@ func main() {
 		logrus.Info("Performance API routes registered")
 	}
 
-	router.HandleFunc("/api/debug", func(w http.ResponseWriter, r *http.Request) {
+	router.HandleFunc("/api/debug", func(w http.ResponseWriter, _ *http.Request) {
 		logrus.Info("Debug endpoint requested")
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
@@ -296,7 +296,7 @@ func main() {
 		}
 	}).Methods("GET")
 
-	router.HandleFunc("/api/health", func(w http.ResponseWriter, r *http.Request) {
+	router.HandleFunc("/api/health", func(w http.ResponseWriter, _ *http.Request) {
 		logrus.Info("Health check requested")
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
@@ -326,7 +326,7 @@ func main() {
 		}
 	})
 
-	router.HandleFunc("/config", func(w http.ResponseWriter, r *http.Request) {
+	router.HandleFunc("/config", func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		if err := json.NewEncoder(w).Encode(cfg); err != nil {
 			logrus.Errorf("Error encoding config: %v", err)
@@ -392,7 +392,7 @@ func startVisualizationServer(neo4jRepo ports.Neo4jPort, cfg *models.Config, dep
 	logrus.Infof("Starting visualization server")
 	mux := http.NewServeMux()
 
-	mux.HandleFunc("/config", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/config", func(w http.ResponseWriter, _ *http.Request) {
 		logrus.Infof("Request to /config endpoint")
 		w.Header().Set("Content-Type", "application/json")
 		w.Header().Set("Access-Control-Allow-Origin", "*")
@@ -413,7 +413,7 @@ func startVisualizationServer(neo4jRepo ports.Neo4jPort, cfg *models.Config, dep
 		logrus.Infof("Config response sent successfully")
 	})
 
-	mux.HandleFunc("/api/graph", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/api/graph", func(w http.ResponseWriter, _ *http.Request) {
 		logrus.Infof("Request to API endpoint /api/graph")
 
 		graphInterface, err := neo4jRepo.ExportGraph("MATCH (n)-[r]->(m) RETURN n, r, m")
@@ -771,7 +771,7 @@ func createBenchmarkConfig(cfg *models.Config) *performance.BenchmarkServiceConf
 	return config
 }
 
-func createFallbackGraphData(ctx context.Context, dbPort ports.DatabasePort, neo4jRepo ports.Neo4jPort) error {
+func createFallbackGraphData(_ context.Context, _ ports.DatabasePort, _ ports.Neo4jPort) error {
 	logrus.Info("Creating fallback graph data from MySQL...")
 
 	return nil

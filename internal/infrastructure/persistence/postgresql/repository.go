@@ -21,7 +21,7 @@ import (
 	"strings"
 	"time"
 
-	_ "github.com/lib/pq"
+	_ "github.com/lib/pq" // PostgreSQL driver
 	"github.com/sirupsen/logrus"
 )
 
@@ -478,7 +478,7 @@ func (r *PostgreSQLRepository) getTableRowCount(ctx context.Context, db *sql.DB,
 }
 
 // ExtractTableData extracts data from a PostgreSQL table with filtering
-func (r *PostgreSQLRepository) ExtractTableData(ctx context.Context, db *sql.DB, tableName string, config *models.DataFilteringConfig) ([]map[string]any, error) {
+func (r *PostgreSQLRepository) ExtractTableData(ctx context.Context, _ *sql.DB, tableName string, config *models.DataFilteringConfig) ([]map[string]any, error) {
 	logrus.Infof("📤 Extracting data from PostgreSQL table: %s", tableName)
 
 	query := fmt.Sprintf("SELECT * FROM %s", tableName)

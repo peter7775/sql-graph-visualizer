@@ -76,7 +76,7 @@ Supports both MySQL and PostgreSQL databases with database-specific optimization
 
   # Save analysis to JSON file
   sql-graph-cli analyze --db-type postgresql --host localhost --database chinook --output analysis.json`,
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, _ []string) error {
 			return runAnalyze(cmd, analyzeOptions{
 				DBType:            models.DatabaseType(dbType),
 				Host:              host,
@@ -181,7 +181,7 @@ type analyzeOptions struct {
 	StatementTimeout int
 }
 
-func runAnalyze(cmd *cobra.Command, opts analyzeOptions) error {
+func runAnalyze(_ *cobra.Command, opts analyzeOptions) error {
 	fmt.Println("SQL Graph Visualizer - Database Analysis")
 	fmt.Println("=============================================")
 

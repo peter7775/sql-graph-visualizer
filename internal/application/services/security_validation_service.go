@@ -147,7 +147,7 @@ func (s *SecurityValidationService) validateConnectionParameters(
 
 // validateNetworkSecurity performs network-level security validation
 func (s *SecurityValidationService) validateNetworkSecurity(
-	ctx context.Context,
+	_ context.Context,
 	dbConfig *models.MySQLConfig,
 	result *models.SecurityValidationResult,
 ) error {

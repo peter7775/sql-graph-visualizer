@@ -412,7 +412,7 @@ func (s *BenchmarkService) updateExecutionStatus(executionID string, status port
 	}
 }
 
-func (s *BenchmarkService) cleanupExecution(executionID string) {
+func (s *BenchmarkService) cleanupExecution(_ string) {
 }
 
 func (s *BenchmarkService) getActiveRunCount() int {
@@ -529,7 +529,8 @@ func (s *BenchmarkService) CreatePerformanceGraph(ctx context.Context, benchmark
 	return graph, nil
 }
 
-// Performance graph data structures
+// PerformanceEnhancedGraph represents performance-enhanced graph data structures.
+//nolint:revive // PerformanceEnhancedGraph is descriptive and follows project conventions
 type PerformanceEnhancedGraph struct {
 	ID            string                    `json:"id"`
 	BenchmarkID   string                    `json:"benchmark_id"`
@@ -540,6 +541,7 @@ type PerformanceEnhancedGraph struct {
 }
 
 // PerformanceNode represents a table node with performance metrics.
+//nolint:revive // PerformanceNode is descriptive and follows project conventions
 type PerformanceNode struct {
 	ID              string  `json:"id"`
 	TableName       string  `json:"table_name"`
@@ -552,6 +554,7 @@ type PerformanceNode struct {
 }
 
 // PerformanceEdge represents a relationship between tables with performance data.
+//nolint:revive // PerformanceEdge is descriptive and follows project conventions
 type PerformanceEdge struct {
 	ID              string  `json:"id"`
 	SourceTable     string  `json:"source_table"`
@@ -689,7 +692,7 @@ func (s *BenchmarkService) updateNodeMetrics(node *PerformanceNode, query *ports
 	node.IndexEfficiency = s.calculateIndexEfficiency(query)
 }
 
-func (s *BenchmarkService) createPerformanceEdges(graph *PerformanceEnhancedGraph, query *ports.QueryPerformance, nodeMap map[string]*PerformanceNode) {
+func (s *BenchmarkService) createPerformanceEdges(graph *PerformanceEnhancedGraph, query *ports.QueryPerformance, _ map[string]*PerformanceNode) {
 	if len(query.JoinedTables) == 0 {
 		return
 	}

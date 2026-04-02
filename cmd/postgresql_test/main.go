@@ -97,7 +97,7 @@ func main() {
 	logrus.Info("🎉 PostgreSQL test completed successfully - Issue #7 implementation working!")
 }
 
-func testBasicOperations(ctx context.Context, repo interface{}) {
+func testBasicOperations(_ context.Context, _ interface{}) {
 	logrus.Info("🧪 Testing basic database operations...")
 
 	// Cast to the specific repository type to access methods

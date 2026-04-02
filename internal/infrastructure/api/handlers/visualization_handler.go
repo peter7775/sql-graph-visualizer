@@ -9,6 +9,7 @@
  * and graph visualization. Commercial use requires separate licensing.
  */
 
+// Package handlers provides HTTP request handlers for the API.
 package handlers
 
 import (
@@ -17,6 +18,7 @@ import (
 	"sql-graph-visualizer/internal/application/services/graph"
 )
 
+// VisualizationHandler handles visualization-related HTTP requests.
 type VisualizationHandler struct {
 	neo4jURI      string
 	neo4jUsername string
@@ -24,6 +26,7 @@ type VisualizationHandler struct {
 	graphService  graph.GraphService
 }
 
+// NewVisualizationHandler creates a new visualization handler.
 func NewVisualizationHandler(uri, username, password string, graphService graph.GraphService) *VisualizationHandler {
 	return &VisualizationHandler{
 		neo4jURI:      uri,
@@ -33,7 +36,8 @@ func NewVisualizationHandler(uri, username, password string, graphService graph.
 	}
 }
 
-func (h *VisualizationHandler) GetConfig(w http.ResponseWriter, r *http.Request) {
+// GetConfig returns the visualization configuration.
+func (h *VisualizationHandler) GetConfig(w http.ResponseWriter, _ *http.Request) {
 	config := map[string]any{
 		"neo4j": map[string]string{
 			"uri":      h.neo4jURI,
@@ -47,6 +51,7 @@ func (h *VisualizationHandler) GetConfig(w http.ResponseWriter, r *http.Request)
 	}
 }
 
+// Search handles visualization search requests.
 func (h *VisualizationHandler) Search(w http.ResponseWriter, r *http.Request) {
 	term := r.URL.Query().Get("term")
 	results, err := h.graphService.SearchNodes(term)
@@ -60,6 +65,7 @@ func (h *VisualizationHandler) Search(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// Export handles graph export requests.
 func (h *VisualizationHandler) Export(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		Format string `json:"format"`

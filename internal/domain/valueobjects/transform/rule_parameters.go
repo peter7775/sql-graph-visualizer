@@ -11,11 +11,13 @@
 
 package transform
 
+// RuleParameters represents parameters for transformation rules.
 type RuleParameters struct {
 	conditions map[string]any
 	options    map[string]any
 }
 
+// NewRuleParameters creates a new RuleParameters instance.
 func NewRuleParameters(conditions map[string]any, options map[string]any) RuleParameters {
 	return RuleParameters{
 		conditions: conditions,
@@ -23,10 +25,12 @@ func NewRuleParameters(conditions map[string]any, options map[string]any) RulePa
 	}
 }
 
+// GetCondition returns a condition value by key.
 func (rp RuleParameters) GetCondition(key string) any {
 	return rp.conditions[key]
 }
 
+// GetOption returns an option value by key.
 func (rp RuleParameters) GetOption(key string) any {
 	return rp.options[key]
 }

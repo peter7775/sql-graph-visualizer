@@ -7,6 +7,7 @@
  * Patent Pending - Application filed for innovative database transformation techniques
  */
 
+// Package main provides a test utility for Sakila database transformations.
 package main
 
 import (

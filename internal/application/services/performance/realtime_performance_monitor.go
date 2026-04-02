@@ -95,6 +95,7 @@ type WebSocketMessage struct {
 }
 
 // PerformanceAlert represents a performance alert
+//nolint:revive // PerformanceAlert is descriptive and follows project conventions
 type PerformanceAlert struct {
 	ID          string                 `json:"id"`
 	Type        string                 `json:"type"`
@@ -175,7 +176,7 @@ func NewRealtimePerformanceMonitor(
 		analyzer:    analyzer,
 		graphMapper: graphMapper,
 		upgrader: websocket.Upgrader{
-			CheckOrigin: func(r *http.Request) bool {
+			CheckOrigin: func(_ *http.Request) bool {
 				return true
 			},
 			ReadBufferSize:  1024,

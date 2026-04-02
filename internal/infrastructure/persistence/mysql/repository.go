@@ -21,14 +21,17 @@ import (
 	"strings"
 	"time"
 
-	_ "github.com/go-sql-driver/mysql"
+	_ "github.com/go-sql-driver/mysql" // MySQL driver
 	"github.com/sirupsen/logrus"
 )
 
+// MySQLRepository provides MySQL database operations.
+//nolint:revive // MySQLRepository follows established naming pattern
 type MySQLRepository struct {
 	db *sql.DB
 }
 
+// NewMySQLRepository creates a new MySQL repository instance.
 func NewMySQLRepository(db *sql.DB) ports.MySQLPort {
 	return &MySQLRepository{db: db}
 }
@@ -38,15 +41,18 @@ func NewMySQLDatabasePort(db *sql.DB) ports.DatabasePort {
 	return &MySQLRepository{db: db}
 }
 
+// FetchData retrieves data from MySQL database.
 func (r *MySQLRepository) FetchData() ([]map[string]any, error) {
 	logrus.Infof("💾 FetchData called - returning empty slice (data loading moved to transform service)")
 	return []map[string]any{}, nil
 }
 
+// Close closes the MySQL database connection.
 func (r *MySQLRepository) Close() error {
 	return r.db.Close()
 }
 
+// ExecuteQuery executes a MySQL query and returns results.
 func (r *MySQLRepository) ExecuteQuery(query string) ([]map[string]any, error) {
 	rows, err := r.db.Query(query)
 	if err != nil {
@@ -424,7 +430,7 @@ func (r *MySQLRepository) getTableRowCount(ctx context.Context, db *sql.DB, tabl
 }
 
 // ExtractTableData extracts data from a table with filtering
-func (r *MySQLRepository) ExtractTableData(ctx context.Context, db *sql.DB, tableName string, config *models.DataFilteringConfig) ([]map[string]any, error) {
+func (r *MySQLRepository) ExtractTableData(ctx context.Context, _ *sql.DB, tableName string, config *models.DataFilteringConfig) ([]map[string]any, error) {
 	logrus.Infof("📤 Extracting data from table: %s", tableName)
 
 	query := fmt.Sprintf("SELECT * FROM %s", tableName)

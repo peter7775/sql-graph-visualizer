@@ -15,12 +15,14 @@ import (
 )
 
 // PerformanceAnalyzer implements advanced performance analysis algorithms
+//nolint:revive // PerformanceAnalyzer is descriptive and follows project conventions
 type PerformanceAnalyzer struct {
 	logger *logrus.Logger
 	config *PerformanceAnalyzerConfig
 }
 
 // PerformanceAnalyzerConfig contains configuration for performance analysis
+//nolint:revive // PerformanceAnalyzerConfig is descriptive and follows project conventions
 type PerformanceAnalyzerConfig struct {
 	// Bottleneck detection thresholds
 	HighLatencyThreshold   time.Duration `yaml:"high_latency_threshold" json:"high_latency_threshold"`
@@ -745,11 +747,11 @@ func defaultPerformanceAnalyzerConfig() *PerformanceAnalyzerConfig {
 	}
 }
 
-func (pa *PerformanceAnalyzer) buildPerformanceGraph(graphData *ports.GraphPerformanceData) map[string]map[string]float64 {
+func (pa *PerformanceAnalyzer) buildPerformanceGraph(_ *ports.GraphPerformanceData) map[string]map[string]float64 {
 	return make(map[string]map[string]float64)
 }
 
-func (pa *PerformanceAnalyzer) findCriticalPaths(graph map[string]map[string]float64, graphData *ports.GraphPerformanceData) []ports.CriticalPath {
+func (pa *PerformanceAnalyzer) findCriticalPaths(_ map[string]map[string]float64, _ *ports.GraphPerformanceData) []ports.CriticalPath {
 	return make([]ports.CriticalPath, 0)
 }
 
@@ -783,45 +785,45 @@ func (pa *PerformanceAnalyzer) calculateOverallPathScore(paths []ports.CriticalP
 	return totalImpact / float64(len(paths))
 }
 
-func (pa *PerformanceAnalyzer) aggregateMetrics(metrics []*ports.PerformanceMetrics) map[string]*ports.PerformanceMetrics {
+func (pa *PerformanceAnalyzer) aggregateMetrics(_ []*ports.PerformanceMetrics) map[string]*ports.PerformanceMetrics {
 	return nil
 }
-func (pa *PerformanceAnalyzer) calculateHotspotScore(metrics *ports.PerformanceMetrics) float64 {
+func (pa *PerformanceAnalyzer) calculateHotspotScore(_ *ports.PerformanceMetrics) float64 {
 	return 0
 }
 func (pa *PerformanceAnalyzer) extractTableName(nodeID string) string { return nodeID }
-func (pa *PerformanceAnalyzer) estimateCPUUtilization(metrics *ports.PerformanceMetrics) float64 {
+func (pa *PerformanceAnalyzer) estimateCPUUtilization(_ *ports.PerformanceMetrics) float64 {
 	return 0
 }
-func (pa *PerformanceAnalyzer) estimateIOUtilization(metrics *ports.PerformanceMetrics) float64 {
+func (pa *PerformanceAnalyzer) estimateIOUtilization(_ *ports.PerformanceMetrics) float64 {
 	return 0
 }
-func (pa *PerformanceAnalyzer) estimateLockContention(metrics *ports.PerformanceMetrics) float64 {
+func (pa *PerformanceAnalyzer) estimateLockContention(_ *ports.PerformanceMetrics) float64 {
 	return 0
 }
-func (pa *PerformanceAnalyzer) estimateCacheHitRatio(metrics *ports.PerformanceMetrics) float64 {
+func (pa *PerformanceAnalyzer) estimateCacheHitRatio(_ *ports.PerformanceMetrics) float64 {
 	return 95.0
 }
-func (pa *PerformanceAnalyzer) identifyHotspotIssues(metrics *ports.PerformanceMetrics) []ports.PerformanceIssue {
+func (pa *PerformanceAnalyzer) identifyHotspotIssues(_ *ports.PerformanceMetrics) []ports.PerformanceIssue {
 	return nil
 }
-func (pa *PerformanceAnalyzer) generateHotspotRecommendations(metrics *ports.PerformanceMetrics, score float64) []string {
+func (pa *PerformanceAnalyzer) generateHotspotRecommendations(_ *ports.PerformanceMetrics, _ float64) []string {
 	return nil
 }
-func (pa *PerformanceAnalyzer) determineTrendDirection(metrics *ports.PerformanceMetrics) ports.TrendDirection {
+func (pa *PerformanceAnalyzer) determineTrendDirection(_ *ports.PerformanceMetrics) ports.TrendDirection {
 	return ports.TrendStable
 }
 
-func (pa *PerformanceAnalyzer) groupSimilarQueries(queries []ports.QueryPerformance) []ports.QueryPatternGroup {
+func (pa *PerformanceAnalyzer) groupSimilarQueries(_ []ports.QueryPerformance) []ports.QueryPatternGroup {
 	return nil
 }
-func (pa *PerformanceAnalyzer) identifyCommonPatterns(queries []ports.QueryPerformance) []ports.QueryPattern {
+func (pa *PerformanceAnalyzer) identifyCommonPatterns(_ []ports.QueryPerformance) []ports.QueryPattern {
 	return nil
 }
-func (pa *PerformanceAnalyzer) detectAntiPatterns(queries []ports.QueryPerformance) []ports.QueryAntiPattern {
+func (pa *PerformanceAnalyzer) detectAntiPatterns(_ []ports.QueryPerformance) []ports.QueryAntiPattern {
 	return nil
 }
-func (pa *PerformanceAnalyzer) generatePatternRecommendations(groups []ports.QueryPatternGroup, antiPatterns []ports.QueryAntiPattern) []string {
+func (pa *PerformanceAnalyzer) generatePatternRecommendations(_ []ports.QueryPatternGroup, _ []ports.QueryAntiPattern) []string {
 	return nil
 }
 

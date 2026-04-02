@@ -20,11 +20,12 @@ import (
 	"strings"
 	"time"
 
-	_ "github.com/go-sql-driver/mysql"
+	_ "github.com/go-sql-driver/mysql" // MySQL driver
 	"github.com/sirupsen/logrus"
 )
 
 // MySQLDatabaseRepository implements DatabaseRepository for MySQL
+//nolint:revive // MySQLDatabaseRepository follows established naming pattern
 type MySQLDatabaseRepository struct {
 	db *sql.DB
 }
@@ -421,17 +422,17 @@ func (r *MySQLDatabaseRepository) GetTableRowCount(ctx context.Context, tableNam
 }
 
 // SampleTableData retrieves a sample of data from the specified table.
-func (r *MySQLDatabaseRepository) SampleTableData(ctx context.Context, tableName string, limit int) ([]map[string]interface{}, error) {
+func (r *MySQLDatabaseRepository) SampleTableData(_ context.Context, _ string, limit int) ([]map[string]interface{}, error) {
 	return nil, fmt.Errorf("not implemented yet")
 }
 
 // AnalyzeColumnStatistics analyzes statistical information for table columns.
-func (r *MySQLDatabaseRepository) AnalyzeColumnStatistics(ctx context.Context, tableName, columnName string) (*models.ColumnStatistics, error) {
+func (r *MySQLDatabaseRepository) AnalyzeColumnStatistics(_ context.Context, _, _ string) (*models.ColumnStatistics, error) {
 	return nil, fmt.Errorf("not implemented yet")
 }
 
 // GetTableSize returns the size of the specified table in bytes.
-func (r *MySQLDatabaseRepository) GetTableSize(ctx context.Context, tableName string) (*models.TableSize, error) {
+func (r *MySQLDatabaseRepository) GetTableSize(_ context.Context, _ string) (*models.TableSize, error) {
 	return nil, fmt.Errorf("not implemented yet")
 }
 
@@ -445,22 +446,27 @@ func (r *MySQLDatabaseRepository) ValidatePermissions(ctx context.Context, requi
 	return fmt.Errorf("not implemented yet")
 }
 
+// CheckUserPrivileges checks user privileges for database operations.
 func (r *MySQLDatabaseRepository) CheckUserPrivileges(ctx context.Context) (*models.UserPrivileges, error) {
 	return nil, fmt.Errorf("not implemented yet")
 }
 
+// EscapeIdentifier escapes database identifiers for safe usage in queries.
 func (r *MySQLDatabaseRepository) EscapeIdentifier(identifier string) string {
 	return fmt.Sprintf("`%s`", strings.ReplaceAll(identifier, "`", "``"))
 }
 
+// GetQuoteChar returns the character used for quoting identifiers in MySQL.
 func (r *MySQLDatabaseRepository) GetQuoteChar() string {
 	return "`"
 }
 
+// GetDatabaseType returns the MySQL database type.
 func (r *MySQLDatabaseRepository) GetDatabaseType() models.DatabaseType {
 	return models.DatabaseTypeMySQL
 }
 
+// GetConnectionString builds MySQL connection string from config.
 func (r *MySQLDatabaseRepository) GetConnectionString(config models.DatabaseConfig) string {
 	mysqlConfig, ok := config.(*models.MySQLConfig)
 	if !ok {

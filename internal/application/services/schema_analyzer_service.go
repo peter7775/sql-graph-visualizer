@@ -276,7 +276,7 @@ func (s *SchemaAnalyzerService) calculatePatternConfidence(patternType string, t
 	switch patternType {
 	case "STAR_SCHEMA":
 		// Higher confidence with more relationships
-		return min(float64(len(table.Relationships))*0.2, 1.0)
+		return minFloat(float64(len(table.Relationships))*0.2, 1.0)
 	case "HIERARCHY":
 		// High confidence for self-referencing tables
 		return 0.9
@@ -387,7 +387,7 @@ func (s *SchemaAnalyzerService) generateRelationshipType(junctionTable, table1, 
 }
 
 // min helper function
-func min(a, b float64) float64 {
+func minFloat(a, b float64) float64 {
 	if a < b {
 		return a
 	}

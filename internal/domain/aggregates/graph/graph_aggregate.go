@@ -22,6 +22,7 @@ import (
 )
 
 // GraphAggregate represents a graph domain aggregate containing nodes and relationships.
+//nolint:revive // GraphAggregate is a legacy name we cannot change without breaking existing code
 type GraphAggregate struct {
 	entities.BaseEntity
 	nodes         []*entities.Node

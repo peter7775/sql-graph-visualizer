@@ -20,16 +20,20 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+// Neo4jConfig represents Neo4j database connection configuration.
+//nolint:revive // Neo4jConfig is consistent with package naming
 type Neo4jConfig struct {
 	URI      string
 	User     string
 	Password string
 }
 
+// Client represents a Neo4j database client.
 type Client struct {
 	driver neo4j.Driver
 }
 
+// NewNeo4jClient creates a new Neo4j client with the given configuration.
 func NewNeo4jClient(config Neo4jConfig) (*Client, error) {
 	driver, err := neo4j.NewDriver(config.URI,
 		neo4j.BasicAuth(config.User, config.Password, ""))
@@ -40,6 +44,7 @@ func NewNeo4jClient(config Neo4jConfig) (*Client, error) {
 	return &Client{driver: driver}, nil
 }
 
+// Close closes the Neo4j database connection.
 func (c *Client) Close() error {
 	return c.driver.Close()
 }

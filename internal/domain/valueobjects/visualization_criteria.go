@@ -11,19 +11,24 @@
 
 package valueobjects
 
+// VisualizationFormat represents supported visualization output formats.
 type VisualizationFormat string
 
 const (
+	// FormatJSON represents JSON output format
 	FormatJSON  VisualizationFormat = "json"
-	FormatBasic VisualizationFormat = "basic"
+	// FormatGraphML represents GraphML output format  
+	FormatGraphML VisualizationFormat = "graphml"
 )
 
+// VisualizationCriteria represents criteria for graph visualization.
 type VisualizationCriteria struct {
 	SearchCriteria
 	Format VisualizationFormat
 	Limit  int
 }
 
+// NewVisualizationCriteria creates new visualization criteria.
 func NewVisualizationCriteria(format VisualizationFormat, limit int) *VisualizationCriteria {
 	return &VisualizationCriteria{
 		Format: format,

@@ -15,6 +15,7 @@ import (
 )
 
 // PerformanceSchemaAdapter collects performance data from MySQL Performance Schema
+//nolint:revive // PerformanceSchemaAdapter is descriptive and follows project conventions
 type PerformanceSchemaAdapter struct {
 	db     *sql.DB
 	logger *logrus.Logger
@@ -31,6 +32,7 @@ type PerformanceSchemaAdapter struct {
 }
 
 // PerformanceSchemaConfig contains configuration for Performance Schema data collection
+//nolint:revive // PerformanceSchemaConfig is descriptive and follows project conventions
 type PerformanceSchemaConfig struct {
 	// Collection settings
 	CollectionInterval  time.Duration `yaml:"collection_interval" json:"collection_interval"`
@@ -61,6 +63,7 @@ type PerformanceSchemaConfig struct {
 }
 
 // PerformanceSchemaData contains collected performance data
+//nolint:revive // PerformanceSchemaData is descriptive and follows project conventions
 type PerformanceSchemaData struct {
 	CollectionTime   time.Time              `json:"collection_time"`
 	GlobalStatus     *GlobalStatusData      `json:"global_status"`

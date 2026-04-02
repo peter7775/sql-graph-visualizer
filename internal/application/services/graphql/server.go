@@ -9,6 +9,7 @@
  * and graph visualization. Commercial use requires separate licensing.
  */
 
+// Package graphql provides GraphQL server implementation.
 package graphql
 
 import (

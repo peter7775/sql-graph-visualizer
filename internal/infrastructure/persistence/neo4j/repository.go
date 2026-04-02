@@ -20,10 +20,13 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+// Neo4jRepository implements Neo4j database operations.
+//nolint:revive // Neo4jRepository follows established naming pattern
 type Neo4jRepository struct {
 	driver neo4j.Driver
 }
 
+// NewNeo4jRepository creates a new Neo4j repository with the given connection details.
 func NewNeo4jRepository(uri, username, password string) (*Neo4jRepository, error) {
 	logrus.Infof("Creating Neo4j driver with URI: %s, user: %s", uri, username)
 	driver, err := neo4j.NewDriver(uri, neo4j.BasicAuth(username, password, ""))
@@ -35,6 +38,7 @@ func NewNeo4jRepository(uri, username, password string) (*Neo4jRepository, error
 	return &Neo4jRepository{driver: driver}, nil
 }
 
+// StoreGraph stores a graph aggregate in Neo4j database.
 func (r *Neo4jRepository) StoreGraph(graph *graph.GraphAggregate) error {
 	session := r.driver.NewSession(neo4j.SessionConfig{})
 	defer func() {
@@ -94,6 +98,7 @@ func (r *Neo4jRepository) StoreGraph(graph *graph.GraphAggregate) error {
 	return nil
 }
 
+// SearchNodes searches for nodes matching the given criteria.
 func (r *Neo4jRepository) SearchNodes(criteria string) ([]*graph.GraphAggregate, error) {
 	session := r.driver.NewSession(neo4j.SessionConfig{})
 	defer func() {
@@ -128,7 +133,8 @@ func (r *Neo4jRepository) SearchNodes(criteria string) ([]*graph.GraphAggregate,
 	return []*graph.GraphAggregate{graphAgg}, nil
 }
 
-func (r *Neo4jRepository) ExportGraph(query string) (any, error) {
+// ExportGraph exports graph data from Neo4j repository.
+func (r *Neo4jRepository) ExportGraph(_ string) (any, error) {
 	session := r.driver.NewSession(neo4j.SessionConfig{})
 	defer func() {
 		if err := session.Close(); err != nil {
@@ -222,14 +228,17 @@ func (r *Neo4jRepository) ExportGraph(query string) (any, error) {
 	return graphAgg, nil
 }
 
+// Close closes the Neo4j database connection.
 func (r *Neo4jRepository) Close() error {
 	return r.driver.Close()
 }
 
+// NewSession creates a new Neo4j session with the given configuration.
 func (r *Neo4jRepository) NewSession(config neo4j.SessionConfig) neo4j.Session {
 	return r.driver.NewSession(config)
 }
 
+// FetchNodes fetches nodes of a specific type from Neo4j.
 func (r *Neo4jRepository) FetchNodes(nodeType string) ([]map[string]any, error) {
 	session := r.driver.NewSession(neo4j.SessionConfig{})
 	defer func() {

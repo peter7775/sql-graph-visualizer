@@ -78,6 +78,7 @@ type AnimationConfig struct {
 }
 
 // PerformanceGraphData contains performance-enhanced graph data
+//nolint:revive // PerformanceGraphData is descriptive and follows project conventions
 type PerformanceGraphData struct {
 	ID            string                    `json:"id"`
 	GeneratedAt   time.Time                 `json:"generated_at"`
@@ -90,6 +91,7 @@ type PerformanceGraphData struct {
 }
 
 // PerformanceGraphNode represents a node with performance data
+//nolint:revive // PerformanceGraphNode is descriptive and follows project conventions
 type PerformanceGraphNode struct {
 	ID              string               `json:"id"`
 	TableName       string               `json:"table_name"`
@@ -102,6 +104,7 @@ type PerformanceGraphNode struct {
 }
 
 // PerformanceGraphEdge represents an edge with performance data
+//nolint:revive // PerformanceGraphEdge is descriptive and follows project conventions
 type PerformanceGraphEdge struct {
 	ID           string               `json:"id"`
 	SourceID     string               `json:"source_id"`
@@ -246,6 +249,7 @@ type EdgeIssue struct {
 }
 
 // PerformanceGlobalMetrics contains global performance metrics
+//nolint:revive // PerformanceGlobalMetrics is descriptive and follows project conventions
 type PerformanceGlobalMetrics struct {
 	OverallScore       float64   `json:"overall_score"`
 	TotalQueriesPerSec float64   `json:"total_queries_per_sec"`
@@ -508,35 +512,35 @@ func (gpm *GraphPerformanceMapper) createPerformanceEdge(
 }
 
 // Stub implementations for helper methods
-func (gpm *GraphPerformanceMapper) extractTableNames(digestText string) []string { return []string{} }
-func (gpm *GraphPerformanceMapper) aggregateTablePerformance(info *TablePerformanceInfo, stmt *StatementStatistic) {
+func (gpm *GraphPerformanceMapper) extractTableNames(_ string) []string { return []string{} }
+func (gpm *GraphPerformanceMapper) aggregateTablePerformance(_ *TablePerformanceInfo, _ *StatementStatistic) {
 }
-func (gpm *GraphPerformanceMapper) createTablePerformanceInfo(tableName string, stmt *StatementStatistic) *TablePerformanceInfo {
+func (gpm *GraphPerformanceMapper) createTablePerformanceInfo(_ string, _ *StatementStatistic) *TablePerformanceInfo {
 	return nil
 }
-func (gpm *GraphPerformanceMapper) generateNodeRecommendations(perfInfo *TablePerformanceInfo) []string {
+func (gpm *GraphPerformanceMapper) generateNodeRecommendations(_ *TablePerformanceInfo) []string {
 	return []string{}
 }
-func (gpm *GraphPerformanceMapper) enhanceWithIOStats(info *TablePerformanceInfo, tableIO *TableIOStatistic) {
+func (gpm *GraphPerformanceMapper) enhanceWithIOStats(_ *TablePerformanceInfo, _ *TableIOStatistic) {
 }
-func (gpm *GraphPerformanceMapper) calculateNodeVisualProperties(info *TablePerformanceInfo) NodeVisualProperties {
+func (gpm *GraphPerformanceMapper) calculateNodeVisualProperties(_ *TablePerformanceInfo) NodeVisualProperties {
 	return NodeVisualProperties{}
 }
-func (gpm *GraphPerformanceMapper) mapNodePerformanceData(info *TablePerformanceInfo) NodePerformanceData {
+func (gpm *GraphPerformanceMapper) mapNodePerformanceData(_ *TablePerformanceInfo) NodePerformanceData {
 	return NodePerformanceData{}
 }
-func (gpm *GraphPerformanceMapper) findEdgePerformanceData(edge *models.Relation, data *PerformanceSchemaData) EdgePerformanceData {
+func (gpm *GraphPerformanceMapper) findEdgePerformanceData(_ *models.Relation, _ *PerformanceSchemaData) EdgePerformanceData {
 	return EdgePerformanceData{}
 }
-func (gpm *GraphPerformanceMapper) calculateEdgeVisualProperties(edgePerf EdgePerformanceData) EdgeVisualProperties {
+func (gpm *GraphPerformanceMapper) calculateEdgeVisualProperties(_ EdgePerformanceData) EdgeVisualProperties {
 	return EdgeVisualProperties{}
 }
-func (gpm *GraphPerformanceMapper) generateQueryPattern(edge *models.Relation) string { return "" }
-func (gpm *GraphPerformanceMapper) identifyEdgeIssues(edgePerf EdgePerformanceData) []EdgeIssue {
+func (gpm *GraphPerformanceMapper) generateQueryPattern(_ *models.Relation) string { return "" }
+func (gpm *GraphPerformanceMapper) identifyEdgeIssues(_ EdgePerformanceData) []EdgeIssue {
 	return []EdgeIssue{}
 }
-func (gpm *GraphPerformanceMapper) calculateGlobalMetrics(perfGraph *PerformanceGraphData)         {}
-func (gpm *GraphPerformanceMapper) identifyHotspotsAndBottlenecks(perfGraph *PerformanceGraphData) {}
+func (gpm *GraphPerformanceMapper) calculateGlobalMetrics(_ *PerformanceGraphData)         {}
+func (gpm *GraphPerformanceMapper) identifyHotspotsAndBottlenecks(_ *PerformanceGraphData) {}
 
 // Default configuration
 func defaultGraphPerformanceMapperConfig() *GraphPerformanceMapperConfig {

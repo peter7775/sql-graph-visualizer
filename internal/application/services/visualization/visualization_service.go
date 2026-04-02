@@ -9,6 +9,7 @@
  * and graph visualization. Commercial use requires separate licensing.
  */
 
+// Package visualization provides graph visualization services.
 package visualization
 
 import (
@@ -19,6 +20,7 @@ import (
 )
 
 // VisualizationService provides graph visualization capabilities.
+//nolint:revive // VisualizationService is descriptive and follows project conventions
 type VisualizationService struct {
 	neo4jPort ports.Neo4jPort
 }
@@ -30,10 +32,12 @@ func NewVisualizationService(neo4jPort ports.Neo4jPort) *VisualizationService {
 	}
 }
 
+// GetGraphData retrieves graph data based on search criteria.
 func (s *VisualizationService) GetGraphData(ctx context.Context, criteria valueobjects.SearchCriteria) ([]*graph.GraphAggregate, error) {
 	return s.neo4jPort.SearchNodes(criteria.ToString())
 }
 
+// ExportGraph exports graph data in the specified format.
 func (s *VisualizationService) ExportGraph(ctx context.Context, format string) (any, error) {
 	query := s.buildExportQuery(format)
 	return s.neo4jPort.ExportGraph(query)

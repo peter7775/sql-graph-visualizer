@@ -16,15 +16,17 @@ import (
 	"fmt"
 	"sql-graph-visualizer/internal/application/ports"
 	"sql-graph-visualizer/internal/application/services/transform"
-	"sql-graph-visualizer/internal/domain/valueobjects"
 )
 
+// MigrationService handles database migration operations.
+//nolint:revive // MigrationService follows established naming pattern
 type MigrationService struct {
 	mysqlPort ports.MySQLPort
 	neo4jPort ports.Neo4jPort
 	transform *transform.TransformService
 }
 
+// NewMigrationService creates a new migration service instance.
 func NewMigrationService(
 	mysqlPort ports.MySQLPort,
 	neo4jPort ports.Neo4jPort,
@@ -40,9 +42,10 @@ func NewMigrationService(
 	}
 }
 
-func (s *MigrationService) MigrateData(ctx context.Context, config valueobjects.TransformConfig) error {
+// MigrateData performs data migration according to the provided configuration.
+func (m *MigrationService) MigrateData(ctx context.Context, _ *MigrationConfig) error {
 	if ctx == nil {
 		return fmt.Errorf("context must not be nil")
 	}
-	return s.transform.TransformAndStore(ctx)
+	return m.transform.TransformAndStore(ctx)
 }

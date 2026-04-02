@@ -20,6 +20,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+// RuleAggregate represents a transformation rule with its metadata.
 type RuleAggregate struct {
 	entities.BaseEntity
 	Rule        transform.TransformRule
@@ -31,12 +32,14 @@ type RuleAggregate struct {
 	Actions     map[string]any
 }
 
+// NodeMapping represents mapping configuration for graph nodes.
 type NodeMapping struct {
 	Type        string
 	Key         string
 	TargetField string
 }
 
+// ApplyRules applies transformation rules to a dataset.
 func (t *RuleAggregate) ApplyRules(data []map[string]any) []any {
 	var results []any
 	for _, record := range data {
@@ -52,6 +55,7 @@ func (t *RuleAggregate) ApplyRules(data []map[string]any) []any {
 	return results
 }
 
+// ApplyRule applies transformation rule to a single data item.
 func (t *RuleAggregate) ApplyRule(data map[string]any) (any, error) {
 	logrus.Infof("Applying rule: %+v", t.Rule)
 	logrus.Infof("Current FieldMappings: %+v", t.Rule.FieldMappings)

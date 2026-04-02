@@ -11,6 +11,7 @@
 
 package valueobjects
 
+// TransformConfig represents transformation configuration settings.
 type TransformConfig struct {
 	SourceType      string
 	TargetType      string
@@ -18,6 +19,7 @@ type TransformConfig struct {
 	TransformFields map[string]string
 }
 
+// NewTransformConfig creates a new transformation configuration.
 func NewTransformConfig(sourceType, targetType string, priority int) TransformConfig {
 	return TransformConfig{
 		SourceType:      sourceType,

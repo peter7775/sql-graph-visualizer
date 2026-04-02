@@ -11,6 +11,8 @@
 
 package postgresql
 
+// PostgreSQLConfig represents PostgreSQL-specific configuration.
+//nolint:revive // PostgreSQLConfig is consistent with package naming
 type PostgreSQLConfig struct {
 	Host     string
 	Port     int

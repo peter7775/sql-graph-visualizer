@@ -18,6 +18,7 @@ import (
 	neo4jClient "sql-graph-visualizer/internal/domain/repositories/neo4j"
 )
 
+// NewMySQLRepository creates a new MySQL repository instance.
 func NewMySQLRepository(config models.Config) (repositories.MySQLRepository, error) {
 	client, err := mysqlClient.NewMySQLClient(mysqlClient.MySQLConfig{
 		Host:     config.MySQL.Host,
@@ -32,6 +33,7 @@ func NewMySQLRepository(config models.Config) (repositories.MySQLRepository, err
 	return client, nil
 }
 
+// NewNeo4jRepository creates a new Neo4j repository instance.
 func NewNeo4jRepository(config models.Config) (repositories.Neo4jRepository, error) {
 	client, err := neo4jClient.NewNeo4jClient(neo4jClient.Neo4jConfig{
 		URI:      config.Neo4j.URI,

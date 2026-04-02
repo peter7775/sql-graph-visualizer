@@ -88,11 +88,12 @@ func (l *LocalDeployment) getEnvOrDefault(key, defaultValue string) string {
 	return defaultValue
 }
 
-func (l *LocalDeployment) RegisterVisualizationRoutes(router *mux.Router, neo4jRepo ports.Neo4jPort, cfg *models.Config) error {
+func (l *LocalDeployment) RegisterVisualizationRoutes(_ *mux.Router, neo4jRepo ports.Neo4jPort, cfg *models.Config) error {
 	l.logger.Info("Local: Visualization routes handled by separate server - no registration needed")
 	return nil
 }
 
+// GetHomepageHandler returns the homepage handler for local deployment.
 func (l *LocalDeployment) GetHomepageHandler() http.HandlerFunc {
 	return nil
 }

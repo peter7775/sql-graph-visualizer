@@ -12,11 +12,15 @@
 // Package transform contains value objects for data transformation rules.
 package transform
 
+// Direction represents the direction of a relationship in graph transformations.
 type Direction int
 
 const (
+	// Outgoing represents an outgoing relationship direction
 	Outgoing Direction = iota
+	// Incoming represents an incoming relationship direction
 	Incoming
+	// Both represents bidirectional relationships
 	Both
 )
 
@@ -33,6 +37,7 @@ func (d Direction) String() string {
 	}
 }
 
+// ToCypherDirection converts the Direction to Cypher query format.
 func (d Direction) ToCypherDirection() string {
 	switch d {
 	case Outgoing:

@@ -9,6 +9,7 @@
  * and graph visualization. Commercial use requires separate licensing.
  */
 
+// Package factories provides factory implementations for creating repositories.
 package factories
 
 import (

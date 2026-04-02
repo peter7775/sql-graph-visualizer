@@ -47,7 +47,7 @@ func newConfigValidateCmd() *cobra.Command {
 
   # Validate current directory config
   sql-graph-cli config validate`,
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, _ []string) error {
 			return runConfigValidate(configFile)
 		},
 	}
@@ -71,7 +71,7 @@ func newConfigShowCmd() *cobra.Command {
 
   # Show config as JSON
   sql-graph-cli config show --config mysql-production.yml --format json`,
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, _ []string) error {
 			return runConfigShow(configFile, format)
 		},
 	}
@@ -97,7 +97,7 @@ func newConfigInitCmd() *cobra.Command {
 
   # Initialize production config
   sql-graph-cli config init --template production --output prod-config.yml --force`,
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, _ []string) error {
 			return runConfigInit(outputFile, template, force)
 		},
 	}

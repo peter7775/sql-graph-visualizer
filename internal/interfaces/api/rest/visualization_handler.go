@@ -9,6 +9,7 @@
  * and graph visualization. Commercial use requires separate licensing.
  */
 
+// Package rest provides REST API handlers.
 package rest
 
 import (

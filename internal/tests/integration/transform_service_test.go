@@ -326,7 +326,7 @@ func TestIntegrationTransformRulesAndVisualization(t *testing.T) {
 	}
 }
 
-func startVisualizationServer(t *testing.T) *http.Server {
+func startVisualizationServer(_ *testing.T) *http.Server {
 	addr := "localhost:3000"
 	mux := http.NewServeMux()
 
@@ -339,7 +339,7 @@ func startVisualizationServer(t *testing.T) *http.Server {
 	corsHandler := middleware.NewCORSHandler(corsOptions)
 	handler := corsHandler(mux)
 
-	mux.HandleFunc("/config", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/config", func(w http.ResponseWriter, _ *http.Request) {
 		cfg, err := config.Load()
 		if err != nil {
 			http.Error(w, "Error loading configuration", http.StatusInternalServerError)

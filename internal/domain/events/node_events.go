@@ -13,11 +13,13 @@ package events
 
 import "time"
 
+// NodeAddedEvent represents an event when a node is added to the graph.
 type NodeAddedEvent struct {
 	BaseDomainEvent
 	NodeID string
 }
 
+// NewNodeAddedEvent creates a new NodeAddedEvent.
 func NewNodeAddedEvent(aggregateID string, nodeID string) *NodeAddedEvent {
 	return &NodeAddedEvent{
 		BaseDomainEvent: BaseDomainEvent{

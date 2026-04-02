@@ -16,16 +16,19 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+// RailwayDeployment provides Railway platform deployment capabilities.
 type RailwayDeployment struct {
 	logger *logrus.Logger
 }
 
+// NewRailwayDeployment creates a new Railway deployment instance.
 func NewRailwayDeployment(logger *logrus.Logger) ports.DeploymentPort {
 	return &RailwayDeployment{
 		logger: logger,
 	}
 }
 
+// GetAPIPort returns the API server port for Railway deployment.
 func (r *RailwayDeployment) GetAPIPort() string {
 	port := os.Getenv("PORT")
 	if port == "" {
@@ -35,6 +38,7 @@ func (r *RailwayDeployment) GetAPIPort() string {
 	return port
 }
 
+// GetVisualizationPort returns the visualization server port for Railway.
 func (r *RailwayDeployment) GetVisualizationPort() string {
 	if r.isRailwayEnvironment() {
 
@@ -46,6 +50,7 @@ func (r *RailwayDeployment) GetVisualizationPort() string {
 	return "3000"
 }
 
+// ShouldStartVisualizationServer indicates whether to start visualization server.
 func (r *RailwayDeployment) ShouldStartVisualizationServer() bool {
 	if r.isRailwayEnvironment() {
 
@@ -57,6 +62,7 @@ func (r *RailwayDeployment) ShouldStartVisualizationServer() bool {
 	return true
 }
 
+// GetEnvironmentInfo returns Railway environment information.
 func (r *RailwayDeployment) GetEnvironmentInfo() map[string]interface{} {
 	return map[string]interface{}{
 		"platform":            r.GetPlatformName(),
@@ -68,6 +74,7 @@ func (r *RailwayDeployment) GetEnvironmentInfo() map[string]interface{} {
 	}
 }
 
+// ConfigureServer configures HTTP server for Railway deployment.
 func (r *RailwayDeployment) ConfigureServer(server *http.Server) *http.Server {
 	if r.isRailwayEnvironment() {
 		r.logger.Info("Railway: Applying Railway-specific server configuration")
@@ -89,6 +96,7 @@ func (r *RailwayDeployment) ConfigureServer(server *http.Server) *http.Server {
 	return server
 }
 
+// GetPlatformName returns the platform name.
 func (r *RailwayDeployment) GetPlatformName() string {
 	if r.isRailwayEnvironment() {
 		return "Railway"
@@ -107,6 +115,7 @@ func (r *RailwayDeployment) getEnvOrDefault(key, defaultValue string) string {
 	return defaultValue
 }
 
+// GetRailwayDatabaseConfig returns Railway database configuration.
 func (r *RailwayDeployment) GetRailwayDatabaseConfig() map[string]string {
 	config := make(map[string]string)
 
@@ -130,11 +139,13 @@ func (r *RailwayDeployment) GetRailwayDatabaseConfig() map[string]string {
 	return config
 }
 
+// IsProductionMode indicates if running in production mode.
 func (r *RailwayDeployment) IsProductionMode() bool {
 	railwayEnv := os.Getenv("RAILWAY_ENVIRONMENT")
 	return railwayEnv == "production"
 }
 
+// GetMemoryLimit returns memory limit for Railway deployment.
 func (r *RailwayDeployment) GetMemoryLimit() int64 {
 	if !r.isRailwayEnvironment() {
 		return 0
@@ -149,6 +160,7 @@ func (r *RailwayDeployment) GetMemoryLimit() int64 {
 	return 512
 }
 
+// GetHealthCheckConfig returns health check configuration.
 func (r *RailwayDeployment) GetHealthCheckConfig() map[string]interface{} {
 	return map[string]interface{}{
 		"enabled":      true,
@@ -161,6 +173,7 @@ func (r *RailwayDeployment) GetHealthCheckConfig() map[string]interface{} {
 	}
 }
 
+// RegisterVisualizationRoutes registers visualization routes for Railway.
 func (r *RailwayDeployment) RegisterVisualizationRoutes(router *mux.Router, neo4jRepo ports.Neo4jPort, cfg *models.Config) error {
 	if !r.isRailwayEnvironment() {
 		r.logger.Info("Railway: Not in Railway environment - skipping visualization route registration")
@@ -169,7 +182,7 @@ func (r *RailwayDeployment) RegisterVisualizationRoutes(router *mux.Router, neo4
 
 	r.logger.Info("Railway: Registering visualization routes in API server for single-port deployment")
 
-	router.HandleFunc("/api/graph", func(w http.ResponseWriter, req *http.Request) {
+	router.HandleFunc("/api/graph", func(w http.ResponseWriter, _ *http.Request) {
 		r.logger.Info("Railway: Request to API endpoint /api/graph")
 
 		graphInterface, err := neo4jRepo.ExportGraph("MATCH (n)-[r]->(m) RETURN n, r, m")
@@ -224,7 +237,7 @@ func (r *RailwayDeployment) RegisterVisualizationRoutes(router *mux.Router, neo4
 		}
 	}).Methods("GET")
 
-	router.HandleFunc("/config", func(w http.ResponseWriter, req *http.Request) {
+	router.HandleFunc("/config", func(w http.ResponseWriter, _ *http.Request) {
 		r.logger.Info("Railway: Request to /config endpoint")
 		w.Header().Set("Content-Type", "application/json")
 		w.Header().Set("Access-Control-Allow-Origin", "*")
@@ -316,12 +329,13 @@ func (r *RailwayDeployment) findProjectRoot() string {
 	}
 }
 
+// GetHomepageHandler returns homepage handler for Railway.
 func (r *RailwayDeployment) GetHomepageHandler() http.HandlerFunc {
 	if !r.isRailwayEnvironment() {
 		return nil
 	}
 
-	return func(w http.ResponseWriter, req *http.Request) {
+	return func(w http.ResponseWriter, _ *http.Request) {
 		r.logger.Info("Railway: Root endpoint requested - serving Railway homepage")
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		w.WriteHeader(http.StatusOK)

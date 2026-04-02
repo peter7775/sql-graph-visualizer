@@ -9,15 +9,18 @@
  * and graph visualization. Commercial use requires separate licensing.
  */
 
+// Package valueobjects contains domain value objects.
 package valueobjects
 
 import "fmt"
 
+// SearchCriteria represents search parameters for graph queries.
 type SearchCriteria struct {
 	Labels     []string
 	Properties map[string]any
 }
 
+// ToString returns string representation of search criteria.
 func (c SearchCriteria) ToString() string {
 	query := "MATCH (n)"
 	if len(c.Labels) > 0 {

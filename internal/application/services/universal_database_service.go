@@ -249,7 +249,7 @@ func (s *UniversalDatabaseService) TestConnection(ctx context.Context) (*models.
 }
 
 // analyzeSchema performs schema analysis using the generic repository interface
-func (s *UniversalDatabaseService) analyzeSchema(ctx context.Context, db *sql.DB) (*models.UniversalSchemaAnalysisResult, error) {
+func (s *UniversalDatabaseService) analyzeSchema(ctx context.Context, _ *sql.DB) (*models.UniversalSchemaAnalysisResult, error) {
 	result := &models.UniversalSchemaAnalysisResult{
 		DatabaseName: "",
 		Tables:       []*models.UniversalTableInfo{},

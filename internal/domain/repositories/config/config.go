@@ -22,6 +22,7 @@ import (
 	yaml "gopkg.in/yaml.v3"
 )
 
+// Load loads the application configuration from YAML files.
 func Load() (*models.Config, error) {
 	var configPath string
 

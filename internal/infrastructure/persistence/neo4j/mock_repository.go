@@ -8,12 +8,14 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+// MockNeo4jRepository provides a mock implementation of Neo4j repository for testing.
 type MockNeo4jRepository struct {
 	logger    *logrus.Logger
 	nodes     []*entities.Node
 	relations []*entities.Relation
 }
 
+// NewMockNeo4jRepository creates a new mock Neo4j repository.
 func NewMockNeo4jRepository() ports.Neo4jPort {
 	logrus.Info("Creating Mock Neo4j Repository for Railway deployment")
 	return &MockNeo4jRepository{
@@ -23,17 +25,20 @@ func NewMockNeo4jRepository() ports.Neo4jPort {
 	}
 }
 
-func (m *MockNeo4jRepository) StoreGraph(graph *graph.GraphAggregate) error {
+// StoreGraph stores a graph aggregate in the mock repository.
+func (m *MockNeo4jRepository) StoreGraph(_ *graph.GraphAggregate) error {
 	logrus.Info("Mock: Storing graph data")
 	return nil
 }
 
+// SearchNodes searches for nodes in the mock repository.
 func (m *MockNeo4jRepository) SearchNodes(criteria string) ([]*graph.GraphAggregate, error) {
 	logrus.Infof("Mock: Searching nodes with criteria: %s", criteria)
 	return []*graph.GraphAggregate{}, nil
 }
 
-func (m *MockNeo4jRepository) ExportGraph(query string) (any, error) {
+// ExportGraph exports graph data from the mock repository.
+func (m *MockNeo4jRepository) ExportGraph(_ string) (any, error) {
 	logrus.Info("Mock: Exporting graph data")
 
 	sampleNodes := []*entities.Node{
@@ -111,6 +116,7 @@ func (m *MockNeo4jRepository) ExportGraph(query string) (any, error) {
 	return graphAggregate, nil
 }
 
+// FetchNodes fetches nodes by type from the mock repository.
 func (m *MockNeo4jRepository) FetchNodes(nodeType string) ([]map[string]any, error) {
 	logrus.Infof("Mock: Fetching nodes of type: %s", nodeType)
 
@@ -136,11 +142,13 @@ func (m *MockNeo4jRepository) FetchNodes(nodeType string) ([]map[string]any, err
 	}
 }
 
-func (m *MockNeo4jRepository) ExecuteQuery(query string, params map[string]interface{}) ([]map[string]interface{}, error) {
+// ExecuteQuery executes a query in the mock repository.
+func (m *MockNeo4jRepository) ExecuteQuery(query string, _ map[string]interface{}) ([]map[string]interface{}, error) {
 	logrus.Infof("Mock: Executing query: %s", query)
 	return []map[string]interface{}{}, nil
 }
 
+// Close closes the mock repository connection.
 func (m *MockNeo4jRepository) Close() error {
 	logrus.Info("Mock: Closing Neo4j repository (no-op)")
 	return nil

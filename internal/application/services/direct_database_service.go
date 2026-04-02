@@ -7,6 +7,7 @@
  * Patent Pending - Application filed for innovative database transformation techniques
  */
 
+// Package services provides application service implementations.
 package services
 
 import (

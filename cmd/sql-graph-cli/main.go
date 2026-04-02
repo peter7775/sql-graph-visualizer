@@ -7,6 +7,7 @@
  * Patent Pending - Application filed for innovative database transformation techniques
  */
 
+// Package main provides the command-line interface for sql-graph-visualizer.
 package main
 
 import (

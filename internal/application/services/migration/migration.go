@@ -9,12 +9,15 @@
  * and graph visualization. Commercial use requires separate licensing.
  */
 
+// Package migration provides database migration services.
 package migration
 
 import (
 	"github.com/neo4j/neo4j-go-driver/v4/neo4j"
 )
 
+// MigrationConfig represents configuration for database migrations.
+//nolint:revive // MigrationConfig follows established naming pattern
 type MigrationConfig struct {
 	SourceTable string
 	Neo4jDriver neo4j.Driver
