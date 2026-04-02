@@ -138,9 +138,9 @@ func (r *queryResolver) Node(ctx context.Context, id string) (*models.Node, erro
 }
 
 // RelationshipsByType is the resolver for the relationshipsByType field.
-func (r *queryResolver) RelationshipsByType(_ context.Context, relationshipType string) ([]*models.Relationship, error) {
+func (r *queryResolver) RelationshipsByType(_ context.Context, typeArg string) ([]*models.Relationship, error) {
 	// Query Neo4j for relationships of specific type
-	relType := relationshipType
+	relType := typeArg
 	cypher := fmt.Sprintf("MATCH (n)-[r:%s]->(m) RETURN n, r, m", relType)
 	graphInterface, err := r.Neo4jRepo.ExportGraph(cypher)
 	if err != nil {
