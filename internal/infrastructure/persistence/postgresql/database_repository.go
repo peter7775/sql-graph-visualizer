@@ -47,39 +47,39 @@ func (r *PostgreSQLDatabaseRepository) Connect(ctx context.Context, config model
 
 	// Build PostgreSQL connection string
 	var connString strings.Builder
-	connString.WriteString(fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s",
-		pgConfig.GetHost(), pgConfig.GetPort(), username, pgConfig.GetPassword(), pgConfig.GetDatabase()))
+	fmt.Fprintf(&connString, "host=%s port=%d user=%s password=%s dbname=%s",
+		pgConfig.GetHost(), pgConfig.GetPort(), username, pgConfig.GetPassword(), pgConfig.GetDatabase())
 
 	// Add SSL configuration
 	if pgConfig.SSLConfig.Mode != "" {
-		connString.WriteString(fmt.Sprintf(" sslmode=%s", pgConfig.SSLConfig.Mode))
+		fmt.Fprintf(&connString, " sslmode=%s", pgConfig.SSLConfig.Mode)
 	} else {
 		connString.WriteString(" sslmode=prefer") // Default to prefer
 	}
 
 	if pgConfig.SSLConfig.CertFile != "" {
-		connString.WriteString(fmt.Sprintf(" sslcert=%s", pgConfig.SSLConfig.CertFile))
+		fmt.Fprintf(&connString, " sslcert=%s", pgConfig.SSLConfig.CertFile)
 	}
 	if pgConfig.SSLConfig.KeyFile != "" {
-		connString.WriteString(fmt.Sprintf(" sslkey=%s", pgConfig.SSLConfig.KeyFile))
+		fmt.Fprintf(&connString, " sslkey=%s", pgConfig.SSLConfig.KeyFile)
 	}
 	if pgConfig.SSLConfig.CAFile != "" {
-		connString.WriteString(fmt.Sprintf(" sslrootcert=%s", pgConfig.SSLConfig.CAFile))
+		fmt.Fprintf(&connString, " sslrootcert=%s", pgConfig.SSLConfig.CAFile)
 	}
 
 	security := pgConfig.GetSecurity()
 	if security.ConnectionTimeout > 0 {
-		connString.WriteString(fmt.Sprintf(" connect_timeout=%d", security.ConnectionTimeout))
+		fmt.Fprintf(&connString, " connect_timeout=%d", security.ConnectionTimeout)
 	}
 	if pgConfig.StatementTimeout > 0 {
-		connString.WriteString(fmt.Sprintf(" statement_timeout=%dms", pgConfig.StatementTimeout*1000))
+		fmt.Fprintf(&connString, " statement_timeout=%dms", pgConfig.StatementTimeout*1000)
 	}
 
 	appName := pgConfig.ApplicationName
 	if appName == "" {
 		appName = "sql-graph-visualizer"
 	}
-	connString.WriteString(fmt.Sprintf(" application_name=%s", appName))
+	fmt.Fprintf(&connString, " application_name=%s", appName)
 
 	logrus.Infof("Connecting to PostgreSQL database: %s@%s:%d/%s", username, pgConfig.GetHost(), pgConfig.GetPort(), pgConfig.GetDatabase())
 
