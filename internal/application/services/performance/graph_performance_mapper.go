@@ -78,6 +78,7 @@ type AnimationConfig struct {
 }
 
 // PerformanceGraphData contains performance-enhanced graph data
+//
 //nolint:revive // PerformanceGraphData is descriptive and follows project conventions
 type PerformanceGraphData struct {
 	ID            string                    `json:"id"`
@@ -91,6 +92,7 @@ type PerformanceGraphData struct {
 }
 
 // PerformanceGraphNode represents a node with performance data
+//
 //nolint:revive // PerformanceGraphNode is descriptive and follows project conventions
 type PerformanceGraphNode struct {
 	ID              string               `json:"id"`
@@ -104,6 +106,7 @@ type PerformanceGraphNode struct {
 }
 
 // PerformanceGraphEdge represents an edge with performance data
+//
 //nolint:revive // PerformanceGraphEdge is descriptive and follows project conventions
 type PerformanceGraphEdge struct {
 	ID           string               `json:"id"`
@@ -249,6 +252,7 @@ type EdgeIssue struct {
 }
 
 // PerformanceGlobalMetrics contains global performance metrics
+//
 //nolint:revive // PerformanceGlobalMetrics is descriptive and follows project conventions
 type PerformanceGlobalMetrics struct {
 	OverallScore       float64   `json:"overall_score"`
@@ -394,7 +398,7 @@ type TablePerformanceInfo struct {
 // Private helper methods
 
 func (gpm *GraphPerformanceMapper) mapNodesToPerformance(
-	ctx context.Context,
+	_ context.Context,
 	baseGraph *models.Graph,
 	tableMap map[string]*TablePerformanceInfo,
 	perfGraph *PerformanceGraphData,
@@ -407,7 +411,7 @@ func (gpm *GraphPerformanceMapper) mapNodesToPerformance(
 }
 
 func (gpm *GraphPerformanceMapper) mapEdgesToPerformance(
-	ctx context.Context,
+	_ context.Context,
 	baseGraph *models.Graph,
 	performanceData *PerformanceSchemaData,
 	perfGraph *PerformanceGraphData,

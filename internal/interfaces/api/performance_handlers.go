@@ -1,5 +1,5 @@
 // Package api provides HTTP API handlers for performance monitoring.
-package api
+package api //nolint:revive // api is a clear and conventional package name
 
 import (
 	"encoding/json"
@@ -30,7 +30,7 @@ type PerformanceHandlers struct {
 type Response struct {
 	Success   bool        `json:"success"`
 	Data      interface{} `json:"data,omitempty"`
-	Error     *Error   `json:"error,omitempty"`
+	Error     *Error      `json:"error,omitempty"`
 	Timestamp time.Time   `json:"timestamp"`
 	RequestID string      `json:"request_id,omitempty"`
 }
@@ -563,6 +563,7 @@ func (ph *PerformanceHandlers) GetAlerts(w http.ResponseWriter, _ *http.Request)
 
 // Configuration handlers
 
+// GetPerformanceConfig returns the current performance configuration.
 func (ph *PerformanceHandlers) GetPerformanceConfig(w http.ResponseWriter, _ *http.Request) {
 	config := map[string]interface{}{
 		"message": "Configuration endpoint not yet implemented",
@@ -575,6 +576,7 @@ func (ph *PerformanceHandlers) GetPerformanceConfig(w http.ResponseWriter, _ *ht
 	})
 }
 
+// UpdatePerformanceConfig updates the performance configuration.
 func (ph *PerformanceHandlers) UpdatePerformanceConfig(w http.ResponseWriter, _ *http.Request) {
 	ph.sendJSONResponse(w, http.StatusOK, Response{
 		Success:   true,

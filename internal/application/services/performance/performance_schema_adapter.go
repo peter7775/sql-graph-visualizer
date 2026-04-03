@@ -15,6 +15,7 @@ import (
 )
 
 // PerformanceSchemaAdapter collects performance data from MySQL Performance Schema
+//
 //nolint:revive // PerformanceSchemaAdapter is descriptive and follows project conventions
 type PerformanceSchemaAdapter struct {
 	db     *sql.DB
@@ -32,6 +33,7 @@ type PerformanceSchemaAdapter struct {
 }
 
 // PerformanceSchemaConfig contains configuration for Performance Schema data collection
+//
 //nolint:revive // PerformanceSchemaConfig is descriptive and follows project conventions
 type PerformanceSchemaConfig struct {
 	// Collection settings
@@ -63,6 +65,7 @@ type PerformanceSchemaConfig struct {
 }
 
 // PerformanceSchemaData contains collected performance data
+//
 //nolint:revive // PerformanceSchemaData is descriptive and follows project conventions
 type PerformanceSchemaData struct {
 	CollectionTime   time.Time              `json:"collection_time"`
@@ -638,29 +641,29 @@ func (p *PerformanceSchemaAdapter) collectTableIOStats(ctx context.Context) ([]T
 	return tableStats, nil
 }
 
-func (p *PerformanceSchemaAdapter) collectIndexStats(ctx context.Context) ([]IndexStatistic, error) {
+func (p *PerformanceSchemaAdapter) collectIndexStats(_ context.Context) ([]IndexStatistic, error) {
 	// Implementation for index statistics collection
 	// This would query performance_schema.table_io_waits_summary_by_index_usage
 	return []IndexStatistic{}, nil // Placeholder
 }
 
-func (p *PerformanceSchemaAdapter) collectWaitEventStats(ctx context.Context) ([]WaitEventStatistic, error) {
+func (p *PerformanceSchemaAdapter) collectWaitEventStats(_ context.Context) ([]WaitEventStatistic, error) {
 	// Implementation for wait event statistics
 	// This would query performance_schema.events_waits_summary_global_by_event_name
 	return []WaitEventStatistic{}, nil // Placeholder
 }
 
-func (p *PerformanceSchemaAdapter) collectConnectionStats(ctx context.Context) (*ConnectionStatistics, error) {
+func (p *PerformanceSchemaAdapter) collectConnectionStats(_ context.Context) (*ConnectionStatistics, error) {
 	// Implementation for connection statistics
 	return &ConnectionStatistics{}, nil // Placeholder
 }
 
-func (p *PerformanceSchemaAdapter) collectReplicationStats(ctx context.Context) (*ReplicationStatistics, error) {
+func (p *PerformanceSchemaAdapter) collectReplicationStats(_ context.Context) (*ReplicationStatistics, error) {
 	// Implementation for replication statistics
 	return &ReplicationStatistics{}, nil // Placeholder
 }
 
-func (p *PerformanceSchemaAdapter) collectSlowQueries(ctx context.Context) ([]SlowQueryInfo, error) {
+func (p *PerformanceSchemaAdapter) collectSlowQueries(_ context.Context) ([]SlowQueryInfo, error) {
 	// Implementation for slow query collection from performance_schema.events_statements_history_long
 	return []SlowQueryInfo{}, nil // Placeholder
 }

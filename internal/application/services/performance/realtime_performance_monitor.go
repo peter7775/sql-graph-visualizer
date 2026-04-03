@@ -95,6 +95,7 @@ type WebSocketMessage struct {
 }
 
 // PerformanceAlert represents a performance alert
+//
 //nolint:revive // PerformanceAlert is descriptive and follows project conventions
 type PerformanceAlert struct {
 	ID          string                 `json:"id"`

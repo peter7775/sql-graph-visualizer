@@ -16,7 +16,7 @@ type RuleType string
 
 const (
 	// NodeRule represents a node transformation rule
-	NodeRule         RuleType = "node"
+	NodeRule RuleType = "node"
 	// RelationshipRule represents a relationship transformation rule
 	RelationshipRule RuleType = "relationship"
 )
@@ -29,6 +29,7 @@ type NodeMapping struct {
 }
 
 // TransformRule represents a data transformation rule configuration.
+//
 //nolint:revive // TransformRule is descriptive and follows project conventions
 type TransformRule struct {
 	Name          string            `yaml:"name"`

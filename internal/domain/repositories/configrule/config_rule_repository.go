@@ -9,6 +9,7 @@
  * and graph visualization. Commercial use requires separate licensing.
  */
 
+// Package configrule provides transformation rule repository.
 package configrule
 
 import (

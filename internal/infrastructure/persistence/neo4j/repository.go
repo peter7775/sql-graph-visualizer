@@ -21,6 +21,7 @@ import (
 )
 
 // Neo4jRepository implements Neo4j database operations.
+//
 //nolint:revive // Neo4jRepository follows established naming pattern
 type Neo4jRepository struct {
 	driver neo4j.Driver

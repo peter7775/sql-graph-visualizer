@@ -17,6 +17,7 @@ import (
 )
 
 // MigrationConfig represents configuration for database migrations.
+//
 //nolint:revive // MigrationConfig follows established naming pattern
 type MigrationConfig struct {
 	SourceTable string

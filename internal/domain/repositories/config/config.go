@@ -9,6 +9,7 @@
  * and graph visualization. Commercial use requires separate licensing.
  */
 
+// Package config provides configuration loading from YAML files.
 package config
 
 import (

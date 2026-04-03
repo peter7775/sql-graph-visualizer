@@ -19,6 +19,7 @@ import (
 )
 
 // MigrationService handles database migration operations.
+//
 //nolint:revive // MigrationService follows established naming pattern
 type MigrationService struct {
 	mysqlPort ports.MySQLPort

@@ -88,7 +88,8 @@ func (l *LocalDeployment) getEnvOrDefault(key, defaultValue string) string {
 	return defaultValue
 }
 
-func (l *LocalDeployment) RegisterVisualizationRoutes(_ *mux.Router, neo4jRepo ports.Neo4jPort, cfg *models.Config) error {
+// RegisterVisualizationRoutes registers visualization routes on the router.
+func (l *LocalDeployment) RegisterVisualizationRoutes(_ *mux.Router, _ ports.Neo4jPort, _ *models.Config) error {
 	l.logger.Info("Local: Visualization routes handled by separate server - no registration needed")
 	return nil
 }

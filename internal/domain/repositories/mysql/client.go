@@ -9,6 +9,7 @@
  * and graph visualization. Commercial use requires separate licensing.
  */
 
+// Package mysql provides MySQL database client functionality.
 package mysql
 
 import (
@@ -20,6 +21,7 @@ import (
 )
 
 // MySQLConfig represents MySQL database connection configuration.
+//
 //nolint:revive // MySQLConfig is consistent with package naming
 type MySQLConfig struct {
 	Host     string

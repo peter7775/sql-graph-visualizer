@@ -9,6 +9,7 @@
  * and graph visualization. Commercial use requires separate licensing.
  */
 
+// Package infrastructure provides repository factory functions.
 package infrastructure
 
 import (

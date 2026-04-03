@@ -42,23 +42,23 @@ type BottleneckType string
 
 const (
 	// BottleneckTypeQuery indicates query execution bottlenecks
-	BottleneckTypeQuery   BottleneckType = "query"
+	BottleneckTypeQuery BottleneckType = "query"
 	// BottleneckTypeIndex indicates index-related bottlenecks
-	BottleneckTypeIndex   BottleneckType = "index"
+	BottleneckTypeIndex BottleneckType = "index"
 	// BottleneckTypeJoin indicates join operation bottlenecks
-	BottleneckTypeJoin    BottleneckType = "join"
+	BottleneckTypeJoin BottleneckType = "join"
 	// BottleneckTypeLock indicates locking bottlenecks
-	BottleneckTypeLock    BottleneckType = "lock"
+	BottleneckTypeLock BottleneckType = "lock"
 	// BottleneckTypeIO indicates I/O bottlenecks
-	BottleneckTypeIO      BottleneckType = "io"
+	BottleneckTypeIO BottleneckType = "io"
 	// BottleneckTypeCPU indicates CPU bottlenecks
-	BottleneckTypeCPU     BottleneckType = "cpu"
+	BottleneckTypeCPU BottleneckType = "cpu"
 	// BottleneckTypeMemory indicates memory bottlenecks
-	BottleneckTypeMemory  BottleneckType = "memory"
+	BottleneckTypeMemory BottleneckType = "memory"
 	// BottleneckTypeNetwork indicates network bottlenecks
 	BottleneckTypeNetwork BottleneckType = "network"
 	// BottleneckTypeSchema indicates schema design bottlenecks
-	BottleneckTypeSchema  BottleneckType = "schema"
+	BottleneckTypeSchema BottleneckType = "schema"
 )
 
 // SeverityLevel indicates the severity of a performance issue
@@ -66,11 +66,11 @@ type SeverityLevel string
 
 const (
 	// SeverityLow indicates low severity performance issues
-	SeverityLow      SeverityLevel = "low"
+	SeverityLow SeverityLevel = "low"
 	// SeverityMedium indicates medium severity performance issues
-	SeverityMedium   SeverityLevel = "medium"
+	SeverityMedium SeverityLevel = "medium"
 	// SeverityHigh indicates high severity performance issues
-	SeverityHigh     SeverityLevel = "high"
+	SeverityHigh SeverityLevel = "high"
 	// SeverityCritical indicates critical severity performance issues
 	SeverityCritical SeverityLevel = "critical"
 )
@@ -202,19 +202,19 @@ type IssueType string
 
 const (
 	// IssueTypeMissingIndex indicates missing database index issues
-	IssueTypeMissingIndex     IssueType = "missing_index"
+	IssueTypeMissingIndex IssueType = "missing_index"
 	// IssueTypeInefficiencyJoin indicates inefficient join operations
 	IssueTypeInefficiencyJoin IssueType = "inefficient_join"
 	// IssueTypeFullTableScan indicates full table scan issues
-	IssueTypeFullTableScan    IssueType = "full_table_scan"
+	IssueTypeFullTableScan IssueType = "full_table_scan"
 	// IssueTypeSlowQuery indicates slow query performance
-	IssueTypeSlowQuery        IssueType = "slow_query"
+	IssueTypeSlowQuery IssueType = "slow_query"
 	// IssueTypeLockContention indicates lock contention issues
-	IssueTypeLockContention   IssueType = "lock_contention"
+	IssueTypeLockContention IssueType = "lock_contention"
 	// IssueTypeDeadlock indicates deadlock issues
-	IssueTypeDeadlock         IssueType = "deadlock"
+	IssueTypeDeadlock IssueType = "deadlock"
 	// IssueTypeResourceHog indicates resource-intensive operations
-	IssueTypeResourceHog      IssueType = "resource_hog"
+	IssueTypeResourceHog IssueType = "resource_hog"
 	// IssueTypeSuboptimalSchema indicates suboptimal schema design
 	IssueTypeSuboptimalSchema IssueType = "suboptimal_schema"
 )
@@ -224,11 +224,11 @@ type EffortLevel string
 
 const (
 	// EffortLow indicates low implementation effort
-	EffortLow    EffortLevel = "low"
+	EffortLow EffortLevel = "low"
 	// EffortMedium indicates medium implementation effort
 	EffortMedium EffortLevel = "medium"
 	// EffortHigh indicates high implementation effort
-	EffortHigh   EffortLevel = "high"
+	EffortHigh EffortLevel = "high"
 )
 
 // OptimizationSuggestion provides actionable optimization recommendations
@@ -250,19 +250,19 @@ type OptimizationType string
 
 const (
 	// OptimizationTypeIndex indicates index-related optimizations
-	OptimizationTypeIndex           OptimizationType = "index"
+	OptimizationTypeIndex OptimizationType = "index"
 	// OptimizationTypeQuery indicates query optimizations
-	OptimizationTypeQuery           OptimizationType = "query"
+	OptimizationTypeQuery OptimizationType = "query"
 	// OptimizationTypeSchema indicates schema optimizations
-	OptimizationTypeSchema          OptimizationType = "schema"
+	OptimizationTypeSchema OptimizationType = "schema"
 	// OptimizationTypeConfiguration indicates configuration optimizations
-	OptimizationTypeConfiguration   OptimizationType = "configuration"
+	OptimizationTypeConfiguration OptimizationType = "configuration"
 	// OptimizationTypePartitioning indicates partitioning optimizations
-	OptimizationTypePartitioning    OptimizationType = "partitioning"
+	OptimizationTypePartitioning OptimizationType = "partitioning"
 	// OptimizationTypeDenormalization indicates denormalization optimizations
 	OptimizationTypeDenormalization OptimizationType = "denormalization"
 	// OptimizationTypeCaching indicates caching optimizations
-	OptimizationTypeCaching         OptimizationType = "caching"
+	OptimizationTypeCaching OptimizationType = "caching"
 )
 
 // OptimizationImpact quantifies expected improvement
@@ -309,11 +309,11 @@ const (
 	// TrendImproving indicates improving performance trend
 	TrendImproving TrendDirection = "improving"
 	// TrendStable indicates stable performance trend
-	TrendStable    TrendDirection = "stable"
+	TrendStable TrendDirection = "stable"
 	// TrendDegrading indicates degrading performance trend
 	TrendDegrading TrendDirection = "degrading"
 	// TrendVolatile indicates volatile performance trend
-	TrendVolatile  TrendDirection = "volatile"
+	TrendVolatile TrendDirection = "volatile"
 )
 
 // TrendMetric represents trend data for a specific metric
@@ -342,13 +342,13 @@ type AnomalyType string
 
 const (
 	// AnomalyTypeSpike indicates performance spike anomalies
-	AnomalyTypeSpike       AnomalyType = "spike"
+	AnomalyTypeSpike AnomalyType = "spike"
 	// AnomalyTypeDrop indicates performance drop anomalies
-	AnomalyTypeDrop        AnomalyType = "drop"
+	AnomalyTypeDrop AnomalyType = "drop"
 	// AnomalyTypeOscillation indicates oscillating performance anomalies
 	AnomalyTypeOscillation AnomalyType = "oscillation"
 	// AnomalyTypeDrift indicates performance drift anomalies
-	AnomalyTypeDrift       AnomalyType = "drift"
+	AnomalyTypeDrift AnomalyType = "drift"
 )
 
 // PerformancePrediction provides future performance predictions
@@ -380,13 +380,13 @@ const (
 	// PerformanceExcellent indicates excellent performance rating
 	PerformanceExcellent PerformanceRating = "excellent"
 	// PerformanceGood indicates good performance rating
-	PerformanceGood      PerformanceRating = "good"
+	PerformanceGood PerformanceRating = "good"
 	// PerformanceFair indicates fair performance rating
-	PerformanceFair      PerformanceRating = "fair"
+	PerformanceFair PerformanceRating = "fair"
 	// PerformancePoor indicates poor performance rating
-	PerformancePoor      PerformanceRating = "poor"
+	PerformancePoor PerformanceRating = "poor"
 	// PerformanceCritical indicates critical performance rating
-	PerformanceCritical  PerformanceRating = "critical"
+	PerformanceCritical PerformanceRating = "critical"
 )
 
 // TimeRange represents a time range for analysis

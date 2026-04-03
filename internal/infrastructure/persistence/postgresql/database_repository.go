@@ -20,11 +20,13 @@ import (
 	"strings"
 	"time"
 
-	_ "github.com/lib/pq"
+	_ "github.com/lib/pq" // PostgreSQL driver registration
 	"github.com/sirupsen/logrus"
 )
 
-// PostgreSQLDatabaseRepository implements DatabaseRepository for PostgreSQL
+// PostgreSQLDatabaseRepository implements DatabaseRepository for PostgreSQL.
+//
+//nolint:revive // PostgreSQLDatabaseRepository is descriptive and follows project conventions
 type PostgreSQLDatabaseRepository struct {
 	db *sql.DB
 }
@@ -506,42 +508,52 @@ func (r *PostgreSQLDatabaseRepository) GetTableRowCount(ctx context.Context, tab
 	return 0, nil
 }
 
-func (r *PostgreSQLDatabaseRepository) SampleTableData(_ context.Context, tableName string, limit int) ([]map[string]interface{}, error) {
+// SampleTableData retrieves a sample of data from the specified table.
+func (r *PostgreSQLDatabaseRepository) SampleTableData(_ context.Context, _ string, _ int) ([]map[string]interface{}, error) {
 	return nil, fmt.Errorf("not implemented yet")
 }
 
-func (r *PostgreSQLDatabaseRepository) AnalyzeColumnStatistics(_ context.Context, tableName, columnName string) (*models.ColumnStatistics, error) {
+// AnalyzeColumnStatistics analyzes statistical information for table columns.
+func (r *PostgreSQLDatabaseRepository) AnalyzeColumnStatistics(_ context.Context, _, _ string) (*models.ColumnStatistics, error) {
 	return nil, fmt.Errorf("not implemented yet")
 }
 
-func (r *PostgreSQLDatabaseRepository) GetTableSize(ctx context.Context, tableName string) (*models.TableSize, error) {
+// GetTableSize returns the size of the specified table.
+func (r *PostgreSQLDatabaseRepository) GetTableSize(_ context.Context, _ string) (*models.TableSize, error) {
 	return nil, fmt.Errorf("not implemented yet")
 }
 
-func (r *PostgreSQLDatabaseRepository) GetQueryExecutionPlan(ctx context.Context, query string) (string, error) {
+// GetQueryExecutionPlan returns the execution plan for the given query.
+func (r *PostgreSQLDatabaseRepository) GetQueryExecutionPlan(_ context.Context, _ string) (string, error) {
 	return "", fmt.Errorf("not implemented yet")
 }
 
-func (r *PostgreSQLDatabaseRepository) ValidatePermissions(ctx context.Context, requiredPerms []string) error {
+// ValidatePermissions validates database connection permissions.
+func (r *PostgreSQLDatabaseRepository) ValidatePermissions(_ context.Context, _ []string) error {
 	return fmt.Errorf("not implemented yet")
 }
 
-func (r *PostgreSQLDatabaseRepository) CheckUserPrivileges(ctx context.Context) (*models.UserPrivileges, error) {
+// CheckUserPrivileges checks user privileges for database operations.
+func (r *PostgreSQLDatabaseRepository) CheckUserPrivileges(_ context.Context) (*models.UserPrivileges, error) {
 	return nil, fmt.Errorf("not implemented yet")
 }
 
+// EscapeIdentifier escapes database identifiers for safe usage in queries.
 func (r *PostgreSQLDatabaseRepository) EscapeIdentifier(identifier string) string {
 	return fmt.Sprintf(`"%s"`, strings.ReplaceAll(identifier, `"`, `""`))
 }
 
+// GetQuoteChar returns the character used for quoting identifiers.
 func (r *PostgreSQLDatabaseRepository) GetQuoteChar() string {
 	return `"`
 }
 
+// GetDatabaseType returns the PostgreSQL database type.
 func (r *PostgreSQLDatabaseRepository) GetDatabaseType() models.DatabaseType {
 	return models.DatabaseTypePostgreSQL
 }
 
+// GetConnectionString builds PostgreSQL connection string from config.
 func (r *PostgreSQLDatabaseRepository) GetConnectionString(config models.DatabaseConfig) string {
 	pgConfig, ok := config.(*models.PostgreSQLConfig)
 	if !ok {

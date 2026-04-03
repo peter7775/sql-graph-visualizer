@@ -71,7 +71,7 @@ const (
 	// ConnectionModeTestData uses test data for connections
 	ConnectionModeTestData ConnectionMode = "test_data"
 	// ConnectionModeSQLFile loads data from SQL file
-	ConnectionModeSQLFile  ConnectionMode = "sql_file"
+	ConnectionModeSQLFile ConnectionMode = "sql_file"
 )
 
 // DataFilteringConfig represents options for filtering and limiting data

@@ -26,6 +26,7 @@ import (
 )
 
 // MySQLRepository provides MySQL database operations.
+//
 //nolint:revive // MySQLRepository follows established naming pattern
 type MySQLRepository struct {
 	db *sql.DB

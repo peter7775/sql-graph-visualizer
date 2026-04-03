@@ -27,6 +27,7 @@ import (
 )
 
 // TransformService handles data transformation operations.
+//
 //nolint:revive // TransformService follows established naming pattern
 type TransformService struct {
 	databasePort ports.DatabasePort

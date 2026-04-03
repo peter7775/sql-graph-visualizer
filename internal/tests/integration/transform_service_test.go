@@ -48,7 +48,7 @@ import (
 
 type mockRuleRepo struct{}
 
-func (m *mockRuleRepo) GetAllRules(ctx context.Context) ([]*transformAggregates.RuleAggregate, error) {
+func (m *mockRuleRepo) GetAllRules(_ context.Context) ([]*transformAggregates.RuleAggregate, error) {
 	return []*transformAggregates.RuleAggregate{
 		{
 			Rule: transformObjects.TransformRule{
@@ -91,15 +91,15 @@ func (m *mockRuleRepo) GetAllRules(ctx context.Context) ([]*transformAggregates.
 	}, nil
 }
 
-func (m *mockRuleRepo) SaveRule(ctx context.Context, rule *transformAggregates.RuleAggregate) error {
+func (m *mockRuleRepo) SaveRule(_ context.Context, _ *transformAggregates.RuleAggregate) error {
 	return nil
 }
 
-func (m *mockRuleRepo) DeleteRule(ctx context.Context, ruleID string) error {
+func (m *mockRuleRepo) DeleteRule(_ context.Context, _ string) error {
 	return nil
 }
 
-func (m *mockRuleRepo) UpdateRulePriority(ctx context.Context, ruleID string, priority int) error {
+func (m *mockRuleRepo) UpdateRulePriority(_ context.Context, _ string, _ int) error {
 	return nil
 }
 
@@ -177,7 +177,6 @@ func (m *realMySQLRepo) FetchData() ([]map[string]any, error) {
 func (m *realMySQLRepo) Close() error {
 	return nil
 }
-
 
 func TestIntegrationTransformRulesAndVisualization(t *testing.T) {
 	ctx := context.Background()
@@ -423,7 +422,7 @@ func findProjectRoot() string {
 	}
 }
 
-func GetConfig(w http.ResponseWriter, r *http.Request) {
+func GetConfig(w http.ResponseWriter, _ *http.Request) {
 	config := map[string]any{
 		"neo4j": map[string]string{
 			"uri":      "bolt://localhost:7687",

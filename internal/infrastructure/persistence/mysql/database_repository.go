@@ -25,6 +25,7 @@ import (
 )
 
 // MySQLDatabaseRepository implements DatabaseRepository for MySQL
+//
 //nolint:revive // MySQLDatabaseRepository follows established naming pattern
 type MySQLDatabaseRepository struct {
 	db *sql.DB
@@ -422,7 +423,7 @@ func (r *MySQLDatabaseRepository) GetTableRowCount(ctx context.Context, tableNam
 }
 
 // SampleTableData retrieves a sample of data from the specified table.
-func (r *MySQLDatabaseRepository) SampleTableData(_ context.Context, _ string, limit int) ([]map[string]interface{}, error) {
+func (r *MySQLDatabaseRepository) SampleTableData(_ context.Context, _ string, _ int) ([]map[string]interface{}, error) {
 	return nil, fmt.Errorf("not implemented yet")
 }
 
@@ -437,17 +438,17 @@ func (r *MySQLDatabaseRepository) GetTableSize(_ context.Context, _ string) (*mo
 }
 
 // GetQueryExecutionPlan returns the execution plan for the given query.
-func (r *MySQLDatabaseRepository) GetQueryExecutionPlan(ctx context.Context, query string) (string, error) {
+func (r *MySQLDatabaseRepository) GetQueryExecutionPlan(_ context.Context, _ string) (string, error) {
 	return "", fmt.Errorf("not implemented yet")
 }
 
 // ValidatePermissions validates database connection permissions.
-func (r *MySQLDatabaseRepository) ValidatePermissions(ctx context.Context, requiredPerms []string) error {
+func (r *MySQLDatabaseRepository) ValidatePermissions(_ context.Context, _ []string) error {
 	return fmt.Errorf("not implemented yet")
 }
 
 // CheckUserPrivileges checks user privileges for database operations.
-func (r *MySQLDatabaseRepository) CheckUserPrivileges(ctx context.Context) (*models.UserPrivileges, error) {
+func (r *MySQLDatabaseRepository) CheckUserPrivileges(_ context.Context) (*models.UserPrivileges, error) {
 	return nil, fmt.Errorf("not implemented yet")
 }
 

@@ -150,7 +150,7 @@ func (s *SimpleMetricsInjector) injectMetrics(ctx context.Context) error {
 }
 
 // createPerformanceMetric creates a performance metric relationship between two nodes
-func (s *SimpleMetricsInjector) createPerformanceMetric(ctx context.Context, source, target map[string]interface{}) error {
+func (s *SimpleMetricsInjector) createPerformanceMetric(_ context.Context, source, target map[string]interface{}) error {
 	// Generate random metric type and value
 	metricTypes := []string{
 		"QUERIES_PER_SEC",
@@ -285,7 +285,7 @@ func (s *SimpleMetricsInjector) generateSeverity() string {
 }
 
 // cleanupOldMetrics removes old performance metric relationships
-func (s *SimpleMetricsInjector) cleanupOldMetrics(ctx context.Context) error {
+func (s *SimpleMetricsInjector) cleanupOldMetrics(_ context.Context) error {
 	cutoffTime := time.Now().Add(-s.config.MetricsRetention).Unix()
 
 	metricTypes := []string{
@@ -313,7 +313,7 @@ func (s *SimpleMetricsInjector) cleanupOldMetrics(ctx context.Context) error {
 }
 
 // GetCurrentMetrics returns current performance metrics
-func (s *SimpleMetricsInjector) GetCurrentMetrics(ctx context.Context) ([]map[string]interface{}, error) {
+func (s *SimpleMetricsInjector) GetCurrentMetrics(_ context.Context) ([]map[string]interface{}, error) {
 	query := `
 		MATCH (a)-[r]->(b)
 		WHERE type(r) IN ['QUERIES_PER_SEC', 'AVG_LATENCY_MS', 'JOIN_FREQUENCY', 'INDEX_EFFICIENCY', 'HOTSPOT_SCORE', 'LOAD_FACTOR']

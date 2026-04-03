@@ -25,10 +25,14 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+// PostgreSQLRepository implements the PostgreSQL port interface.
+//
+//nolint:revive // PostgreSQLRepository is descriptive and follows project conventions
 type PostgreSQLRepository struct {
 	db *sql.DB
 }
 
+// NewPostgreSQLRepository creates a new PostgreSQL repository.
 func NewPostgreSQLRepository(db *sql.DB) ports.PostgreSQLPort {
 	return &PostgreSQLRepository{db: db}
 }
@@ -38,15 +42,18 @@ func NewPostgreSQLDatabasePort(db *sql.DB) ports.DatabasePort {
 	return &PostgreSQLRepository{db: db}
 }
 
+// FetchData fetches data from the PostgreSQL database.
 func (r *PostgreSQLRepository) FetchData() ([]map[string]any, error) {
 	logrus.Infof("💾 FetchData called - returning empty slice (data loading moved to transform service)")
 	return []map[string]any{}, nil
 }
 
+// Close closes the database connection.
 func (r *PostgreSQLRepository) Close() error {
 	return r.db.Close()
 }
 
+// ExecuteQuery executes a SQL query and returns the results.
 func (r *PostgreSQLRepository) ExecuteQuery(query string) ([]map[string]any, error) {
 	rows, err := r.db.Query(query)
 	if err != nil {

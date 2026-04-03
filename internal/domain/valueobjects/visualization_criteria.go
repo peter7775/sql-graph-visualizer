@@ -16,8 +16,8 @@ type VisualizationFormat string
 
 const (
 	// FormatJSON represents JSON output format
-	FormatJSON  VisualizationFormat = "json"
-	// FormatGraphML represents GraphML output format  
+	FormatJSON VisualizationFormat = "json"
+	// FormatGraphML represents GraphML output format
 	FormatGraphML VisualizationFormat = "graphml"
 )
 

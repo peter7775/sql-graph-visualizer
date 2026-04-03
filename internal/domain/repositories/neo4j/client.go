@@ -9,6 +9,7 @@
  * and graph visualization. Commercial use requires separate licensing.
  */
 
+// Package neo4j provides Neo4j graph database client functionality.
 package neo4j
 
 import (
@@ -21,6 +22,7 @@ import (
 )
 
 // Neo4jConfig represents Neo4j database connection configuration.
+//
 //nolint:revive // Neo4jConfig is consistent with package naming
 type Neo4jConfig struct {
 	URI      string
@@ -49,7 +51,8 @@ func (c *Client) Close() error {
 	return c.driver.Close()
 }
 
-func (c *Client) InsertData(data any) error {
+// InsertData inserts data into the Neo4j database.
+func (c *Client) InsertData(_ any) error {
 	session := c.driver.NewSession(neo4j.SessionConfig{})
 	defer func() {
 		if err := session.Close(); err != nil {
@@ -61,12 +64,14 @@ func (c *Client) InsertData(data any) error {
 	return nil
 }
 
-func (c *Client) SearchNodes(criteria string) ([]*graph.GraphAggregate, error) {
+// SearchNodes searches for nodes matching the given criteria.
+func (c *Client) SearchNodes(_ string) ([]*graph.GraphAggregate, error) {
 	// Implement the logic to search nodes based on criteria
 	// This is a placeholder implementation
 	return []*graph.GraphAggregate{}, nil
 }
 
+// ExportGraph exports graph data using the given Cypher query.
 func (c *Client) ExportGraph(query string) (any, error) {
 	session := c.driver.NewSession(neo4j.SessionConfig{})
 	defer func() {
@@ -87,6 +92,7 @@ func (c *Client) ExportGraph(query string) (any, error) {
 	return nil, nil
 }
 
+// StoreGraph persists a graph aggregate to the Neo4j database.
 func (c *Client) StoreGraph(graph *graph.GraphAggregate) error {
 	session := c.driver.NewSession(neo4j.SessionConfig{})
 	defer func() {
@@ -155,6 +161,7 @@ func (c *Client) StoreGraph(graph *graph.GraphAggregate) error {
 	return nil
 }
 
+// FetchNodes retrieves nodes of the specified type from Neo4j.
 func (c *Client) FetchNodes(nodeType string) ([]map[string]any, error) {
 	logrus.Infof("Loading nodes of type: %s", nodeType)
 	session := c.driver.NewSession(neo4j.SessionConfig{})

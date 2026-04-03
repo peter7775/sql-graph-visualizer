@@ -13,6 +13,7 @@
 package mysql
 
 // MySQLConfig represents MySQL database connection configuration.
+//
 //nolint:revive // MySQLConfig name is consistent with package naming
 type MySQLConfig struct {
 	Host     string

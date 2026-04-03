@@ -11,6 +11,7 @@
 
 package neo4j
 
+// DataType represents a Neo4j data type with its associated node data.
 type DataType struct {
 	ID       int
 	NodeData any

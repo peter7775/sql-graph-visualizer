@@ -18,6 +18,7 @@ import (
 )
 
 // GraphService defines the interface for graph operations.
+//
 //nolint:revive // GraphService follows established naming pattern
 type GraphService interface {
 	SearchNodes(term string) ([]models.SearchResult, error)

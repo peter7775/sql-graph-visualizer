@@ -20,16 +20,19 @@ import (
 	"sql-graph-visualizer/internal/domain/valueobjects"
 )
 
+// VisualizationHandler handles visualization REST API requests.
 type VisualizationHandler struct {
 	visualizationService *visualization.VisualizationService
 }
 
+// NewVisualizationHandler creates a new visualization handler.
 func NewVisualizationHandler(service *visualization.VisualizationService) *VisualizationHandler {
 	return &VisualizationHandler{
 		visualizationService: service,
 	}
 }
 
+// HandleVisualization handles graph visualization requests.
 func (h *VisualizationHandler) HandleVisualization(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	criteria := valueobjects.SearchCriteria{} // Empty criteria for now

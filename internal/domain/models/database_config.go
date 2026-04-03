@@ -16,7 +16,7 @@ type DatabaseType string
 
 const (
 	// DatabaseTypeMySQL represents MySQL database type
-	DatabaseTypeMySQL      DatabaseType = "mysql"
+	DatabaseTypeMySQL DatabaseType = "mysql"
 	// DatabaseTypePostgreSQL represents PostgreSQL database type
 	DatabaseTypePostgreSQL DatabaseType = "postgresql"
 )

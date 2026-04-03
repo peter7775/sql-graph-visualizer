@@ -489,7 +489,7 @@ func defaultBenchmarkServiceConfig() *BenchmarkServiceConfig {
 // Additional methods for integration with existing graph services
 
 // CreatePerformanceGraph creates a graph enhanced with performance data
-func (s *BenchmarkService) CreatePerformanceGraph(ctx context.Context, benchmarkResult *ports.BenchmarkResult) (*PerformanceEnhancedGraph, error) {
+func (s *BenchmarkService) CreatePerformanceGraph(_ context.Context, benchmarkResult *ports.BenchmarkResult) (*PerformanceEnhancedGraph, error) {
 	if benchmarkResult == nil || benchmarkResult.Metrics == nil {
 		return nil, fmt.Errorf("benchmark result and metrics are required")
 	}
@@ -530,6 +530,7 @@ func (s *BenchmarkService) CreatePerformanceGraph(ctx context.Context, benchmark
 }
 
 // PerformanceEnhancedGraph represents performance-enhanced graph data structures.
+//
 //nolint:revive // PerformanceEnhancedGraph is descriptive and follows project conventions
 type PerformanceEnhancedGraph struct {
 	ID            string                    `json:"id"`
@@ -541,6 +542,7 @@ type PerformanceEnhancedGraph struct {
 }
 
 // PerformanceNode represents a table node with performance metrics.
+//
 //nolint:revive // PerformanceNode is descriptive and follows project conventions
 type PerformanceNode struct {
 	ID              string  `json:"id"`
@@ -554,6 +556,7 @@ type PerformanceNode struct {
 }
 
 // PerformanceEdge represents a relationship between tables with performance data.
+//
 //nolint:revive // PerformanceEdge is descriptive and follows project conventions
 type PerformanceEdge struct {
 	ID              string  `json:"id"`
@@ -601,7 +604,7 @@ type TableRelationship struct {
 // Missing methods for API compatibility
 
 // ListRunningBenchmarks returns all running benchmarks
-func (s *BenchmarkService) ListRunningBenchmarks(ctx context.Context) []*BenchmarkExecution {
+func (s *BenchmarkService) ListRunningBenchmarks(_ context.Context) []*BenchmarkExecution {
 	s.runsMutex.RLock()
 	defer s.runsMutex.RUnlock()
 
@@ -618,7 +621,7 @@ func (s *BenchmarkService) ListRunningBenchmarks(ctx context.Context) []*Benchma
 }
 
 // GetBenchmarkStatus returns the status of a benchmark
-func (s *BenchmarkService) GetBenchmarkStatus(ctx context.Context, executionID string) *BenchmarkExecution {
+func (s *BenchmarkService) GetBenchmarkStatus(_ context.Context, executionID string) *BenchmarkExecution {
 	s.runsMutex.RLock()
 	defer s.runsMutex.RUnlock()
 
@@ -629,7 +632,7 @@ func (s *BenchmarkService) GetBenchmarkStatus(ctx context.Context, executionID s
 }
 
 // StopBenchmark stops a running benchmark
-func (s *BenchmarkService) StopBenchmark(ctx context.Context, executionID string) error {
+func (s *BenchmarkService) StopBenchmark(_ context.Context, executionID string) error {
 	s.runsMutex.RLock()
 	execution, exists := s.activeRuns[executionID]
 	s.runsMutex.RUnlock()
@@ -653,7 +656,7 @@ func (s *BenchmarkService) StopBenchmark(ctx context.Context, executionID string
 }
 
 // GetBenchmarkResults returns the results of a benchmark
-func (s *BenchmarkService) GetBenchmarkResults(ctx context.Context, executionID string) *ports.BenchmarkResult {
+func (s *BenchmarkService) GetBenchmarkResults(_ context.Context, executionID string) *ports.BenchmarkResult {
 	s.runsMutex.RLock()
 	defer s.runsMutex.RUnlock()
 

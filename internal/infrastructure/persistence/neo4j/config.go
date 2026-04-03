@@ -13,6 +13,7 @@
 package neo4j
 
 // Neo4jConfig represents Neo4j database configuration.
+//
 //nolint:revive // Neo4jConfig is consistent with package naming
 type Neo4jConfig struct {
 	URI      string
