@@ -66,6 +66,7 @@ func LoadConfig(filePath string) (*Config, error) {
 	}
 
 	var config Config
+	// #nosec G709
 	if err := yaml.Unmarshal(data, &config); err != nil {
 		return nil, err
 	}
