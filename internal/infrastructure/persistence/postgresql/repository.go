@@ -107,39 +107,39 @@ func (r *PostgreSQLRepository) ConnectToExisting(ctx context.Context, config *mo
 
 	// Build PostgreSQL connection string
 	var connString strings.Builder
-	connString.WriteString(fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s",
-		config.Host, config.Port, username, config.Password, config.Database))
+	fmt.Fprintf(&connString, "host=%s port=%d user=%s password=%s dbname=%s",
+		config.Host, config.Port, username, config.Password, config.Database)
 
 	// Add SSL configuration
 	if config.SSLConfig.Mode != "" {
-		connString.WriteString(fmt.Sprintf(" sslmode=%s", config.SSLConfig.Mode))
+		fmt.Fprintf(&connString, " sslmode=%s", config.SSLConfig.Mode)
 	} else {
 		connString.WriteString(" sslmode=prefer") // Default to prefer
 	}
 
 	if config.SSLConfig.CertFile != "" {
-		connString.WriteString(fmt.Sprintf(" sslcert=%s", config.SSLConfig.CertFile))
+		fmt.Fprintf(&connString, " sslcert=%s", config.SSLConfig.CertFile)
 	}
 	if config.SSLConfig.KeyFile != "" {
-		connString.WriteString(fmt.Sprintf(" sslkey=%s", config.SSLConfig.KeyFile))
+		fmt.Fprintf(&connString, " sslkey=%s", config.SSLConfig.KeyFile)
 	}
 	if config.SSLConfig.CAFile != "" {
-		connString.WriteString(fmt.Sprintf(" sslrootcert=%s", config.SSLConfig.CAFile))
+		fmt.Fprintf(&connString, " sslrootcert=%s", config.SSLConfig.CAFile)
 	}
 
 	// Add timeout configurations
 	if config.Security.ConnectionTimeout > 0 {
-		connString.WriteString(fmt.Sprintf(" connect_timeout=%d", config.Security.ConnectionTimeout))
+		fmt.Fprintf(&connString, " connect_timeout=%d", config.Security.ConnectionTimeout)
 	}
 	if config.StatementTimeout > 0 {
-		connString.WriteString(fmt.Sprintf(" statement_timeout=%dms", config.StatementTimeout*1000))
+		fmt.Fprintf(&connString, " statement_timeout=%dms", config.StatementTimeout*1000)
 	}
 
 	appName := config.ApplicationName
 	if appName == "" {
 		appName = "sql-graph-visualizer"
 	}
-	connString.WriteString(fmt.Sprintf(" application_name=%s", appName))
+	fmt.Fprintf(&connString, " application_name=%s", appName)
 
 	logrus.Infof("Connecting to PostgreSQL database: %s@%s:%d/%s", username, config.Host, config.Port, config.Database)
 

@@ -357,29 +357,29 @@ func outputSummary(result *models.UniversalDatabaseAnalysisResult, outputFile st
 	// Connection info
 	output.WriteString("🔗 CONNECTION INFORMATION:\n")
 	if result.DatabaseInfo != nil {
-		output.WriteString(fmt.Sprintf("   Database Type: %s\n", strings.ToUpper(string(result.DatabaseType))))
-		output.WriteString(fmt.Sprintf("   Database: %s@%s:%d/%s\n",
+		fmt.Fprintf(&output, "   Database Type: %s\n", strings.ToUpper(string(result.DatabaseType)))
+		fmt.Fprintf(&output, "   Database: %s@%s:%d/%s\n",
 			result.DatabaseInfo.User, result.DatabaseInfo.Host,
-			result.DatabaseInfo.Port, result.DatabaseInfo.Database))
-		output.WriteString(fmt.Sprintf("   Server Version: %s\n", result.DatabaseInfo.Version))
+		result.DatabaseInfo.Port, result.DatabaseInfo.Database)
+		fmt.Fprintf(&output, "   Server Version: %s\n", result.DatabaseInfo.Version)
 	}
-	output.WriteString(fmt.Sprintf("   Processing Time: %v\n", result.ProcessingDuration))
+	fmt.Fprintf(&output, "   Processing Time: %v\n", result.ProcessingDuration)
 	if result.SecurityValidation != nil {
-		output.WriteString(fmt.Sprintf("   Security Level: %s\n", result.SecurityValidation.SecurityLevel))
+		fmt.Fprintf(&output, "   Security Level: %s\n", result.SecurityValidation.SecurityLevel)
 	}
 
 	// Summary statistics
 	if result.Summary != nil {
 		summary := result.Summary
 		output.WriteString("\nSTATS ANALYSIS SUMMARY:\n")
-		output.WriteString(fmt.Sprintf("   Tables Analyzed: %d\n", summary.TotalTables))
+		fmt.Fprintf(&output, "   Tables Analyzed: %d\n", summary.TotalTables)
 
 		if len(summary.Warnings) > 0 {
-			output.WriteString(fmt.Sprintf("   WARN  Warnings: %d\n", len(summary.Warnings)))
+			fmt.Fprintf(&output, "   WARN  Warnings: %d\n", len(summary.Warnings))
 		}
 
 		if len(summary.Recommendations) > 0 {
-			output.WriteString(fmt.Sprintf("   TIP Recommendations: %d\n", len(summary.Recommendations)))
+			fmt.Fprintf(&output, "   TIP Recommendations: %d\n", len(summary.Recommendations))
 		}
 	}
 
@@ -391,21 +391,21 @@ func outputSummary(result *models.UniversalDatabaseAnalysisResult, outputFile st
 			if table.Schema != "" {
 				schemaInfo = fmt.Sprintf(" (%s)", table.Schema)
 			}
-			output.WriteString(fmt.Sprintf("   %-20s%s - %d rows, %d columns\n",
-				table.Name, schemaInfo, table.EstimatedRows, len(table.Columns)))
+			fmt.Fprintf(&output, "   %-20s%s - %d rows, %d columns\n",
+			table.Name, schemaInfo, table.EstimatedRows, len(table.Columns))
 
 			// Show column details for first few tables
 			if len(result.SchemaAnalysis.Tables) <= 3 && len(table.Columns) > 0 {
 				for i, col := range table.Columns {
 					if i >= 5 {
-						output.WriteString(fmt.Sprintf("     ... and %d more columns\n", len(table.Columns)-5))
+						fmt.Fprintf(&output, "     ... and %d more columns\n", len(table.Columns)-5)
 						break
 					}
 					primaryKey := ""
 					if col.IsKey && col.KeyType == "PRIMARY" {
 						primaryKey = " (PK)"
 					}
-					output.WriteString(fmt.Sprintf("     • %s %s%s\n", col.Name, col.DataType, primaryKey))
+					fmt.Fprintf(&output, "     • %s %s%s\n", col.Name, col.DataType, primaryKey)
 				}
 			}
 		}
@@ -416,20 +416,20 @@ func outputSummary(result *models.UniversalDatabaseAnalysisResult, outputFile st
 		if len(result.Summary.Warnings) > 0 {
 			output.WriteString("\nWARN  WARNINGS:\n")
 			for _, warning := range result.Summary.Warnings {
-				output.WriteString(fmt.Sprintf("   • %s\n", warning))
+				fmt.Fprintf(&output, "   • %s\n", warning)
 			}
 		}
 
 		if len(result.Summary.Recommendations) > 0 {
 			output.WriteString("\nTIP RECOMMENDATIONS:\n")
 			for _, rec := range result.Summary.Recommendations {
-				output.WriteString(fmt.Sprintf("   • %s\n", rec))
+				fmt.Fprintf(&output, "   • %s\n", rec)
 			}
 		}
 	}
 
 	if !result.Success {
-		output.WriteString(fmt.Sprintf("\nERROR: %s\n", result.ErrorMessage))
+		fmt.Fprintf(&output, "\nERROR: %s\n", result.ErrorMessage)
 	}
 
 	output.WriteString("\n" + strings.Repeat("=", 60) + "\n")
