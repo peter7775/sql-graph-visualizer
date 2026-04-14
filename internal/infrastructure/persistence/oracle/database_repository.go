@@ -472,7 +472,7 @@ func (r *OracleDatabaseRepository) GetDatabaseType() models.DatabaseType {
 // GetConnectionString builds Oracle connection string from config.
 func (r *OracleDatabaseRepository) GetConnectionString(config models.DatabaseConfig) string {
 	oracleConfig, ok := config.GetEffectiveConfig().(*models.OracleConfig)
-	if !ok {
+	if !ok || oracleConfig == nil {
 		return ""
 	}
 	return oracleConfig.BuildConnectionString()

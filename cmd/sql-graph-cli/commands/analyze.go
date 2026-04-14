@@ -379,7 +379,7 @@ func outputSummary(result *models.UniversalDatabaseAnalysisResult, outputFile st
 		fmt.Fprintf(&output, "   Database Type: %s\n", strings.ToUpper(string(result.DatabaseType)))
 		fmt.Fprintf(&output, "   Database: %s@%s:%d/%s\n",
 			result.DatabaseInfo.User, result.DatabaseInfo.Host,
-		result.DatabaseInfo.Port, result.DatabaseInfo.Database)
+			result.DatabaseInfo.Port, result.DatabaseInfo.Database)
 		fmt.Fprintf(&output, "   Server Version: %s\n", result.DatabaseInfo.Version)
 	}
 	fmt.Fprintf(&output, "   Processing Time: %v\n", result.ProcessingDuration)
@@ -411,7 +411,7 @@ func outputSummary(result *models.UniversalDatabaseAnalysisResult, outputFile st
 				schemaInfo = fmt.Sprintf(" (%s)", table.Schema)
 			}
 			fmt.Fprintf(&output, "   %-20s%s - %d rows, %d columns\n",
-			table.Name, schemaInfo, table.EstimatedRows, len(table.Columns))
+				table.Name, schemaInfo, table.EstimatedRows, len(table.Columns))
 
 			// Show column details for first few tables
 			if len(result.SchemaAnalysis.Tables) <= 3 && len(table.Columns) > 0 {
