@@ -24,7 +24,8 @@ const (
 	DatabaseTypeMySQL DatabaseType = "mysql"
 	// DatabaseTypePostgreSQL represents PostgreSQL database type
 	DatabaseTypePostgreSQL DatabaseType = "postgresql"
-	DatabaseTypeOracle     DatabaseType = "oracle"
+	// DatabaseTypeOracle represents Oracle database type
+	DatabaseTypeOracle DatabaseType = "oracle"
 )
 
 // DatabaseSelector represents configuration for choosing database type

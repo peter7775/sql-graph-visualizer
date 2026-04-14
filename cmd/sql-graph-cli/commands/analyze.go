@@ -106,7 +106,7 @@ Supports both MySQL and PostgreSQL databases with database-specific optimization
 	}
 
 	// Database type and connection flags
-	cmd.Flags().StringVar(&dbType, "db-type", "mysql", "Database type: mysql, postgresql")
+	cmd.Flags().StringVar(&dbType, "db-type", "mysql", "Database type: mysql, postgresql, oracle")
 	cmd.Flags().StringVar(&host, "host", "localhost", "Database host")
 	cmd.Flags().IntVar(&port, "port", 0, "Database port (0 = auto-detect: MySQL=3306, PostgreSQL=5432)")
 	cmd.Flags().StringVar(&username, "username", "", "Database username")
@@ -278,6 +278,25 @@ func runAnalyze(_ *cobra.Command, opts analyzeOptions) error {
 						RelationTypeFormat: "UPPER_SNAKE",
 					},
 				},
+			},
+		}}
+
+	case models.DatabaseTypeOracle:
+		port := opts.Port
+		if port == 0 {
+			port = 1521
+		}
+		config = models.DatabaseConfig{Type: models.DatabaseTypeOracle, Oracle: &models.OracleConfig{
+			Host:        opts.Host,
+			Port:        port,
+			ServiceName: opts.Database,
+			Username:    opts.Username,
+			Password:    opts.Password,
+			Security: models.SecurityConfig{
+				ReadOnly:          true,
+				ConnectionTimeout: opts.ConnectionTimeout,
+				QueryTimeout:      opts.QueryTimeout,
+				MaxConnections:    opts.MaxConnections,
 			},
 		}}
 
