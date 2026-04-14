@@ -1,0 +1,39 @@
+# Docker Compose for Oracle XE development/testing
+# Usage: docker-compose -f docker-compose.oracle.yml up -d
+
+version: "3.8"
+
+services:
+  oracle-xe:
+    image: gvenzl/oracle-xe:21-slim
+    container_name: sql-graph-oracle-xe
+    environment:
+      ORACLE_PASSWORD: password
+      APP_USER: hr
+      APP_USER_PASSWORD: password
+    ports:
+      - "1521:1521"
+    volumes:
+      - oracle-data:/opt/oracle/oradata
+    healthcheck:
+      test: ["CMD", "healthcheck.sh"]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+      start_period: 120s
+
+  neo4j:
+    image: neo4j:4.4
+    container_name: sql-graph-neo4j-oracle
+    environment:
+      NEO4J_AUTH: neo4j/password
+      NEO4J_ACCEPT_LICENSE_AGREEMENT: "yes"
+    ports:
+      - "7474:7474"
+      - "7687:7687"
+    volumes:
+      - neo4j-data:/data
+
+volumes:
+  oracle-data:
+  neo4j-data:
