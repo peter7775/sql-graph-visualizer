@@ -11,6 +11,7 @@
 
 package mysql
 
+// DataType represents a MySQL data type definition.
 type DataType struct {
 	ID   int
 	Data any

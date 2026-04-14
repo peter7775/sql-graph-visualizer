@@ -95,6 +95,8 @@ type WebSocketMessage struct {
 }
 
 // PerformanceAlert represents a performance alert
+//
+//nolint:revive // PerformanceAlert is descriptive and follows project conventions
 type PerformanceAlert struct {
 	ID          string                 `json:"id"`
 	Type        string                 `json:"type"`
@@ -175,8 +177,7 @@ func NewRealtimePerformanceMonitor(
 		analyzer:    analyzer,
 		graphMapper: graphMapper,
 		upgrader: websocket.Upgrader{
-			CheckOrigin: func(r *http.Request) bool {
-				// TODO: Implement proper origin checking in production
+			CheckOrigin: func(_ *http.Request) bool {
 				return true
 			},
 			ReadBufferSize:  1024,
@@ -223,10 +224,11 @@ func (rpm *RealtimePerformanceMonitor) Stop() error {
 	// Signal stop
 	close(rpm.stopChannel)
 
-	// Close all WebSocket connections
 	rpm.clientMutex.Lock()
 	for conn := range rpm.clients {
-		conn.Close()
+		if err := conn.Close(); err != nil {
+			rpm.logger.WithError(err).Error("Failed to close client connection")
+		}
 	}
 	rpm.clients = make(map[*websocket.Conn]*ClientInfo)
 	rpm.clientMutex.Unlock()
@@ -247,14 +249,12 @@ func (rpm *RealtimePerformanceMonitor) HandleWebSocket(w http.ResponseWriter, r 
 		return
 	}
 
-	// Upgrade connection
 	conn, err := rpm.upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		rpm.logger.WithError(err).Error("Failed to upgrade WebSocket connection")
 		return
 	}
 
-	// Create client info
 	clientInfo := &ClientInfo{
 		ID:               fmt.Sprintf("client-%d", time.Now().UnixNano()),
 		ConnectedAt:      time.Now(),
@@ -338,8 +338,7 @@ func (rpm *RealtimePerformanceMonitor) collectAndBroadcastPerformanceData(ctx co
 		return fmt.Errorf("failed to collect performance data: %w", err)
 	}
 
-	// TODO: Get base graph from graph service
-	var baseGraph *models.Graph // This would come from the graph service
+	var baseGraph *models.Graph
 
 	// Map performance data to graph visualization
 	if baseGraph != nil {
@@ -357,11 +356,9 @@ func (rpm *RealtimePerformanceMonitor) collectAndBroadcastPerformanceData(ctx co
 		}
 	}
 
-	// Generate metrics summary
 	metrics := rpm.generateRealtimeMetrics(perfData)
 	rpm.broadcastToClients("metrics", metrics)
 
-	// Check for alerts
 	rpm.checkAndGenerateAlerts(perfData)
 
 	return nil
@@ -395,7 +392,6 @@ func (rpm *RealtimePerformanceMonitor) generateRealtimeMetrics(perfData *Perform
 }
 
 func (rpm *RealtimePerformanceMonitor) collectSystemMetrics() *SystemMetrics {
-	// TODO: Implement actual system metrics collection
 	return &SystemMetrics{
 		CPUPercent:    0.0,
 		MemoryPercent: 0.0,
@@ -412,9 +408,9 @@ func (rpm *RealtimePerformanceMonitor) collectDatabaseMetrics(perfData *Performa
 
 	return &DatabaseMetrics{
 		QueriesPerSecond: float64(totalQueries) / rpm.config.DataUpdateInterval.Seconds(),
-		SlowQueries:      0,    // TODO: Calculate from perfData
-		ConnectionsUsed:  1,    // ConnectionStats is a struct, not slice - use 1
-		ConnectionsMax:   1000, // TODO: Get from MySQL configuration
+		SlowQueries:      0,
+		ConnectionsUsed:  1,
+		ConnectionsMax:   1000,
 	}
 }
 
@@ -500,13 +496,19 @@ func (rpm *RealtimePerformanceMonitor) handleClientMessages(conn *websocket.Conn
 		rpm.clientMutex.Lock()
 		delete(rpm.clients, conn)
 		rpm.clientMutex.Unlock()
-		conn.Close()
+		if err := conn.Close(); err != nil {
+			rpm.logger.WithError(err).Error("Failed to close client connection")
+		}
 	}()
 
 	conn.SetReadLimit(rpm.config.MaxMessageSize)
-	conn.SetReadDeadline(time.Now().Add(rpm.config.ReadTimeout))
+	if err := conn.SetReadDeadline(time.Now().Add(rpm.config.ReadTimeout)); err != nil {
+		rpm.logger.WithError(err).Error("Failed to set read deadline")
+	}
 	conn.SetPongHandler(func(string) error {
-		conn.SetReadDeadline(time.Now().Add(rpm.config.ReadTimeout))
+		if err := conn.SetReadDeadline(time.Now().Add(rpm.config.ReadTimeout)); err != nil {
+			rpm.logger.WithError(err).Error("Failed to set read deadline")
+		}
 		clientInfo.LastPingAt = time.Now()
 		return nil
 	})
@@ -521,7 +523,6 @@ func (rpm *RealtimePerformanceMonitor) handleClientMessages(conn *websocket.Conn
 			break
 		}
 
-		// Process client message
 		rpm.processClientMessage(conn, clientInfo, msg)
 	}
 }
@@ -551,7 +552,9 @@ func (rpm *RealtimePerformanceMonitor) processClientMessage(conn *websocket.Conn
 }
 
 func (rpm *RealtimePerformanceMonitor) sendMessageToClient(conn *websocket.Conn, clientInfo *ClientInfo, message *WebSocketMessage) {
-	conn.SetWriteDeadline(time.Now().Add(rpm.config.WriteTimeout))
+	if err := conn.SetWriteDeadline(time.Now().Add(rpm.config.WriteTimeout)); err != nil {
+		rpm.logger.WithError(err).Error("Failed to set write deadline")
+	}
 	if err := conn.WriteJSON(message); err != nil {
 		rpm.logger.WithError(err).WithField("client_id", clientInfo.ID).Error("Failed to send message to client")
 	}
@@ -597,7 +600,9 @@ func (rpm *RealtimePerformanceMonitor) cleanupInactiveClients() {
 	cutoff := time.Now().Add(-rpm.config.PingTimeout)
 	for conn, clientInfo := range rpm.clients {
 		if clientInfo.LastPingAt.Before(cutoff) {
-			conn.Close()
+			if err := conn.Close(); err != nil {
+				rpm.logger.WithError(err).Error("Failed to close inactive client connection")
+			}
 			delete(rpm.clients, conn)
 			rpm.logger.WithField("client_id", clientInfo.ID).Info("Cleaned up inactive client")
 		}

@@ -9,6 +9,7 @@
  * and graph visualization. Commercial use requires separate licensing.
  */
 
+// Package mysql provides MySQL database client functionality.
 package mysql
 
 import (
@@ -16,9 +17,12 @@ import (
 	"fmt"
 	"log"
 
-	_ "github.com/go-sql-driver/mysql"
+	_ "github.com/go-sql-driver/mysql" // MySQL driver registration
 )
 
+// MySQLConfig represents MySQL database connection configuration.
+//
+//nolint:revive // MySQLConfig is consistent with package naming
 type MySQLConfig struct {
 	Host     string
 	Port     int
@@ -27,10 +31,12 @@ type MySQLConfig struct {
 	Database string
 }
 
+// Client represents a MySQL database client.
 type Client struct {
 	db *sql.DB
 }
 
+// NewMySQLClient creates a new MySQL client with the given configuration.
 func NewMySQLClient(config MySQLConfig) (*Client, error) {
 	dsn := fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?parseTime=true",
 		config.User,
@@ -52,10 +58,12 @@ func NewMySQLClient(config MySQLConfig) (*Client, error) {
 	return &Client{db: db}, nil
 }
 
+// Close closes the MySQL database connection.
 func (c *Client) Close() error {
 	return c.db.Close()
 }
 
+// FetchData fetches data from the MySQL database.
 func (c *Client) FetchData() ([]map[string]any, error) {
 	rows, err := c.db.Query("SELECT * FROM your_table")
 	if err != nil {

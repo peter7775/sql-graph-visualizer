@@ -21,14 +21,18 @@ import (
 	"strings"
 	"time"
 
-	_ "github.com/lib/pq"
+	_ "github.com/lib/pq" // PostgreSQL driver
 	"github.com/sirupsen/logrus"
 )
 
+// PostgreSQLRepository implements the PostgreSQL port interface.
+//
+//nolint:revive // PostgreSQLRepository is descriptive and follows project conventions
 type PostgreSQLRepository struct {
 	db *sql.DB
 }
 
+// NewPostgreSQLRepository creates a new PostgreSQL repository.
 func NewPostgreSQLRepository(db *sql.DB) ports.PostgreSQLPort {
 	return &PostgreSQLRepository{db: db}
 }
@@ -38,15 +42,18 @@ func NewPostgreSQLDatabasePort(db *sql.DB) ports.DatabasePort {
 	return &PostgreSQLRepository{db: db}
 }
 
+// FetchData fetches data from the PostgreSQL database.
 func (r *PostgreSQLRepository) FetchData() ([]map[string]any, error) {
 	logrus.Infof("💾 FetchData called - returning empty slice (data loading moved to transform service)")
 	return []map[string]any{}, nil
 }
 
+// Close closes the database connection.
 func (r *PostgreSQLRepository) Close() error {
 	return r.db.Close()
 }
 
+// ExecuteQuery executes a SQL query and returns the results.
 func (r *PostgreSQLRepository) ExecuteQuery(query string) ([]map[string]any, error) {
 	rows, err := r.db.Query(query)
 	if err != nil {
@@ -87,7 +94,7 @@ func (r *PostgreSQLRepository) ExecuteQuery(query string) ([]map[string]any, err
 
 // EscapeIdentifier escapes PostgreSQL identifiers (table names, column names)
 func (r *PostgreSQLRepository) EscapeIdentifier(identifier string) string {
-	return fmt.Sprintf(`"%s"`, strings.Replace(identifier, `"`, `""`, -1))
+	return fmt.Sprintf(`"%s"`, strings.ReplaceAll(identifier, `"`, `""`))
 }
 
 // ConnectToExisting creates a new connection to existing PostgreSQL database
@@ -100,40 +107,39 @@ func (r *PostgreSQLRepository) ConnectToExisting(ctx context.Context, config *mo
 
 	// Build PostgreSQL connection string
 	var connString strings.Builder
-	connString.WriteString(fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s",
-		config.Host, config.Port, username, config.Password, config.Database))
+	fmt.Fprintf(&connString, "host=%s port=%d user=%s password=%s dbname=%s",
+		config.Host, config.Port, username, config.Password, config.Database)
 
 	// Add SSL configuration
 	if config.SSLConfig.Mode != "" {
-		connString.WriteString(fmt.Sprintf(" sslmode=%s", config.SSLConfig.Mode))
+		fmt.Fprintf(&connString, " sslmode=%s", config.SSLConfig.Mode)
 	} else {
 		connString.WriteString(" sslmode=prefer") // Default to prefer
 	}
 
 	if config.SSLConfig.CertFile != "" {
-		connString.WriteString(fmt.Sprintf(" sslcert=%s", config.SSLConfig.CertFile))
+		fmt.Fprintf(&connString, " sslcert=%s", config.SSLConfig.CertFile)
 	}
 	if config.SSLConfig.KeyFile != "" {
-		connString.WriteString(fmt.Sprintf(" sslkey=%s", config.SSLConfig.KeyFile))
+		fmt.Fprintf(&connString, " sslkey=%s", config.SSLConfig.KeyFile)
 	}
 	if config.SSLConfig.CAFile != "" {
-		connString.WriteString(fmt.Sprintf(" sslrootcert=%s", config.SSLConfig.CAFile))
+		fmt.Fprintf(&connString, " sslrootcert=%s", config.SSLConfig.CAFile)
 	}
 
 	// Add timeout configurations
 	if config.Security.ConnectionTimeout > 0 {
-		connString.WriteString(fmt.Sprintf(" connect_timeout=%d", config.Security.ConnectionTimeout))
+		fmt.Fprintf(&connString, " connect_timeout=%d", config.Security.ConnectionTimeout)
 	}
 	if config.StatementTimeout > 0 {
-		connString.WriteString(fmt.Sprintf(" statement_timeout=%dms", config.StatementTimeout*1000))
+		fmt.Fprintf(&connString, " statement_timeout=%dms", config.StatementTimeout*1000)
 	}
 
-	// Set application name for .monitoring
 	appName := config.ApplicationName
 	if appName == "" {
 		appName = "sql-graph-visualizer"
 	}
-	connString.WriteString(fmt.Sprintf(" application_name=%s", appName))
+	fmt.Fprintf(&connString, " application_name=%s", appName)
 
 	logrus.Infof("Connecting to PostgreSQL database: %s@%s:%d/%s", username, config.Host, config.Port, config.Database)
 
@@ -142,12 +148,10 @@ func (r *PostgreSQLRepository) ConnectToExisting(ctx context.Context, config *mo
 		return nil, fmt.Errorf("failed to open database connection: %w", err)
 	}
 
-	// Set connection pool limits
 	db.SetMaxOpenConns(config.Security.MaxConnections)
 	db.SetMaxIdleConns(config.Security.MaxConnections / 2)
 	db.SetConnMaxLifetime(10 * time.Minute)
 
-	// Test connection
 	ctxTimeout, cancel := context.WithTimeout(ctx, time.Duration(config.Security.ConnectionTimeout)*time.Second)
 	defer cancel()
 
@@ -234,14 +238,17 @@ func (r *PostgreSQLRepository) checkDatabasePermissions(ctx context.Context, db 
 	if err != nil {
 		return err
 	}
-	defer rows.Close()
+	defer func() {
+		if err := rows.Close(); err != nil {
+			logrus.WithError(err).Error("Failed to close rows")
+		}
+	}()
 
 	for rows.Next() {
 		var privilege string
 		if err := rows.Scan(&privilege); err == nil {
 			result.Permissions = append(result.Permissions, privilege)
 
-			// Check for dangerous permissions
 			privUpper := strings.ToUpper(privilege)
 			if strings.Contains(privUpper, "INSERT") ||
 				strings.Contains(privUpper, "UPDATE") ||
@@ -272,7 +279,6 @@ func (r *PostgreSQLRepository) DiscoverSchema(ctx context.Context, db *sql.DB, f
 	}
 	result.DatabaseName = dbName
 
-	// Get all tables
 	tableNames, err := r.GetTables(ctx, db, filterConfig)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get tables: %w", err)
@@ -310,7 +316,11 @@ func (r *PostgreSQLRepository) GetTables(ctx context.Context, db *sql.DB, filter
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() {
+		if err := rows.Close(); err != nil {
+			logrus.WithError(err).Error("Failed to close rows")
+		}
+	}()
 
 	var allTables []string
 	for rows.Next() {
@@ -371,14 +381,12 @@ func (r *PostgreSQLRepository) GetTableInfo(ctx context.Context, db *sql.DB, tab
 		Recommendations: []string{},
 	}
 
-	// Get column information
 	columns, err := r.getTableColumns(ctx, db, tableName)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get columns for table %s: %w", tableName, err)
 	}
 	tableInfo.Columns = columns
 
-	// Get row count estimate
 	rowCount, err := r.getTableRowCount(ctx, db, tableName)
 	if err != nil {
 		logrus.Warnf("Failed to get row count for table %s: %v", tableName, err)
@@ -408,7 +416,11 @@ func (r *PostgreSQLRepository) getTableColumns(ctx context.Context, db *sql.DB, 
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() {
+		if err := rows.Close(); err != nil {
+			logrus.WithError(err).Error("Failed to close rows")
+		}
+	}()
 
 	var columns []*models.ColumnInfo
 	for rows.Next() {
@@ -432,13 +444,10 @@ func (r *PostgreSQLRepository) getTableColumns(ctx context.Context, db *sql.DB, 
 
 		if maxLength.Valid {
 			// Convert string to int if needed for MaxLength field
-			// For now, storing in Extra field
 			col.Extra = maxLength.String
 		}
 
-		// Check if this is a primary key or has constraints
 		// This would require additional queries to pg_constraint, etc.
-		// For now, basic implementation
 
 		columns = append(columns, &col)
 	}
@@ -476,10 +485,9 @@ func (r *PostgreSQLRepository) getTableRowCount(ctx context.Context, db *sql.DB,
 }
 
 // ExtractTableData extracts data from a PostgreSQL table with filtering
-func (r *PostgreSQLRepository) ExtractTableData(ctx context.Context, db *sql.DB, tableName string, config *models.DataFilteringConfig) ([]map[string]any, error) {
+func (r *PostgreSQLRepository) ExtractTableData(ctx context.Context, _ *sql.DB, tableName string, config *models.DataFilteringConfig) ([]map[string]any, error) {
 	logrus.Infof("📤 Extracting data from PostgreSQL table: %s", tableName)
 
-	// Build query with optional WHERE conditions
 	query := fmt.Sprintf("SELECT * FROM %s", tableName)
 
 	// Add WHERE condition if specified
@@ -496,7 +504,6 @@ func (r *PostgreSQLRepository) ExtractTableData(ctx context.Context, db *sql.DB,
 
 	logrus.Debugf("Executing PostgreSQL query: %s", query)
 
-	// Set query timeout
 	ctxWithTimeout := ctx
 	if config != nil && config.QueryTimeout > 0 {
 		var cancel context.CancelFunc

@@ -7,6 +7,7 @@
  * Patent Pending - Application filed for innovative database transformation techniques
  */
 
+// Package main provides a test utility for Sakila database transformations.
 package main
 
 import (
@@ -24,7 +25,6 @@ func main() {
 	fmt.Println("🎬 SQL Graph Visualizer - Sakila Database Direct Connection Test")
 	fmt.Println("================================================================")
 
-	// Test configuration for connecting to Sakila database
 	config := &models.MySQLConfig{
 		Host:           "127.0.0.1",
 		Port:           3308,
@@ -63,21 +63,17 @@ func main() {
 		},
 	}
 
-	// Initialize MySQL repository (this would normally be injected)
 	mysqlRepo := mysql.NewMySQLRepository(nil) // We'll connect through the service
 
-	// Initialize the Direct Database Service
 	fmt.Println("TOOL Initializing Direct Database Service...")
 	directDBService := services.NewDirectDatabaseService(mysqlRepo, config)
 
-	// Validate configuration
 	fmt.Println("Validating configuration...")
 	if err := directDBService.ValidateConfiguration(); err != nil {
 		log.Fatalf("Configuration validation failed: %v", err)
 	}
 	fmt.Println("Configuration is valid")
 
-	// Test 1: Quick Connection Test
 	fmt.Println("\nTEST Test 1: Quick Connection Test")
 	fmt.Println("================================")
 
@@ -98,7 +94,6 @@ func main() {
 		return
 	}
 
-	// Test 2: Data Size Estimation
 	fmt.Println("\n📏 Test 2: Data Size Estimation")
 	fmt.Println("===============================")
 
@@ -122,7 +117,6 @@ func main() {
 		}
 	}
 
-	// Test 3: Full Schema Analysis
 	fmt.Println("\nANALYZE Test 3: Complete Database Analysis")
 	fmt.Println("====================================")
 

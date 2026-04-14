@@ -1,24 +1,24 @@
 database:
-  type: "postgresql"
-  postgresql:
+  type: "mysql"
+  mysql:
     host: "localhost"
-    port: 5432
-    user: "postgres"
-    password: "password"
-    database: "chinook"
-    schema: "public"
+    port: 3307
+    user: "testuser"
+    password: "testpass"
+    database: "data"
     
-    ssl:
-      mode: "disable"
-    
-    application_name: "sql-graph-visualizer"
-    statement_timeout: 30
+    charset: "utf8mb4"
+    parseTime: true
+    loc: "UTC"
+    timeout: "30s"
+    readTimeout: "30s"
+    writeTimeout: "30s"
     
     connection_mode: existing
     
     data_filtering:
       schema_discovery: true
-      table_whitelist: ["album", "artist", "customer", "employee", "genre", "track", "playlist", "invoice", "invoiceline"]
+      table_whitelist: ["users", "teams", "skills", "projects", "tasks", "team_members", "user_skills", "project_skills", "task_dependencies", "activity_log"]
       table_blacklist: []
       row_limit_per_table: 0
       query_timeout: 30
@@ -36,16 +36,13 @@ neo4j:
   user: "neo4j"
   password: "testpass"
 
-# Performance .monitoring and benchmarking configuration
 performance:
-  # Performance data collection settings
   monitoring:
     enabled: true
     update_interval: "5s"
     data_retention: "1h"
     max_concurrent_queries: 10
     
-    # MySQL Performance Schema settings
     performance_schema:
       enabled: true
       statement_limit: 100
@@ -54,14 +51,12 @@ performance:
       connection_limit: 25
       cache_duration: "30s"
       
-    # Performance analysis settings
     analysis:
       bottleneck_threshold: 70.0
-      slow_query_threshold: 200.0  # milliseconds
+      slow_query_threshold: 200.0
       high_load_threshold: 80.0
       hotspot_threshold: 75.0
       
-  # Real-time .monitoring via WebSocket
   realtime:
     enabled: true
     update_interval: "5s"
@@ -73,16 +68,14 @@ performance:
     max_message_size: 512
     compression_enabled: true
     
-    # Alert thresholds
     alerts:
-      high_latency: 1000.0        # 1 second
-      high_error_rate: 5.0        # 5%
-      high_cpu_usage: 80.0        # 80%
-      high_memory_usage: 85.0     # 85%
-      slow_query_threshold: 200.0 # 200ms
-      deadlock_threshold: 5       # 5 deadlocks per minute
+      high_latency: 1000.0
+      high_error_rate: 5.0
+      high_cpu_usage: 80.0
+      high_memory_usage: 85.0
+      slow_query_threshold: 200.0
+      deadlock_threshold: 5
       
-  # Benchmarking settings
   benchmarks:
     enabled: true
     default_duration: "60s"
@@ -90,28 +83,23 @@ performance:
     results_retention: "24h"
     cleanup_interval: "15m"
     
-    # Sysbench configuration
     sysbench:
       executable_path: "sysbench"
       temp_dir: "/tmp/sysbench"
       cleanup_after_test: true
       
-      # Default test parameters
       defaults:
         table_size: 10000
         threads: 4
         time: 60
         report_interval: 10
         
-    # Resource limits
     limits:
       max_concurrent_benchmarks: 3
       memory_limit_mb: 100
       cpu_threshold: 80.0
       
-  # Graph visualization settings
   visualization:
-    # Visual encoding
     edge_thickness:
       metric: "query_frequency"
       scale: "linear"
@@ -141,14 +129,12 @@ performance:
         ok: "50ms - 200ms"
         slow: "> 200ms"
         
-    # Animation settings
     animation:
       show_data_flow: true
       speed_based_on: "query_frequency"
       animation_speed: 1.0
       particle_count: 10
       
-    # Update settings
     update_interval: "5s"
     history_retention: "1h"
     max_concurrent_updates: 3
@@ -473,24 +459,6 @@ transform_rules:
       target_field: "id"
     field_mappings:
       expert_id: "id"
-
-  # - name: "high_impact_project_connection"
-  #   rule_type: "relationship"
-  #   relationship_type: "ENHANCED_VIEW_OF"
-  #   direction: "outgoing"
-  #   source:
-  #     type: "query"
-  #     value: "SELECT CONCAT('IMPACT_', p.id) as impact_id, p.id as project_id FROM projects p WHERE p.budget > 150000 OR p.priority IN ('high', 'critical')"
-  #   source_node:
-  #     type: "HighImpactProject"
-  #     key: "impact_id"
-  #     target_field: "id"
-  #   target_node:
-  #     type: "Project"
-  #     key: "project_id"
-  #     target_field: "id"
-  #   field_mappings:
-  #     impact_id: "id"
 
   - name: "team_summary_connection"
     rule_type: "relationship"

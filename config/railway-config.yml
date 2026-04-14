@@ -1,0 +1,35 @@
+
+database:
+  type: "disabled"
+  
+neo4j:
+  uri: "bolt://demo:7687"
+  user: "neo4j"
+  password: "demo"
+
+transform_rules: []
+
+performance:
+  monitoring:
+    enabled: false
+  realtime:
+    enabled: false
+  benchmarks:
+    enabled: false
+  visualization:
+    update_interval: "30s"
+    history_retention: "10m"
+
+api:
+  cors:
+    allowed_origins: ["*"]
+    allowed_methods: ["GET", "POST", "OPTIONS"]
+    allowed_headers: ["*"]
+  
+  graphql:
+    playground_enabled: true
+    introspection_enabled: true
+
+demo:
+  enabled: true
+  message: "Railway demo - running without database connections"

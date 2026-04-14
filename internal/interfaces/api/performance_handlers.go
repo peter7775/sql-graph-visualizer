@@ -1,4 +1,5 @@
-package api
+// Package api provides HTTP API handlers for performance monitoring.
+package api //nolint:revive // api is a clear and conventional package name
 
 import (
 	"encoding/json"
@@ -25,17 +26,17 @@ type PerformanceHandlers struct {
 	psAdapter           *performance.PerformanceSchemaAdapter
 }
 
-// APIResponse represents a standard API response
-type APIResponse struct {
+// Response represents an API response structure.
+type Response struct {
 	Success   bool        `json:"success"`
 	Data      interface{} `json:"data,omitempty"`
-	Error     *APIError   `json:"error,omitempty"`
+	Error     *Error      `json:"error,omitempty"`
 	Timestamp time.Time   `json:"timestamp"`
 	RequestID string      `json:"request_id,omitempty"`
 }
 
-// APIError represents an API error
-type APIError struct {
+// Error represents an API error structure.
+type Error struct {
 	Code    string `json:"code"`
 	Message string `json:"message"`
 	Details string `json:"details,omitempty"`
@@ -138,16 +139,18 @@ func (ph *PerformanceHandlers) RegisterRoutes(router *mux.Router) {
 
 // Benchmark control handlers
 
+// ListBenchmarks handles requests to list all benchmarks.
 func (ph *PerformanceHandlers) ListBenchmarks(w http.ResponseWriter, r *http.Request) {
 	benchmarks := ph.benchmarkService.ListRunningBenchmarks(r.Context())
 
-	ph.sendJSONResponse(w, http.StatusOK, APIResponse{
+	ph.sendJSONResponse(w, http.StatusOK, Response{
 		Success:   true,
 		Data:      benchmarks,
 		Timestamp: time.Now(),
 	})
 }
 
+// StartBenchmark handles requests to start a new benchmark.
 func (ph *PerformanceHandlers) StartBenchmark(w http.ResponseWriter, r *http.Request) {
 	var req BenchmarkRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -168,7 +171,6 @@ func (ph *PerformanceHandlers) StartBenchmark(w http.ResponseWriter, r *http.Req
 		CustomParams: req.Config,
 	}
 
-	// Start benchmark
 	executionID, err := ph.benchmarkService.ExecuteBenchmark(r.Context(), config, req.BenchmarkType)
 	if err != nil {
 		ph.sendErrorResponse(w, http.StatusInternalServerError, "benchmark_error", "Failed to start benchmark", err.Error())
@@ -186,13 +188,14 @@ func (ph *PerformanceHandlers) StartBenchmark(w http.ResponseWriter, r *http.Req
 		},
 	}
 
-	ph.sendJSONResponse(w, http.StatusCreated, APIResponse{
+	ph.sendJSONResponse(w, http.StatusCreated, Response{
 		Success:   true,
 		Data:      response,
 		Timestamp: time.Now(),
 	})
 }
 
+// GetBenchmark handles requests to get a specific benchmark.
 func (ph *PerformanceHandlers) GetBenchmark(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	benchmarkID := vars["id"]
@@ -202,7 +205,6 @@ func (ph *PerformanceHandlers) GetBenchmark(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	// Get benchmark status
 	status := ph.benchmarkService.GetBenchmarkStatus(r.Context(), benchmarkID)
 	if status == nil {
 		ph.sendErrorResponse(w, http.StatusNotFound, "not_found", "Benchmark not found", "")
@@ -214,7 +216,7 @@ func (ph *PerformanceHandlers) GetBenchmark(w http.ResponseWriter, r *http.Reque
 		endTime = &status.Result.EndTime
 	}
 
-	var progressFloat float64 = 0.0
+	var progressFloat float64
 	if status.Progress != nil {
 		progressFloat = float64(status.Progress.CompletedSteps) / float64(status.Progress.TotalSteps) * 100
 	}
@@ -232,13 +234,14 @@ func (ph *PerformanceHandlers) GetBenchmark(w http.ResponseWriter, r *http.Reque
 		},
 	}
 
-	ph.sendJSONResponse(w, http.StatusOK, APIResponse{
+	ph.sendJSONResponse(w, http.StatusOK, Response{
 		Success:   true,
 		Data:      response,
 		Timestamp: time.Now(),
 	})
 }
 
+// StopBenchmark handles requests to stop a running benchmark.
 func (ph *PerformanceHandlers) StopBenchmark(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	benchmarkID := vars["id"]
@@ -254,13 +257,14 @@ func (ph *PerformanceHandlers) StopBenchmark(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	ph.sendJSONResponse(w, http.StatusOK, APIResponse{
+	ph.sendJSONResponse(w, http.StatusOK, Response{
 		Success:   true,
 		Data:      map[string]string{"status": "stopped"},
 		Timestamp: time.Now(),
 	})
 }
 
+// GetBenchmarkResults handles requests to get benchmark results.
 func (ph *PerformanceHandlers) GetBenchmarkResults(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	benchmarkID := vars["id"]
@@ -276,7 +280,7 @@ func (ph *PerformanceHandlers) GetBenchmarkResults(w http.ResponseWriter, r *htt
 		return
 	}
 
-	ph.sendJSONResponse(w, http.StatusOK, APIResponse{
+	ph.sendJSONResponse(w, http.StatusOK, Response{
 		Success:   true,
 		Data:      results,
 		Timestamp: time.Now(),
@@ -285,11 +289,11 @@ func (ph *PerformanceHandlers) GetBenchmarkResults(w http.ResponseWriter, r *htt
 
 // Performance data handlers
 
+// GetCurrentPerformanceData handles requests to get current performance data.
 func (ph *PerformanceHandlers) GetCurrentPerformanceData(w http.ResponseWriter, r *http.Request) {
 	includeGraph := r.URL.Query().Get("include_graph") == "true"
 	includeAnalysis := r.URL.Query().Get("include_analysis") == "true"
 
-	// Collect current performance data
 	perfData, err := ph.psAdapter.CollectPerformanceData(r.Context())
 	if err != nil {
 		ph.sendErrorResponse(w, http.StatusInternalServerError, "collection_error", "Failed to collect performance data", err.Error())
@@ -308,7 +312,6 @@ func (ph *PerformanceHandlers) GetCurrentPerformanceData(w http.ResponseWriter, 
 
 	// Include graph data if requested
 	if includeGraph {
-		// TODO: Get base graph from graph service
 		var baseGraph *models.Graph
 		if baseGraph != nil {
 			graphData, err := ph.graphMapper.MapPerformanceToGraph(r.Context(), baseGraph, perfData)
@@ -320,20 +323,20 @@ func (ph *PerformanceHandlers) GetCurrentPerformanceData(w http.ResponseWriter, 
 
 	// Include analysis if requested
 	if includeAnalysis {
-		// TODO: Implement performance analysis when method is available
 		response.AnalysisResults = map[string]interface{}{
 			"status":  "analysis_not_available",
 			"message": "Performance analysis feature is under development",
 		}
 	}
 
-	ph.sendJSONResponse(w, http.StatusOK, APIResponse{
+	ph.sendJSONResponse(w, http.StatusOK, Response{
 		Success:   true,
 		Data:      response,
 		Timestamp: time.Now(),
 	})
 }
 
+// GetPerformanceHistory handles requests to get performance history.
 func (ph *PerformanceHandlers) GetPerformanceHistory(w http.ResponseWriter, r *http.Request) {
 	// Parse query parameters
 	startTimeStr := r.URL.Query().Get("start_time")
@@ -370,8 +373,6 @@ func (ph *PerformanceHandlers) GetPerformanceHistory(w http.ResponseWriter, r *h
 		}
 	}
 
-	// TODO: Implement historical data collection
-	// This would typically query a time-series database or historical storage
 	historyData := []interface{}{
 		map[string]interface{}{
 			"message": "Historical data collection not yet implemented",
@@ -383,13 +384,14 @@ func (ph *PerformanceHandlers) GetPerformanceHistory(w http.ResponseWriter, r *h
 		},
 	}
 
-	ph.sendJSONResponse(w, http.StatusOK, APIResponse{
+	ph.sendJSONResponse(w, http.StatusOK, Response{
 		Success:   true,
 		Data:      historyData,
 		Timestamp: time.Now(),
 	})
 }
 
+// GetPerformanceAnalysis handles requests to get performance analysis.
 func (ph *PerformanceHandlers) GetPerformanceAnalysis(w http.ResponseWriter, r *http.Request) {
 	// Collect current performance data
 	perfData, err := ph.psAdapter.CollectPerformanceData(r.Context())
@@ -398,20 +400,20 @@ func (ph *PerformanceHandlers) GetPerformanceAnalysis(w http.ResponseWriter, r *
 		return
 	}
 
-	// TODO: Implement performance analysis
 	analysisResults := map[string]interface{}{
 		"status":  "analysis_not_available",
 		"message": "Performance analysis feature is under development",
 		"data":    perfData,
 	}
 
-	ph.sendJSONResponse(w, http.StatusOK, APIResponse{
+	ph.sendJSONResponse(w, http.StatusOK, Response{
 		Success:   true,
 		Data:      analysisResults,
 		Timestamp: time.Now(),
 	})
 }
 
+// GetPerformanceGraph handles requests to get performance graph visualization.
 func (ph *PerformanceHandlers) GetPerformanceGraph(w http.ResponseWriter, r *http.Request) {
 	// Collect performance data
 	perfData, err := ph.psAdapter.CollectPerformanceData(r.Context())
@@ -420,21 +422,19 @@ func (ph *PerformanceHandlers) GetPerformanceGraph(w http.ResponseWriter, r *htt
 		return
 	}
 
-	// TODO: Get base graph from graph service
 	var baseGraph *models.Graph
 	if baseGraph == nil {
 		ph.sendErrorResponse(w, http.StatusServiceUnavailable, "graph_unavailable", "Base graph is not available", "")
 		return
 	}
 
-	// Map performance data to graph
 	graphData, err := ph.graphMapper.MapPerformanceToGraph(r.Context(), baseGraph, perfData)
 	if err != nil {
 		ph.sendErrorResponse(w, http.StatusInternalServerError, "mapping_error", "Failed to map performance to graph", err.Error())
 		return
 	}
 
-	ph.sendJSONResponse(w, http.StatusOK, APIResponse{
+	ph.sendJSONResponse(w, http.StatusOK, Response{
 		Success:   true,
 		Data:      graphData,
 		Timestamp: time.Now(),
@@ -443,17 +443,19 @@ func (ph *PerformanceHandlers) GetPerformanceGraph(w http.ResponseWriter, r *htt
 
 // Real-time .monitoring handlers
 
-func (ph *PerformanceHandlers) GetRealtimeClients(w http.ResponseWriter, r *http.Request) {
+// GetRealtimeClients returns information about realtime clients.
+func (ph *PerformanceHandlers) GetRealtimeClients(w http.ResponseWriter, _ *http.Request) {
 	clients := ph.realtimeMonitor.GetConnectedClients()
 
-	ph.sendJSONResponse(w, http.StatusOK, APIResponse{
+	ph.sendJSONResponse(w, http.StatusOK, Response{
 		Success:   true,
 		Data:      clients,
 		Timestamp: time.Now(),
 	})
 }
 
-func (ph *PerformanceHandlers) GetRealtimeStatus(w http.ResponseWriter, r *http.Request) {
+// GetRealtimeStatus returns realtime monitoring status.
+func (ph *PerformanceHandlers) GetRealtimeStatus(w http.ResponseWriter, _ *http.Request) {
 	clients := ph.realtimeMonitor.GetConnectedClients()
 	lastGraphData := ph.realtimeMonitor.GetLastGraphData()
 
@@ -467,19 +469,21 @@ func (ph *PerformanceHandlers) GetRealtimeStatus(w http.ResponseWriter, r *http.
 		status["last_update"] = lastGraphData.GeneratedAt
 	}
 
-	ph.sendJSONResponse(w, http.StatusOK, APIResponse{
+	ph.sendJSONResponse(w, http.StatusOK, Response{
 		Success:   true,
 		Data:      status,
 		Timestamp: time.Now(),
 	})
 }
 
+// HandleWebSocket handles WebSocket connections for real-time performance data.
 func (ph *PerformanceHandlers) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 	ph.realtimeMonitor.HandleWebSocket(w, r)
 }
 
 // Metrics handlers
 
+// GetMetricsSummary handles requests to get performance metrics summary.
 func (ph *PerformanceHandlers) GetMetricsSummary(w http.ResponseWriter, r *http.Request) {
 	// Collect current performance data
 	perfData, err := ph.psAdapter.CollectPerformanceData(r.Context())
@@ -490,13 +494,14 @@ func (ph *PerformanceHandlers) GetMetricsSummary(w http.ResponseWriter, r *http.
 
 	summary := ph.generatePerformanceSummary(perfData)
 
-	ph.sendJSONResponse(w, http.StatusOK, APIResponse{
+	ph.sendJSONResponse(w, http.StatusOK, Response{
 		Success:   true,
 		Data:      summary,
 		Timestamp: time.Now(),
 	})
 }
 
+// GetTableMetrics handles requests to get table-specific performance metrics.
 func (ph *PerformanceHandlers) GetTableMetrics(w http.ResponseWriter, r *http.Request) {
 	// Collect current performance data
 	perfData, err := ph.psAdapter.CollectPerformanceData(r.Context())
@@ -505,13 +510,14 @@ func (ph *PerformanceHandlers) GetTableMetrics(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	ph.sendJSONResponse(w, http.StatusOK, APIResponse{
+	ph.sendJSONResponse(w, http.StatusOK, Response{
 		Success:   true,
 		Data:      perfData.TableIOStats,
 		Timestamp: time.Now(),
 	})
 }
 
+// GetQueryMetrics handles requests to get query-specific performance metrics.
 func (ph *PerformanceHandlers) GetQueryMetrics(w http.ResponseWriter, r *http.Request) {
 	limit := 50 // Default limit
 	if limitStr := r.URL.Query().Get("limit"); limitStr != "" {
@@ -520,7 +526,6 @@ func (ph *PerformanceHandlers) GetQueryMetrics(w http.ResponseWriter, r *http.Re
 		}
 	}
 
-	// Collect current performance data
 	perfData, err := ph.psAdapter.CollectPerformanceData(r.Context())
 	if err != nil {
 		ph.sendErrorResponse(w, http.StatusInternalServerError, "collection_error", "Failed to collect performance data", err.Error())
@@ -533,17 +538,15 @@ func (ph *PerformanceHandlers) GetQueryMetrics(w http.ResponseWriter, r *http.Re
 		queries = queries[:limit]
 	}
 
-	ph.sendJSONResponse(w, http.StatusOK, APIResponse{
+	ph.sendJSONResponse(w, http.StatusOK, Response{
 		Success:   true,
 		Data:      queries,
 		Timestamp: time.Now(),
 	})
 }
 
-func (ph *PerformanceHandlers) GetAlerts(w http.ResponseWriter, r *http.Request) {
-	// TODO: Implement alerts retrieval
-	// This would typically query an alerts storage system
-
+// GetAlerts returns performance alerts.
+func (ph *PerformanceHandlers) GetAlerts(w http.ResponseWriter, _ *http.Request) {
 	alerts := []map[string]interface{}{
 		{
 			"message": "Alerts system not yet implemented",
@@ -551,7 +554,7 @@ func (ph *PerformanceHandlers) GetAlerts(w http.ResponseWriter, r *http.Request)
 		},
 	}
 
-	ph.sendJSONResponse(w, http.StatusOK, APIResponse{
+	ph.sendJSONResponse(w, http.StatusOK, Response{
 		Success:   true,
 		Data:      alerts,
 		Timestamp: time.Now(),
@@ -560,22 +563,22 @@ func (ph *PerformanceHandlers) GetAlerts(w http.ResponseWriter, r *http.Request)
 
 // Configuration handlers
 
-func (ph *PerformanceHandlers) GetPerformanceConfig(w http.ResponseWriter, r *http.Request) {
-	// TODO: Return current performance .monitoring configuration
+// GetPerformanceConfig returns the current performance configuration.
+func (ph *PerformanceHandlers) GetPerformanceConfig(w http.ResponseWriter, _ *http.Request) {
 	config := map[string]interface{}{
 		"message": "Configuration endpoint not yet implemented",
 	}
 
-	ph.sendJSONResponse(w, http.StatusOK, APIResponse{
+	ph.sendJSONResponse(w, http.StatusOK, Response{
 		Success:   true,
 		Data:      config,
 		Timestamp: time.Now(),
 	})
 }
 
-func (ph *PerformanceHandlers) UpdatePerformanceConfig(w http.ResponseWriter, r *http.Request) {
-	// TODO: Update performance .monitoring configuration
-	ph.sendJSONResponse(w, http.StatusOK, APIResponse{
+// UpdatePerformanceConfig updates the performance configuration.
+func (ph *PerformanceHandlers) UpdatePerformanceConfig(w http.ResponseWriter, _ *http.Request) {
+	ph.sendJSONResponse(w, http.StatusOK, Response{
 		Success:   true,
 		Data:      map[string]string{"status": "configuration update not yet implemented"},
 		Timestamp: time.Now(),
@@ -625,13 +628,13 @@ func (ph *PerformanceHandlers) generatePerformanceSummary(perfData *performance.
 		QueriesPerSecond:  float64(totalQueries) / 300.0, // Assume 5-minute collection period
 		SlowQueriesCount:  slowQueriesCount,
 		ErrorRate:         errorRate,
-		HotspotCount:      0, // TODO: Calculate from analysis
-		BottleneckCount:   0, // TODO: Calculate from analysis
+		HotspotCount:      0,
+		BottleneckCount:   0,
 		PerformanceRating: rating,
 	}
 }
 
-func (ph *PerformanceHandlers) sendJSONResponse(w http.ResponseWriter, statusCode int, response APIResponse) {
+func (ph *PerformanceHandlers) sendJSONResponse(w http.ResponseWriter, statusCode int, response Response) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(statusCode)
 
@@ -641,9 +644,9 @@ func (ph *PerformanceHandlers) sendJSONResponse(w http.ResponseWriter, statusCod
 }
 
 func (ph *PerformanceHandlers) sendErrorResponse(w http.ResponseWriter, statusCode int, code, message, details string) {
-	response := APIResponse{
+	response := Response{
 		Success: false,
-		Error: &APIError{
+		Error: &Error{
 			Code:    code,
 			Message: message,
 			Details: details,

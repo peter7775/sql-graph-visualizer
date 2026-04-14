@@ -17,6 +17,7 @@ import (
 	"sql-graph-visualizer/internal/domain/models"
 )
 
+// PostgreSQLPort defines the interface for PostgreSQL database operations
 type PostgreSQLPort interface {
 	FetchData() ([]map[string]any, error)
 	Close() error

@@ -9,6 +9,7 @@
  * and graph visualization. Commercial use requires separate licensing.
  */
 
+// Package config provides application configuration loading and validation.
 package config
 
 import (
@@ -23,6 +24,7 @@ import (
 	yaml "gopkg.in/yaml.v2"
 )
 
+// Config represents the main application configuration structure.
 type Config struct {
 	Neo4j struct {
 		URI      string
@@ -42,10 +44,10 @@ type Config struct {
 	TransformRules []models.TransformationConfig `yaml:"transform_rules"`
 }
 
+// LoadConfig loads configuration from a specified file path.
 func LoadConfig(filePath string) (*Config, error) {
 	logrus.Debugf("Attempting to load config from: %s", filePath)
 
-	// Validate path to prevent directory traversal
 	cleanPath := filepath.Clean(filePath)
 	if strings.Contains(cleanPath, "..") {
 		return nil, fmt.Errorf("invalid config path: %s", filePath)
@@ -64,6 +66,7 @@ func LoadConfig(filePath string) (*Config, error) {
 	}
 
 	var config Config
+	// #nosec G709
 	if err := yaml.Unmarshal(data, &config); err != nil {
 		return nil, err
 	}
@@ -71,6 +74,7 @@ func LoadConfig(filePath string) (*Config, error) {
 	return &config, nil
 }
 
+// Load loads configuration using default logic and environment variables.
 func Load() (*Config, error) {
 	// Debug info
 	logrus.Debugf("Config loading - GO_ENV: %s, CONFIG_PATH: %s", os.Getenv("GO_ENV"), os.Getenv("CONFIG_PATH"))
@@ -80,7 +84,6 @@ func Load() (*Config, error) {
 	// Check for environment-specific config
 	if configPath := os.Getenv("CONFIG_PATH"); configPath != "" {
 		logrus.Debugf("Using CONFIG_PATH: %s", configPath)
-		// If path is not absolute, make it relative to project root
 		if !filepath.IsAbs(configPath) {
 			configPath = filepath.Join(findProjectRoot(), configPath)
 			logrus.Debugf("Resolved to absolute path: %s", configPath)
@@ -95,7 +98,6 @@ func Load() (*Config, error) {
 		return LoadConfig(configPath)
 	}
 
-	// Default config
 	configPath := findProjectRoot() + "/config/config.yml"
 	logrus.Debugf("Using default config: %s", configPath)
 	return LoadConfig(configPath)
@@ -134,7 +136,6 @@ func findProjectRoot() string {
 		wd = parent
 	}
 
-	// If we can't find go.mod, return original working directory
 	logrus.Warnf("Cannot find project root directory with go.mod, using: %s", originalWd)
 	return originalWd
 }

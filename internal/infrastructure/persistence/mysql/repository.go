@@ -21,14 +21,18 @@ import (
 	"strings"
 	"time"
 
-	_ "github.com/go-sql-driver/mysql"
+	_ "github.com/go-sql-driver/mysql" // MySQL driver
 	"github.com/sirupsen/logrus"
 )
 
+// MySQLRepository provides MySQL database operations.
+//
+//nolint:revive // MySQLRepository follows established naming pattern
 type MySQLRepository struct {
 	db *sql.DB
 }
 
+// NewMySQLRepository creates a new MySQL repository instance.
 func NewMySQLRepository(db *sql.DB) ports.MySQLPort {
 	return &MySQLRepository{db: db}
 }
@@ -38,15 +42,18 @@ func NewMySQLDatabasePort(db *sql.DB) ports.DatabasePort {
 	return &MySQLRepository{db: db}
 }
 
+// FetchData retrieves data from MySQL database.
 func (r *MySQLRepository) FetchData() ([]map[string]any, error) {
 	logrus.Infof("💾 FetchData called - returning empty slice (data loading moved to transform service)")
 	return []map[string]any{}, nil
 }
 
+// Close closes the MySQL database connection.
 func (r *MySQLRepository) Close() error {
 	return r.db.Close()
 }
 
+// ExecuteQuery executes a MySQL query and returns results.
 func (r *MySQLRepository) ExecuteQuery(query string) ([]map[string]any, error) {
 	rows, err := r.db.Query(query)
 	if err != nil {
@@ -121,12 +128,10 @@ func (r *MySQLRepository) ConnectToExisting(ctx context.Context, config *models.
 		return nil, fmt.Errorf("failed to open database connection: %w", err)
 	}
 
-	// Set connection pool limits
 	db.SetMaxOpenConns(config.Security.MaxConnections)
 	db.SetMaxIdleConns(config.Security.MaxConnections / 2)
 	db.SetConnMaxLifetime(10 * time.Minute)
 
-	// Test connection
 	ctxTimeout, cancel := context.WithTimeout(ctx, time.Duration(config.Security.ConnectionTimeout)*time.Second)
 	defer cancel()
 
@@ -197,14 +202,17 @@ func (r *MySQLRepository) checkDatabasePermissions(ctx context.Context, db *sql.
 	if err != nil {
 		return err
 	}
-	defer rows.Close()
+	defer func() {
+		if err := rows.Close(); err != nil {
+			logrus.WithError(err).Error("Failed to close rows")
+		}
+	}()
 
 	for rows.Next() {
 		var grant string
 		if err := rows.Scan(&grant); err == nil {
 			result.Permissions = append(result.Permissions, grant)
 
-			// Check for dangerous permissions
 			grantUpper := strings.ToUpper(grant)
 			if strings.Contains(grantUpper, "INSERT") ||
 				strings.Contains(grantUpper, "UPDATE") ||
@@ -235,7 +243,6 @@ func (r *MySQLRepository) DiscoverSchema(ctx context.Context, db *sql.DB, filter
 	}
 	result.DatabaseName = dbName
 
-	// Get all tables
 	tableNames, err := r.GetTables(ctx, db, filterConfig)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get tables: %w", err)
@@ -266,7 +273,11 @@ func (r *MySQLRepository) GetTables(ctx context.Context, db *sql.DB, filters *mo
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() {
+		if err := rows.Close(); err != nil {
+			logrus.WithError(err).Error("Failed to close rows")
+		}
+	}()
 
 	var allTables []string
 	for rows.Next() {
@@ -327,14 +338,12 @@ func (r *MySQLRepository) GetTableInfo(ctx context.Context, db *sql.DB, tableNam
 		Recommendations: []string{},
 	}
 
-	// Get column information
 	columns, err := r.getTableColumns(ctx, db, tableName)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get columns for table %s: %w", tableName, err)
 	}
 	tableInfo.Columns = columns
 
-	// Get row count estimate
 	rowCount, err := r.getTableRowCount(ctx, db, tableName)
 	if err != nil {
 		logrus.Warnf("Failed to get row count for table %s: %v", tableName, err)
@@ -365,7 +374,11 @@ func (r *MySQLRepository) getTableColumns(ctx context.Context, db *sql.DB, table
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() {
+		if err := rows.Close(); err != nil {
+			logrus.WithError(err).Error("Failed to close rows")
+		}
+	}()
 
 	var columns []*models.ColumnInfo
 	for rows.Next() {
@@ -418,10 +431,9 @@ func (r *MySQLRepository) getTableRowCount(ctx context.Context, db *sql.DB, tabl
 }
 
 // ExtractTableData extracts data from a table with filtering
-func (r *MySQLRepository) ExtractTableData(ctx context.Context, db *sql.DB, tableName string, config *models.DataFilteringConfig) ([]map[string]any, error) {
+func (r *MySQLRepository) ExtractTableData(ctx context.Context, _ *sql.DB, tableName string, config *models.DataFilteringConfig) ([]map[string]any, error) {
 	logrus.Infof("📤 Extracting data from table: %s", tableName)
 
-	// Build query with optional WHERE conditions
 	query := fmt.Sprintf("SELECT * FROM %s", tableName)
 
 	// Add WHERE condition if specified
@@ -438,7 +450,6 @@ func (r *MySQLRepository) ExtractTableData(ctx context.Context, db *sql.DB, tabl
 
 	logrus.Debugf("Executing query: %s", query)
 
-	// Set query timeout
 	ctxWithTimeout := ctx
 	if config != nil && config.QueryTimeout > 0 {
 		var cancel context.CancelFunc

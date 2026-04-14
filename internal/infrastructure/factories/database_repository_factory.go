@@ -9,12 +9,13 @@
  * and graph visualization. Commercial use requires separate licensing.
  */
 
+// Package factories provides factory implementations for creating repositories.
 package factories
 
 import (
 	"fmt"
 	"sql-graph-visualizer/internal/domain/models"
-	"sql-graph-visualizer/internal/domain/repository"
+	"sql-graph-visualizer/internal/domain/repositories"
 	"sql-graph-visualizer/internal/infrastructure/persistence/mysql"
 	"sql-graph-visualizer/internal/infrastructure/persistence/postgresql"
 )
@@ -23,12 +24,12 @@ import (
 type DatabaseRepositoryFactory struct{}
 
 // NewDatabaseRepositoryFactory creates a new repository factory
-func NewDatabaseRepositoryFactory() repository.DatabaseRepositoryFactory {
+func NewDatabaseRepositoryFactory() repositories.DatabaseRepositoryFactory {
 	return &DatabaseRepositoryFactory{}
 }
 
 // CreateRepository creates a database-specific repository based on database type
-func (f *DatabaseRepositoryFactory) CreateRepository(dbType models.DatabaseType) (repository.DatabaseRepository, error) {
+func (f *DatabaseRepositoryFactory) CreateRepository(dbType models.DatabaseType) (repositories.DatabaseRepository, error) {
 	switch dbType {
 	case models.DatabaseTypeMySQL:
 		return mysql.NewMySQLDatabaseRepository(), nil

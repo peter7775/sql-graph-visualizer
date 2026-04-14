@@ -68,7 +68,7 @@ This command provides immediate feedback on:
 
   # Detailed connection test with security validation
   sql-graph-cli test --db-type mysql --host remote-db.com --port 3306 --username user --password pass --database prod --detailed`,
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, _ []string) error {
 			return runTest(testOptions{
 				DBType:            models.DatabaseType(dbType),
 				Host:              host,
@@ -97,7 +97,6 @@ This command provides immediate feedback on:
 	cmd.Flags().StringVar(&password, "password", "", "Database password")
 	cmd.Flags().StringVar(&database, "database", "", "Database name")
 
-	// Test settings
 	cmd.Flags().IntVar(&connectionTimeout, "connection-timeout", 10, "Connection timeout in seconds")
 	cmd.Flags().BoolVar(&detailed, "detailed", false, "Perform detailed security validation")
 
@@ -110,9 +109,15 @@ This command provides immediate feedback on:
 	cmd.Flags().StringVar(&applicationName, "app-name", "sql-graph-visualizer", "PostgreSQL application name")
 
 	// Required flags
-	cmd.MarkFlagRequired("username")
-	cmd.MarkFlagRequired("password")
-	cmd.MarkFlagRequired("database")
+	if err := cmd.MarkFlagRequired("username"); err != nil {
+		fmt.Printf("Warning: Failed to mark username flag as required: %v\n", err)
+	}
+	if err := cmd.MarkFlagRequired("password"); err != nil {
+		fmt.Printf("Warning: Failed to mark password flag as required: %v\n", err)
+	}
+	if err := cmd.MarkFlagRequired("database"); err != nil {
+		fmt.Printf("Warning: Failed to mark database flag as required: %v\n", err)
+	}
 
 	return cmd
 }
@@ -155,7 +160,7 @@ func runTest(opts testOptions) error {
 	var config models.DatabaseConfig
 	switch opts.DBType {
 	case models.DatabaseTypeMySQL:
-		config = &models.MySQLConfig{
+		config = models.DatabaseConfig{Type: models.DatabaseTypeMySQL, MySQL: &models.MySQLConfig{
 			Host:           opts.Host,
 			Port:           opts.Port,
 			Username:       opts.Username,
@@ -175,10 +180,10 @@ func runTest(opts testOptions) error {
 				QueryTimeout:      30, // Short timeout for testing
 				MaxConnections:    1,  // Single connection for testing
 			},
-		}
+		}}
 
 	case models.DatabaseTypePostgreSQL:
-		config = &models.PostgreSQLConfig{
+		config = models.DatabaseConfig{Type: models.DatabaseTypePostgreSQL, PostgreSQL: &models.PostgreSQLConfig{
 			Host:           opts.Host,
 			Port:           opts.Port,
 			Username:       opts.Username,
@@ -188,7 +193,7 @@ func runTest(opts testOptions) error {
 			ConnectionMode: models.ConnectionModeExisting,
 
 			// PostgreSQL-specific settings
-			SSLConfig: models.PostgreSQLSSLConfig{
+			SSLConfig: models.SSLConfig{
 				Mode:     opts.SSLMode,
 				CertFile: opts.SSLCertFile,
 				KeyFile:  opts.SSLKeyFile,
@@ -208,20 +213,18 @@ func runTest(opts testOptions) error {
 				QueryTimeout:      30, // Short timeout for testing
 				MaxConnections:    1,  // Single connection for testing
 			},
-		}
+		}}
 
 	default:
 		return fmt.Errorf("unsupported database type: %s", opts.DBType)
 	}
 
-	// Create database repository using factory
 	factory := factories.NewDatabaseRepositoryFactory()
 	repo, err := factory.CreateRepository(opts.DBType)
 	if err != nil {
 		return fmt.Errorf("failed to create database repository: %w", err)
 	}
 
-	// Initialize universal database service
 	dbService := services.NewUniversalDatabaseService(repo, config)
 
 	ctx := context.Background()

@@ -9,6 +9,7 @@
  * and graph visualization. Commercial use requires separate licensing.
  */
 
+// Package graph contains domain aggregates for graph data structures.
 package graph
 
 import (
@@ -20,6 +21,9 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+// GraphAggregate represents a graph domain aggregate containing nodes and relationships.
+//
+//nolint:revive // GraphAggregate is a legacy name we cannot change without breaking existing code
 type GraphAggregate struct {
 	entities.BaseEntity
 	nodes         []*entities.Node
@@ -27,6 +31,7 @@ type GraphAggregate struct {
 	relationships []Relationship
 }
 
+// Relationship represents a connection between two graph nodes.
 type Relationship struct {
 	Type       string
 	Direction  transform.Direction
@@ -35,6 +40,7 @@ type Relationship struct {
 	Properties map[string]any
 }
 
+// NewGraphAggregate creates a new graph aggregate with the given ID.
 func NewGraphAggregate(id string) *GraphAggregate {
 	return &GraphAggregate{
 		BaseEntity: entities.BaseEntity{ID: id},
@@ -43,6 +49,7 @@ func NewGraphAggregate(id string) *GraphAggregate {
 	}
 }
 
+// AddNode adds a new node to the graph aggregate.
 func (g *GraphAggregate) AddNode(nodeType string, properties map[string]any) error {
 	existingNode := g.findNode(nodeType, properties["id"], "id")
 	if existingNode != nil {
@@ -58,18 +65,22 @@ func (g *GraphAggregate) AddNode(nodeType string, properties map[string]any) err
 	return nil
 }
 
+// GetNodes returns all nodes in the graph aggregate.
 func (g *GraphAggregate) GetNodes() []*entities.Node {
 	return g.nodes
 }
 
+// GetUncommittedEvents returns all uncommitted domain events.
 func (g *GraphAggregate) GetUncommittedEvents() []events.DomainEvent {
 	return g.events
 }
 
+// ClearEvents clears all uncommitted domain events.
 func (g *GraphAggregate) ClearEvents() {
 	g.events = []events.DomainEvent{}
 }
 
+// AddRelationship adds a relationship between two nodes in the graph.
 func (g *GraphAggregate) AddRelationship(
 	relType string,
 	direction transform.Direction,
@@ -101,6 +112,7 @@ func (g *GraphAggregate) AddRelationship(
 	return nil
 }
 
+// ToCypher converts the graph aggregate to Cypher query format.
 func (g *GraphAggregate) ToCypher() string {
 	return ""
 }
@@ -132,10 +144,12 @@ func (g *GraphAggregate) findNode(nodeType string, key any, field string) *entit
 	return nil
 }
 
+// GetRelationships returns all relationships in the graph aggregate.
 func (g *GraphAggregate) GetRelationships() []Relationship {
 	return g.relationships
 }
 
+// AddDirectRelationship adds a relationship directly to the graph.
 func (g *GraphAggregate) AddDirectRelationship(
 	relType string,
 	sourceNodeID any,

@@ -9,6 +9,7 @@
  * and graph visualization. Commercial use requires separate licensing.
  */
 
+// Package transform provides data transformation services.
 package transform
 
 import (
@@ -25,12 +26,16 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+// TransformService handles data transformation operations.
+//
+//nolint:revive // TransformService follows established naming pattern
 type TransformService struct {
 	databasePort ports.DatabasePort
 	neo4jPort    ports.Neo4jPort
 	ruleRepo     ports.TransformRuleRepository
 }
 
+// NewTransformService creates a new transform service instance.
 func NewTransformService(
 	databasePort ports.DatabasePort,
 	neo4jPort ports.Neo4jPort,
@@ -43,6 +48,7 @@ func NewTransformService(
 	}
 }
 
+// TransformAndStore transforms data according to rules and stores the result.
 func (s *TransformService) TransformAndStore(ctx context.Context) error {
 	data, err := s.databasePort.FetchData()
 	if err != nil {
@@ -84,7 +90,6 @@ func (s *TransformService) TransformAndStore(ctx context.Context) error {
 		}
 	}
 
-	// First pass: Process all node rules to create nodes
 	logrus.Infof("First pass: Creating nodes")
 	for _, rule := range rules {
 		if rule.Rule.RuleType != transform.NodeRule {
@@ -121,7 +126,6 @@ func (s *TransformService) TransformAndStore(ctx context.Context) error {
 			items[i] = s.convertMapProperties(item)
 		}
 
-		// Apply transformation rules
 		transformedData := rule.ApplyRules(items)
 		logrus.Infof("Transformed %d records for node rule %s", len(transformedData), rule.Rule.Name)
 
@@ -138,7 +142,6 @@ func (s *TransformService) TransformAndStore(ctx context.Context) error {
 		}
 	}
 
-	// Second pass: Process relationship rules to create relationships
 	logrus.Infof("Second pass: Creating relationships")
 	for _, rule := range rules {
 		if rule.Rule.RuleType != transform.RelationshipRule {
@@ -161,7 +164,6 @@ func (s *TransformService) TransformAndStore(ctx context.Context) error {
 				items[i] = s.convertMapProperties(item)
 			}
 
-			// Apply transformation rules
 			transformedData := rule.ApplyRules(items)
 			logrus.Infof("Transformed %d records for relationship rule %s", len(transformedData), rule.Rule.Name)
 
@@ -326,7 +328,6 @@ func (s *TransformService) createRelationship(data map[string]any, graph *graph.
 
 	logrus.Infof("Saving relationship to graph: type=%s, direction=%s, source=%+v, target=%+v, properties=%+v", relType, direction, source, target, properties)
 
-	// Extract required fields from source and target
 	sourceType, ok := source["type"].(string)
 	if !ok {
 		return fmt.Errorf("source missing type field")
@@ -369,7 +370,6 @@ func (s *TransformService) createRelationshipsFromExistingNodes(rule *transform_
 	logrus.Infof("Target node type: %s, key: %s, target_field: %s",
 		rule.Rule.TargetNode.Type, rule.Rule.TargetNode.Key, rule.Rule.TargetNode.TargetField)
 
-	// Get all existing nodes
 	existingNodes := graph.GetNodes()
 	logrus.Infof("Found %d existing nodes in graph", len(existingNodes))
 
@@ -387,7 +387,6 @@ func (s *TransformService) createRelationshipsFromExistingNodes(rule *transform_
 	logrus.Infof("Found %d source nodes of type %s and %d target nodes of type %s",
 		len(sourceNodes), rule.Rule.SourceNode.Type, len(targetNodes), rule.Rule.TargetNode.Type)
 
-	// Create relationships based on matching fields
 	relationshipCount := 0
 	for _, sourceNode := range sourceNodes {
 		// Get the key value from source node
@@ -405,7 +404,6 @@ func (s *TransformService) createRelationshipsFromExistingNodes(rule *transform_
 				continue
 			}
 
-			// Check if keys match (convert to strings for comparison)
 			sourceKeyStr := fmt.Sprintf("%v", sourceKeyValue)
 			targetKeyStr := fmt.Sprintf("%v", targetKeyValue)
 
@@ -420,7 +418,6 @@ func (s *TransformService) createRelationshipsFromExistingNodes(rule *transform_
 					}
 				}
 
-				// Add the relationship
 				err := graph.AddDirectRelationship(
 					rule.Rule.RelationType,
 					sourceNode.ID,

@@ -11,6 +11,7 @@
 
 package entities
 
+// Relation represents a relationship between two nodes in a graph.
 type Relation struct {
 	BaseEntity
 	Type       string
@@ -19,6 +20,7 @@ type Relation struct {
 	Properties map[string]any
 }
 
+// NewRelation creates a new relation with the specified parameters.
 func NewRelation(id string, typ string, from *Node, to *Node) *Relation {
 	return &Relation{
 		BaseEntity: BaseEntity{ID: id},

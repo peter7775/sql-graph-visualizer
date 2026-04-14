@@ -9,6 +9,7 @@
  * and graph visualization. Commercial use requires separate licensing.
  */
 
+// Package visualization provides graph visualization services.
 package visualization
 
 import (
@@ -18,21 +19,27 @@ import (
 	"sql-graph-visualizer/internal/domain/valueobjects"
 )
 
+// VisualizationService provides graph visualization capabilities.
+//
+//nolint:revive // VisualizationService is descriptive and follows project conventions
 type VisualizationService struct {
 	neo4jPort ports.Neo4jPort
 }
 
+// NewVisualizationService creates a new visualization service instance.
 func NewVisualizationService(neo4jPort ports.Neo4jPort) *VisualizationService {
 	return &VisualizationService{
 		neo4jPort: neo4jPort,
 	}
 }
 
-func (s *VisualizationService) GetGraphData(ctx context.Context, criteria valueobjects.SearchCriteria) ([]*graph.GraphAggregate, error) {
+// GetGraphData retrieves graph data based on search criteria.
+func (s *VisualizationService) GetGraphData(_ context.Context, criteria valueobjects.SearchCriteria) ([]*graph.GraphAggregate, error) {
 	return s.neo4jPort.SearchNodes(criteria.ToString())
 }
 
-func (s *VisualizationService) ExportGraph(ctx context.Context, format string) (any, error) {
+// ExportGraph exports graph data in the specified format.
+func (s *VisualizationService) ExportGraph(_ context.Context, format string) (any, error) {
 	query := s.buildExportQuery(format)
 	return s.neo4jPort.ExportGraph(query)
 }
@@ -66,6 +73,7 @@ func (s *VisualizationService) buildExportQuery(format string) string {
 	}
 }
 
+// GetConfig returns visualization configuration options.
 func (s *VisualizationService) GetConfig() map[string]any {
 	return map[string]any{
 		"nodeTypes":         []string{"Table", "Column", "ForeignKey"},

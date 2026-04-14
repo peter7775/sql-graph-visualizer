@@ -16,71 +16,70 @@ import (
 	"database/sql"
 	"fmt"
 	"sql-graph-visualizer/internal/domain/models"
-	"sql-graph-visualizer/internal/domain/repository"
+	"sql-graph-visualizer/internal/domain/repositories"
 	"strings"
 	"time"
 
-	_ "github.com/lib/pq"
+	_ "github.com/lib/pq" // PostgreSQL driver registration
 	"github.com/sirupsen/logrus"
 )
 
-// PostgreSQLDatabaseRepository implements DatabaseRepository for PostgreSQL
+// PostgreSQLDatabaseRepository implements DatabaseRepository for PostgreSQL.
+//
+//nolint:revive // PostgreSQLDatabaseRepository is descriptive and follows project conventions
 type PostgreSQLDatabaseRepository struct {
 	db *sql.DB
 }
 
 // NewPostgreSQLDatabaseRepository creates a new PostgreSQL database repository
-func NewPostgreSQLDatabaseRepository() repository.DatabaseRepository {
+func NewPostgreSQLDatabaseRepository() repositories.DatabaseRepository {
 	return &PostgreSQLDatabaseRepository{}
 }
 
 // Connect establishes connection to PostgreSQL database
 func (r *PostgreSQLDatabaseRepository) Connect(ctx context.Context, config models.DatabaseConfig) (*sql.DB, error) {
-	pgConfig, ok := config.(*models.PostgreSQLConfig)
+	pgConfig, ok := config.GetEffectiveConfig().(*models.PostgreSQLConfig)
 	if !ok {
-		return nil, fmt.Errorf("expected PostgreSQLConfig, got %T", config)
+		return nil, fmt.Errorf("expected PostgreSQLConfig, got %T", config.GetEffectiveConfig())
 	}
 
-	// Use Username if set, otherwise fallback to User
 	username := pgConfig.GetUsername()
 
 	// Build PostgreSQL connection string
 	var connString strings.Builder
-	connString.WriteString(fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s",
-		pgConfig.GetHost(), pgConfig.GetPort(), username, pgConfig.GetPassword(), pgConfig.GetDatabase()))
+	fmt.Fprintf(&connString, "host=%s port=%d user=%s password=%s dbname=%s",
+		pgConfig.GetHost(), pgConfig.GetPort(), username, pgConfig.GetPassword(), pgConfig.GetDatabase())
 
 	// Add SSL configuration
 	if pgConfig.SSLConfig.Mode != "" {
-		connString.WriteString(fmt.Sprintf(" sslmode=%s", pgConfig.SSLConfig.Mode))
+		fmt.Fprintf(&connString, " sslmode=%s", pgConfig.SSLConfig.Mode)
 	} else {
 		connString.WriteString(" sslmode=prefer") // Default to prefer
 	}
 
 	if pgConfig.SSLConfig.CertFile != "" {
-		connString.WriteString(fmt.Sprintf(" sslcert=%s", pgConfig.SSLConfig.CertFile))
+		fmt.Fprintf(&connString, " sslcert=%s", pgConfig.SSLConfig.CertFile)
 	}
 	if pgConfig.SSLConfig.KeyFile != "" {
-		connString.WriteString(fmt.Sprintf(" sslkey=%s", pgConfig.SSLConfig.KeyFile))
+		fmt.Fprintf(&connString, " sslkey=%s", pgConfig.SSLConfig.KeyFile)
 	}
 	if pgConfig.SSLConfig.CAFile != "" {
-		connString.WriteString(fmt.Sprintf(" sslrootcert=%s", pgConfig.SSLConfig.CAFile))
+		fmt.Fprintf(&connString, " sslrootcert=%s", pgConfig.SSLConfig.CAFile)
 	}
 
-	// Add timeout configurations
 	security := pgConfig.GetSecurity()
 	if security.ConnectionTimeout > 0 {
-		connString.WriteString(fmt.Sprintf(" connect_timeout=%d", security.ConnectionTimeout))
+		fmt.Fprintf(&connString, " connect_timeout=%d", security.ConnectionTimeout)
 	}
 	if pgConfig.StatementTimeout > 0 {
-		connString.WriteString(fmt.Sprintf(" statement_timeout=%dms", pgConfig.StatementTimeout*1000))
+		fmt.Fprintf(&connString, " statement_timeout=%dms", pgConfig.StatementTimeout*1000)
 	}
 
-	// Set application name for .monitoring
 	appName := pgConfig.ApplicationName
 	if appName == "" {
 		appName = "sql-graph-visualizer"
 	}
-	connString.WriteString(fmt.Sprintf(" application_name=%s", appName))
+	fmt.Fprintf(&connString, " application_name=%s", appName)
 
 	logrus.Infof("Connecting to PostgreSQL database: %s@%s:%d/%s", username, pgConfig.GetHost(), pgConfig.GetPort(), pgConfig.GetDatabase())
 
@@ -89,12 +88,10 @@ func (r *PostgreSQLDatabaseRepository) Connect(ctx context.Context, config model
 		return nil, fmt.Errorf("failed to open PostgreSQL database connection: %w", err)
 	}
 
-	// Set connection pool limits
 	db.SetMaxOpenConns(security.MaxConnections)
 	db.SetMaxIdleConns(security.MaxConnections / 2)
 	db.SetConnMaxLifetime(10 * time.Minute)
 
-	// Test connection
 	ctxTimeout, cancel := context.WithTimeout(ctx, time.Duration(security.ConnectionTimeout)*time.Second)
 	defer cancel()
 
@@ -142,7 +139,11 @@ func (r *PostgreSQLDatabaseRepository) GetTables(ctx context.Context, filters mo
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() {
+		if err := rows.Close(); err != nil {
+			logrus.WithError(err).Error("Failed to close rows")
+		}
+	}()
 
 	var allTables []string
 	for rows.Next() {
@@ -184,7 +185,11 @@ func (r *PostgreSQLDatabaseRepository) GetColumns(ctx context.Context, tableName
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() {
+		if err := rows.Close(); err != nil {
+			logrus.WithError(err).Error("Failed to close rows")
+		}
+	}()
 
 	var columns []*models.ColumnInfo
 	for rows.Next() {
@@ -212,7 +217,6 @@ func (r *PostgreSQLDatabaseRepository) GetColumns(ctx context.Context, tableName
 			col.Comment = fmt.Sprintf("max_length: %s", maxLength.String)
 		}
 
-		// Check if this column is part of primary key
 		r.enrichColumnWithConstraintInfo(ctx, tableName, &col)
 
 		columns = append(columns, &col)
@@ -272,7 +276,11 @@ func (r *PostgreSQLDatabaseRepository) GetForeignKeys(ctx context.Context, table
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() {
+		if err := rows.Close(); err != nil {
+			logrus.WithError(err).Error("Failed to close rows")
+		}
+	}()
 
 	var foreignKeys []models.ForeignKeyInfo
 	for rows.Next() {
@@ -318,7 +326,11 @@ func (r *PostgreSQLDatabaseRepository) GetIndexes(ctx context.Context, tableName
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() {
+		if err := rows.Close(); err != nil {
+			logrus.WithError(err).Error("Failed to close rows")
+		}
+	}()
 
 	indexMap := make(map[string]*models.IndexInfo)
 	for rows.Next() {
@@ -374,7 +386,11 @@ func (r *PostgreSQLDatabaseRepository) GetConstraints(ctx context.Context, table
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() {
+		if err := rows.Close(); err != nil {
+			logrus.WithError(err).Error("Failed to close rows")
+		}
+	}()
 
 	var constraints []models.Constraint
 	for rows.Next() {
@@ -442,7 +458,11 @@ func (r *PostgreSQLDatabaseRepository) GetSchemaNames(ctx context.Context) ([]st
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() {
+		if err := rows.Close(); err != nil {
+			logrus.WithError(err).Error("Failed to close rows")
+		}
+	}()
 
 	var schemas []string
 	for rows.Next() {
@@ -488,45 +508,54 @@ func (r *PostgreSQLDatabaseRepository) GetTableRowCount(ctx context.Context, tab
 	return 0, nil
 }
 
-// Implement remaining methods...
-func (r *PostgreSQLDatabaseRepository) SampleTableData(ctx context.Context, tableName string, limit int) ([]map[string]interface{}, error) {
+// SampleTableData retrieves a sample of data from the specified table.
+func (r *PostgreSQLDatabaseRepository) SampleTableData(_ context.Context, _ string, _ int) ([]map[string]interface{}, error) {
 	return nil, fmt.Errorf("not implemented yet")
 }
 
-func (r *PostgreSQLDatabaseRepository) AnalyzeColumnStatistics(ctx context.Context, tableName, columnName string) (*models.ColumnStatistics, error) {
+// AnalyzeColumnStatistics analyzes statistical information for table columns.
+func (r *PostgreSQLDatabaseRepository) AnalyzeColumnStatistics(_ context.Context, _, _ string) (*models.ColumnStatistics, error) {
 	return nil, fmt.Errorf("not implemented yet")
 }
 
-func (r *PostgreSQLDatabaseRepository) GetTableSize(ctx context.Context, tableName string) (*models.TableSize, error) {
+// GetTableSize returns the size of the specified table.
+func (r *PostgreSQLDatabaseRepository) GetTableSize(_ context.Context, _ string) (*models.TableSize, error) {
 	return nil, fmt.Errorf("not implemented yet")
 }
 
-func (r *PostgreSQLDatabaseRepository) GetQueryExecutionPlan(ctx context.Context, query string) (string, error) {
+// GetQueryExecutionPlan returns the execution plan for the given query.
+func (r *PostgreSQLDatabaseRepository) GetQueryExecutionPlan(_ context.Context, _ string) (string, error) {
 	return "", fmt.Errorf("not implemented yet")
 }
 
-func (r *PostgreSQLDatabaseRepository) ValidatePermissions(ctx context.Context, requiredPerms []string) error {
+// ValidatePermissions validates database connection permissions.
+func (r *PostgreSQLDatabaseRepository) ValidatePermissions(_ context.Context, _ []string) error {
 	return fmt.Errorf("not implemented yet")
 }
 
-func (r *PostgreSQLDatabaseRepository) CheckUserPrivileges(ctx context.Context) (*models.UserPrivileges, error) {
+// CheckUserPrivileges checks user privileges for database operations.
+func (r *PostgreSQLDatabaseRepository) CheckUserPrivileges(_ context.Context) (*models.UserPrivileges, error) {
 	return nil, fmt.Errorf("not implemented yet")
 }
 
+// EscapeIdentifier escapes database identifiers for safe usage in queries.
 func (r *PostgreSQLDatabaseRepository) EscapeIdentifier(identifier string) string {
-	return fmt.Sprintf(`"%s"`, strings.Replace(identifier, `"`, `""`, -1))
+	return fmt.Sprintf(`"%s"`, strings.ReplaceAll(identifier, `"`, `""`))
 }
 
+// GetQuoteChar returns the character used for quoting identifiers.
 func (r *PostgreSQLDatabaseRepository) GetQuoteChar() string {
 	return `"`
 }
 
+// GetDatabaseType returns the PostgreSQL database type.
 func (r *PostgreSQLDatabaseRepository) GetDatabaseType() models.DatabaseType {
 	return models.DatabaseTypePostgreSQL
 }
 
+// GetConnectionString builds PostgreSQL connection string from config.
 func (r *PostgreSQLDatabaseRepository) GetConnectionString(config models.DatabaseConfig) string {
-	pgConfig, ok := config.(*models.PostgreSQLConfig)
+	pgConfig, ok := config.GetEffectiveConfig().(*models.PostgreSQLConfig)
 	if !ok {
 		return ""
 	}

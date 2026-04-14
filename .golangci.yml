@@ -1,36 +1,28 @@
+version: "2"
+
 run:
   timeout: 10m
   tests: true
-  skip-dirs:
-    - vendor
-  skip-files:
-    - ".*/generated/.*"
-
-linters-settings:
-  lll:
-    line-length: 120
 
 linters:
+  # Use default enabled linters plus some additional useful ones
   enable:
-    - errcheck
-    - gosimple
-    - govet
-    - ineffassign
-    - staticcheck
-    - typecheck
-    - unused
-    - gofmt
-    - goimports
-    - misspell
-
-issues:
-  exclude-use-default: false
-  exclude-rules:
-    # Exclude mock and test specific issues
-    - path: _test\.go
-      linters:
-        - typecheck
-        - deadcode
-        - unused
-        - structcheck
-        - varcheck
+    - errcheck      # Check for unchecked errors
+    - govet         # Vet examines Go source code
+    - ineffassign   # Detects ineffectual assignments
+    - staticcheck   # Staticcheck is a go vet on steroids
+    - unused        # Checks for unused constants, variables, functions and types
+    - misspell      # Finds commonly misspelled English words
+    - revive        # Fast, configurable, extensible linter
+  settings:
+    lll:
+      line-length: 120
+  exclusions:
+    generated: lax
+    rules:
+      - path: _test\.go
+        linters:
+          - unused
+    paths:
+      - vendor
+      - ".*/generated/.*"

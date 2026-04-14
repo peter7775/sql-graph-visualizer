@@ -41,24 +41,37 @@ type PerformanceBottleneck struct {
 type BottleneckType string
 
 const (
-	BottleneckTypeQuery   BottleneckType = "query"
-	BottleneckTypeIndex   BottleneckType = "index"
-	BottleneckTypeJoin    BottleneckType = "join"
-	BottleneckTypeLock    BottleneckType = "lock"
-	BottleneckTypeIO      BottleneckType = "io"
-	BottleneckTypeCPU     BottleneckType = "cpu"
-	BottleneckTypeMemory  BottleneckType = "memory"
+	// BottleneckTypeQuery indicates query execution bottlenecks
+	BottleneckTypeQuery BottleneckType = "query"
+	// BottleneckTypeIndex indicates index-related bottlenecks
+	BottleneckTypeIndex BottleneckType = "index"
+	// BottleneckTypeJoin indicates join operation bottlenecks
+	BottleneckTypeJoin BottleneckType = "join"
+	// BottleneckTypeLock indicates locking bottlenecks
+	BottleneckTypeLock BottleneckType = "lock"
+	// BottleneckTypeIO indicates I/O bottlenecks
+	BottleneckTypeIO BottleneckType = "io"
+	// BottleneckTypeCPU indicates CPU bottlenecks
+	BottleneckTypeCPU BottleneckType = "cpu"
+	// BottleneckTypeMemory indicates memory bottlenecks
+	BottleneckTypeMemory BottleneckType = "memory"
+	// BottleneckTypeNetwork indicates network bottlenecks
 	BottleneckTypeNetwork BottleneckType = "network"
-	BottleneckTypeSchema  BottleneckType = "schema"
+	// BottleneckTypeSchema indicates schema design bottlenecks
+	BottleneckTypeSchema BottleneckType = "schema"
 )
 
 // SeverityLevel indicates the severity of a performance issue
 type SeverityLevel string
 
 const (
-	SeverityLow      SeverityLevel = "low"
-	SeverityMedium   SeverityLevel = "medium"
-	SeverityHigh     SeverityLevel = "high"
+	// SeverityLow indicates low severity performance issues
+	SeverityLow SeverityLevel = "low"
+	// SeverityMedium indicates medium severity performance issues
+	SeverityMedium SeverityLevel = "medium"
+	// SeverityHigh indicates high severity performance issues
+	SeverityHigh SeverityLevel = "high"
+	// SeverityCritical indicates critical severity performance issues
 	SeverityCritical SeverityLevel = "critical"
 )
 
@@ -188,13 +201,21 @@ type PerformanceIssue struct {
 type IssueType string
 
 const (
-	IssueTypeMissingIndex     IssueType = "missing_index"
+	// IssueTypeMissingIndex indicates missing database index issues
+	IssueTypeMissingIndex IssueType = "missing_index"
+	// IssueTypeInefficiencyJoin indicates inefficient join operations
 	IssueTypeInefficiencyJoin IssueType = "inefficient_join"
-	IssueTypeFullTableScan    IssueType = "full_table_scan"
-	IssueTypeSlowQuery        IssueType = "slow_query"
-	IssueTypeLockContention   IssueType = "lock_contention"
-	IssueTypeDeadlock         IssueType = "deadlock"
-	IssueTypeResourceHog      IssueType = "resource_hog"
+	// IssueTypeFullTableScan indicates full table scan issues
+	IssueTypeFullTableScan IssueType = "full_table_scan"
+	// IssueTypeSlowQuery indicates slow query performance
+	IssueTypeSlowQuery IssueType = "slow_query"
+	// IssueTypeLockContention indicates lock contention issues
+	IssueTypeLockContention IssueType = "lock_contention"
+	// IssueTypeDeadlock indicates deadlock issues
+	IssueTypeDeadlock IssueType = "deadlock"
+	// IssueTypeResourceHog indicates resource-intensive operations
+	IssueTypeResourceHog IssueType = "resource_hog"
+	// IssueTypeSuboptimalSchema indicates suboptimal schema design
 	IssueTypeSuboptimalSchema IssueType = "suboptimal_schema"
 )
 
@@ -202,9 +223,12 @@ const (
 type EffortLevel string
 
 const (
-	EffortLow    EffortLevel = "low"
+	// EffortLow indicates low implementation effort
+	EffortLow EffortLevel = "low"
+	// EffortMedium indicates medium implementation effort
 	EffortMedium EffortLevel = "medium"
-	EffortHigh   EffortLevel = "high"
+	// EffortHigh indicates high implementation effort
+	EffortHigh EffortLevel = "high"
 )
 
 // OptimizationSuggestion provides actionable optimization recommendations
@@ -225,13 +249,20 @@ type OptimizationSuggestion struct {
 type OptimizationType string
 
 const (
-	OptimizationTypeIndex           OptimizationType = "index"
-	OptimizationTypeQuery           OptimizationType = "query"
-	OptimizationTypeSchema          OptimizationType = "schema"
-	OptimizationTypeConfiguration   OptimizationType = "configuration"
-	OptimizationTypePartitioning    OptimizationType = "partitioning"
+	// OptimizationTypeIndex indicates index-related optimizations
+	OptimizationTypeIndex OptimizationType = "index"
+	// OptimizationTypeQuery indicates query optimizations
+	OptimizationTypeQuery OptimizationType = "query"
+	// OptimizationTypeSchema indicates schema optimizations
+	OptimizationTypeSchema OptimizationType = "schema"
+	// OptimizationTypeConfiguration indicates configuration optimizations
+	OptimizationTypeConfiguration OptimizationType = "configuration"
+	// OptimizationTypePartitioning indicates partitioning optimizations
+	OptimizationTypePartitioning OptimizationType = "partitioning"
+	// OptimizationTypeDenormalization indicates denormalization optimizations
 	OptimizationTypeDenormalization OptimizationType = "denormalization"
-	OptimizationTypeCaching         OptimizationType = "caching"
+	// OptimizationTypeCaching indicates caching optimizations
+	OptimizationTypeCaching OptimizationType = "caching"
 )
 
 // OptimizationImpact quantifies expected improvement
@@ -275,10 +306,14 @@ type TrendAnalysis struct {
 type TrendDirection string
 
 const (
+	// TrendImproving indicates improving performance trend
 	TrendImproving TrendDirection = "improving"
-	TrendStable    TrendDirection = "stable"
+	// TrendStable indicates stable performance trend
+	TrendStable TrendDirection = "stable"
+	// TrendDegrading indicates degrading performance trend
 	TrendDegrading TrendDirection = "degrading"
-	TrendVolatile  TrendDirection = "volatile"
+	// TrendVolatile indicates volatile performance trend
+	TrendVolatile TrendDirection = "volatile"
 )
 
 // TrendMetric represents trend data for a specific metric
@@ -306,10 +341,14 @@ type PerformanceAnomaly struct {
 type AnomalyType string
 
 const (
-	AnomalyTypeSpike       AnomalyType = "spike"
-	AnomalyTypeDrop        AnomalyType = "drop"
+	// AnomalyTypeSpike indicates performance spike anomalies
+	AnomalyTypeSpike AnomalyType = "spike"
+	// AnomalyTypeDrop indicates performance drop anomalies
+	AnomalyTypeDrop AnomalyType = "drop"
+	// AnomalyTypeOscillation indicates oscillating performance anomalies
 	AnomalyTypeOscillation AnomalyType = "oscillation"
-	AnomalyTypeDrift       AnomalyType = "drift"
+	// AnomalyTypeDrift indicates performance drift anomalies
+	AnomalyTypeDrift AnomalyType = "drift"
 )
 
 // PerformancePrediction provides future performance predictions
@@ -338,11 +377,16 @@ type PerformanceRegression struct {
 type PerformanceRating string
 
 const (
+	// PerformanceExcellent indicates excellent performance rating
 	PerformanceExcellent PerformanceRating = "excellent"
-	PerformanceGood      PerformanceRating = "good"
-	PerformanceFair      PerformanceRating = "fair"
-	PerformancePoor      PerformanceRating = "poor"
-	PerformanceCritical  PerformanceRating = "critical"
+	// PerformanceGood indicates good performance rating
+	PerformanceGood PerformanceRating = "good"
+	// PerformanceFair indicates fair performance rating
+	PerformanceFair PerformanceRating = "fair"
+	// PerformancePoor indicates poor performance rating
+	PerformancePoor PerformanceRating = "poor"
+	// PerformanceCritical indicates critical performance rating
+	PerformanceCritical PerformanceRating = "critical"
 )
 
 // TimeRange represents a time range for analysis

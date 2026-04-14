@@ -16,21 +16,23 @@ import (
 	"database/sql"
 	"fmt"
 	"sql-graph-visualizer/internal/domain/models"
-	"sql-graph-visualizer/internal/domain/repository"
+	"sql-graph-visualizer/internal/domain/repositories"
 	"strings"
 	"time"
 
-	_ "github.com/go-sql-driver/mysql"
+	_ "github.com/go-sql-driver/mysql" // MySQL driver
 	"github.com/sirupsen/logrus"
 )
 
 // MySQLDatabaseRepository implements DatabaseRepository for MySQL
+//
+//nolint:revive // MySQLDatabaseRepository follows established naming pattern
 type MySQLDatabaseRepository struct {
 	db *sql.DB
 }
 
 // NewMySQLDatabaseRepository creates a new MySQL database repository
-func NewMySQLDatabaseRepository() repository.DatabaseRepository {
+func NewMySQLDatabaseRepository() repositories.DatabaseRepository {
 	return &MySQLDatabaseRepository{}
 }
 
@@ -42,7 +44,6 @@ func (r *MySQLDatabaseRepository) Connect(ctx context.Context, config models.Dat
 		return nil, fmt.Errorf("expected MySQLConfig, got %T", config.GetEffectiveConfig())
 	}
 
-	// Use Username if set, otherwise fallback to User
 	username := mysqlConfig.GetUsername()
 
 	dsn := fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?parseTime=true&timeout=%ds&readTimeout=%ds&writeTimeout=%ds",
@@ -56,7 +57,6 @@ func (r *MySQLDatabaseRepository) Connect(ctx context.Context, config models.Dat
 		mysqlConfig.GetSecurity().QueryTimeout,
 	)
 
-	// Add SSL configuration if enabled
 	sslConfig := mysqlConfig.GetSSLConfig()
 	if sslConfig.Enabled {
 		dsn += "&tls=true"
@@ -72,13 +72,11 @@ func (r *MySQLDatabaseRepository) Connect(ctx context.Context, config models.Dat
 		return nil, fmt.Errorf("failed to open MySQL database connection: %w", err)
 	}
 
-	// Set connection pool limits
 	security := mysqlConfig.GetSecurity()
 	db.SetMaxOpenConns(security.MaxConnections)
 	db.SetMaxIdleConns(security.MaxConnections / 2)
 	db.SetConnMaxLifetime(10 * time.Minute)
 
-	// Test connection
 	ctxTimeout, cancel := context.WithTimeout(ctx, time.Duration(security.ConnectionTimeout)*time.Second)
 	defer cancel()
 
@@ -119,7 +117,11 @@ func (r *MySQLDatabaseRepository) GetTables(ctx context.Context, filters models.
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() {
+		if err := rows.Close(); err != nil {
+			logrus.WithError(err).Error("Failed to close rows")
+		}
+	}()
 
 	var allTables []string
 	for rows.Next() {
@@ -158,7 +160,11 @@ func (r *MySQLDatabaseRepository) GetColumns(ctx context.Context, tableName stri
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() {
+		if err := rows.Close(); err != nil {
+			logrus.WithError(err).Error("Failed to close rows")
+		}
+	}()
 
 	var columns []*models.ColumnInfo
 	for rows.Next() {
@@ -210,7 +216,11 @@ func (r *MySQLDatabaseRepository) GetForeignKeys(ctx context.Context, tableName 
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() {
+		if err := rows.Close(); err != nil {
+			logrus.WithError(err).Error("Failed to close rows")
+		}
+	}()
 
 	var foreignKeys []models.ForeignKeyInfo
 	for rows.Next() {
@@ -252,7 +262,11 @@ func (r *MySQLDatabaseRepository) GetIndexes(ctx context.Context, tableName stri
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() {
+		if err := rows.Close(); err != nil {
+			logrus.WithError(err).Error("Failed to close rows")
+		}
+	}()
 
 	indexMap := make(map[string]*models.IndexInfo)
 	for rows.Next() {
@@ -307,7 +321,11 @@ func (r *MySQLDatabaseRepository) GetConstraints(ctx context.Context, tableName 
 
 	rows, err := r.db.QueryContext(ctx, checkQuery, tableName)
 	if err == nil { // Ignore error for older MySQL versions
-		defer rows.Close()
+		defer func() {
+			if err := rows.Close(); err != nil {
+				logrus.WithError(err).Error("Failed to close rows")
+			}
+		}()
 		for rows.Next() {
 			var name, condition string
 			if err := rows.Scan(&name, &condition); err == nil {
@@ -357,7 +375,11 @@ func (r *MySQLDatabaseRepository) GetSchemaNames(ctx context.Context) ([]string,
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() {
+		if err := rows.Close(); err != nil {
+			logrus.WithError(err).Error("Failed to close rows")
+		}
+	}()
 
 	var schemas []string
 	for rows.Next() {
@@ -401,45 +423,54 @@ func (r *MySQLDatabaseRepository) GetTableRowCount(ctx context.Context, tableNam
 	return 0, nil
 }
 
-// Implement remaining methods...
-func (r *MySQLDatabaseRepository) SampleTableData(ctx context.Context, tableName string, limit int) ([]map[string]interface{}, error) {
+// SampleTableData retrieves a sample of data from the specified table.
+func (r *MySQLDatabaseRepository) SampleTableData(_ context.Context, _ string, _ int) ([]map[string]interface{}, error) {
 	return nil, fmt.Errorf("not implemented yet")
 }
 
-func (r *MySQLDatabaseRepository) AnalyzeColumnStatistics(ctx context.Context, tableName, columnName string) (*models.ColumnStatistics, error) {
+// AnalyzeColumnStatistics analyzes statistical information for table columns.
+func (r *MySQLDatabaseRepository) AnalyzeColumnStatistics(_ context.Context, _, _ string) (*models.ColumnStatistics, error) {
 	return nil, fmt.Errorf("not implemented yet")
 }
 
-func (r *MySQLDatabaseRepository) GetTableSize(ctx context.Context, tableName string) (*models.TableSize, error) {
+// GetTableSize returns the size of the specified table in bytes.
+func (r *MySQLDatabaseRepository) GetTableSize(_ context.Context, _ string) (*models.TableSize, error) {
 	return nil, fmt.Errorf("not implemented yet")
 }
 
-func (r *MySQLDatabaseRepository) GetQueryExecutionPlan(ctx context.Context, query string) (string, error) {
+// GetQueryExecutionPlan returns the execution plan for the given query.
+func (r *MySQLDatabaseRepository) GetQueryExecutionPlan(_ context.Context, _ string) (string, error) {
 	return "", fmt.Errorf("not implemented yet")
 }
 
-func (r *MySQLDatabaseRepository) ValidatePermissions(ctx context.Context, requiredPerms []string) error {
+// ValidatePermissions validates database connection permissions.
+func (r *MySQLDatabaseRepository) ValidatePermissions(_ context.Context, _ []string) error {
 	return fmt.Errorf("not implemented yet")
 }
 
-func (r *MySQLDatabaseRepository) CheckUserPrivileges(ctx context.Context) (*models.UserPrivileges, error) {
+// CheckUserPrivileges checks user privileges for database operations.
+func (r *MySQLDatabaseRepository) CheckUserPrivileges(_ context.Context) (*models.UserPrivileges, error) {
 	return nil, fmt.Errorf("not implemented yet")
 }
 
+// EscapeIdentifier escapes database identifiers for safe usage in queries.
 func (r *MySQLDatabaseRepository) EscapeIdentifier(identifier string) string {
-	return fmt.Sprintf("`%s`", strings.Replace(identifier, "`", "``", -1))
+	return fmt.Sprintf("`%s`", strings.ReplaceAll(identifier, "`", "``"))
 }
 
+// GetQuoteChar returns the character used for quoting identifiers in MySQL.
 func (r *MySQLDatabaseRepository) GetQuoteChar() string {
 	return "`"
 }
 
+// GetDatabaseType returns the MySQL database type.
 func (r *MySQLDatabaseRepository) GetDatabaseType() models.DatabaseType {
 	return models.DatabaseTypeMySQL
 }
 
+// GetConnectionString builds MySQL connection string from config.
 func (r *MySQLDatabaseRepository) GetConnectionString(config models.DatabaseConfig) string {
-	mysqlConfig, ok := config.(*models.MySQLConfig)
+	mysqlConfig, ok := config.GetEffectiveConfig().(*models.MySQLConfig)
 	if !ok {
 		return ""
 	}

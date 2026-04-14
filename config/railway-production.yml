@@ -1,0 +1,276 @@
+database:
+  type: "mysql"
+  mysql:
+    host: "placeholder.host"
+    port: 3306
+    user: "placeholder"
+    password: "placeholder"
+    database: "placeholder"
+    
+    connection_mode: existing
+    
+    data_filtering:
+      schema_discovery: true
+      table_whitelist: ["users", "teams", "skills", "projects", "tasks", "team_members", "user_skills", "project_skills", "task_dependencies", "activity_log"]
+      table_blacklist: []
+      row_limit_per_table: 10000
+      query_timeout: 60
+    
+    security:
+      read_only: true
+      connection_timeout: 60
+      query_timeout: 60
+      max_connections: 20
+      allow_production_connections: true
+      allowed_hosts: ["*"]
+
+neo4j:
+  uri: "bolt://placeholder:7687"
+  user: "placeholder"
+  password: "placeholder"
+  max_connection_pool_size: 50
+  connection_timeout: 30s
+  max_transaction_retry_time: 30s
+
+server:
+  port: 3000
+  api_port: 8080
+  host: "0.0.0.0"
+  read_timeout: 30s
+  write_timeout: 30s
+  idle_timeout: 120s
+
+performance:
+  monitoring:
+    enabled: true
+    update_interval: "10s"
+    data_retention: "2h"
+    max_concurrent_queries: 50
+  realtime:
+    enabled: true
+    update_interval: "10s"
+    heartbeat_interval: "30s"
+    max_connections: 500
+  benchmarks:
+    enabled: false
+
+transform_rules:
+  - name: "users_to_nodes"
+    rule_type: "node"
+    source:
+      type: "query"
+      value: "SELECT u.id, u.username, u.email, u.full_name, u.role, u.is_active, CONCAT(u.full_name, ' (', u.role, ')') as display_name FROM users u WHERE u.is_active = 1"
+    target_type: "User"
+    field_mappings:
+      id: "id"
+      username: "username"
+      email: "email"
+      full_name: "name"
+      role: "role"
+      is_active: "is_active"
+      display_name: "display_name"
+
+  - name: "teams_to_nodes"
+    rule_type: "node"
+    source:
+      type: "query"
+      value: "SELECT t.id, t.name, t.description, u.full_name as lead_name FROM teams t LEFT JOIN users u ON t.team_lead_id = u.id"
+    target_type: "Team"
+    field_mappings:
+      id: "id"
+      name: "name"
+      description: "description"
+      lead_name: "lead_name"
+
+  - name: "skills_to_nodes"
+    rule_type: "node"
+    source:
+      type: "query"
+      value: "SELECT s.id, s.name, s.category, s.level_required, CONCAT(s.name, ' (', s.category, ')') as display_name FROM skills s"
+    target_type: "Skill"
+    field_mappings:
+      id: "id"
+      name: "name"
+      category: "category"
+      level_required: "level_required"
+      display_name: "display_name"
+
+  - name: "projects_to_nodes"
+    rule_type: "node"
+    source:
+      type: "query"
+      value: "SELECT p.id, p.name, p.description, p.status, p.priority, p.budget, u.full_name as creator_name, t.name as team_name FROM projects p LEFT JOIN users u ON p.created_by = u.id LEFT JOIN teams t ON p.team_id = t.id"
+    target_type: "Project"
+    field_mappings:
+      id: "id"
+      name: "name"
+      description: "description"
+      status: "status"
+      priority: "priority"
+      budget: "budget"
+      creator_name: "creator_name"
+      team_name: "team_name"
+
+  - name: "tasks_to_nodes"
+    rule_type: "node"
+    source:
+      type: "query"
+      value: "SELECT t.id, t.title, t.description, t.status, t.priority, t.estimated_hours, t.actual_hours, p.name as project_name, u1.full_name as assigned_to_name, u2.full_name as created_by_name FROM tasks t LEFT JOIN projects p ON t.project_id = p.id LEFT JOIN users u1 ON t.assigned_to = u1.id LEFT JOIN users u2 ON t.created_by = u2.id"
+    target_type: "Task"
+    field_mappings:
+      id: "id"
+      title: "name"
+      description: "description"
+      status: "status"
+      priority: "priority"
+      estimated_hours: "estimated_hours"
+      actual_hours: "actual_hours"
+      project_name: "project_name"
+      assigned_to_name: "assigned_to_name"
+      created_by_name: "created_by_name"
+
+  - name: "team_membership"
+    rule_type: "relationship"
+    relationship_type: "MEMBER_OF"
+    direction: "outgoing"
+    source:
+      type: "query"
+      value: "SELECT tm.user_id, tm.team_id, tm.role, tm.joined_at FROM team_members tm"
+    source_node:
+      type: "User"
+      key: "user_id"
+      target_field: "id"
+    target_node:
+      type: "Team"
+      key: "team_id"
+      target_field: "id"
+    properties:
+      role: "role"
+      joined_at: "joined_at"
+
+  - name: "user_skill_proficiency"
+    rule_type: "relationship"
+    relationship_type: "HAS_SKILL"
+    direction: "outgoing"
+    source:
+      type: "query"
+      value: "SELECT us.user_id, us.skill_id, us.proficiency, us.years_experience FROM user_skills us"
+    source_node:
+      type: "User"
+      key: "user_id"
+      target_field: "id"
+    target_node:
+      type: "Skill"
+      key: "skill_id"
+      target_field: "id"
+    properties:
+      proficiency: "proficiency"
+      years_experience: "years_experience"
+
+  - name: "project_team_assignment"
+    rule_type: "relationship"
+    relationship_type: "ASSIGNED_TO"
+    direction: "outgoing"
+    source_node:
+      type: "Project"
+      key: "id"
+      target_field: "id"
+    target_node:
+      type: "Team"
+      key: "team_id"
+      target_field: "id"
+
+  - name: "task_project_relationship"
+    rule_type: "relationship"
+    relationship_type: "BELONGS_TO"
+    direction: "outgoing"
+    source_node:
+      type: "Task"
+      key: "id"
+      target_field: "id"
+    target_node:
+      type: "Project"
+      key: "project_id"
+      target_field: "id"
+
+  - name: "project_skill_requirements"
+    rule_type: "relationship"
+    relationship_type: "REQUIRES_SKILL"
+    direction: "outgoing"
+    source:
+      type: "query"
+      value: "SELECT ps.project_id, ps.skill_id, ps.importance FROM project_skills ps"
+    source_node:
+      type: "Project"
+      key: "project_id"
+      target_field: "id"
+    target_node:
+      type: "Skill"
+      key: "skill_id"
+      target_field: "id"
+    properties:
+      importance: "importance"
+
+  - name: "task_dependencies"
+    rule_type: "relationship"
+    relationship_type: "DEPENDS_ON"
+    direction: "outgoing"
+    source:
+      type: "query"
+      value: "SELECT td.dependent_task_id, td.prerequisite_task_id, td.dependency_type FROM task_dependencies td"
+    source_node:
+      type: "Task"
+      key: "dependent_task_id"
+      target_field: "id"
+    target_node:
+      type: "Task"
+      key: "prerequisite_task_id"
+      target_field: "id"
+    properties:
+      dependency_type: "dependency_type"
+
+logging:
+  level: "info"
+  format: json
+  output: stdout
+  enable_performance_logs: true
+  log_slow_queries: true
+  slow_query_threshold: 1s
+
+api:
+  cors:
+    allowed_origins: ["*"]
+    allowed_methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
+    allowed_headers: ["*"]
+    max_age: 3600
+  
+  rate_limit:
+    enabled: true
+    requests_per_minute: 500
+    burst: 100
+
+  graphql:
+    playground_enabled: true
+    introspection_enabled: true
+    complexity_limit: 2000
+
+monitoring:
+  health_check:
+    enabled: true
+    endpoint: "/api/health"
+    include_database_status: true
+  
+  metrics:
+    enabled: true
+    endpoint: "/api/metrics"
+    include_performance_metrics: true
+
+security:
+  enable_auth: false
+  cors_enabled: true
+  rate_limiting_enabled: true
+  input_validation_enabled: true
+
+demo:
+  enabled: false
+  message: "Railway production deployment with comprehensive project management data"

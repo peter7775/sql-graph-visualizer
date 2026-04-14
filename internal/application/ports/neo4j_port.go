@@ -13,6 +13,7 @@ package ports
 
 import "sql-graph-visualizer/internal/domain/aggregates/graph"
 
+// Neo4jPort defines the interface for Neo4j graph database operations
 type Neo4jPort interface {
 	StoreGraph(graph *graph.GraphAggregate) error
 	SearchNodes(criteria string) ([]*graph.GraphAggregate, error)

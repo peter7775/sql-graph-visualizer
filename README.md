@@ -1,5 +1,22 @@
 # SQL Graph Visualizer
 
+> **Status: Active Development** - This project is under active development. APIs may change.
+
+<table style="border-collapse: collapse; width: 100%; margin-top: 20px; border-style: hidden">
+<tr>
+<td width="60%">
+
+A powerful Go application that transforms SQL database structures (MySQL, PostgresSQL) into Neo4j graph databases with interactive visualization and comprehensive performance analysis capabilities. Built with Domain Driven Design architecture and featuring flexible transformation rules, advanced performance benchmarking, and robust database connection management.
+
+</td>
+<td width="40%">
+
+<img src="SGV - screenshot.png" alt="SQL Graph Visualizer Screenshot" width="100%" style="border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
+
+</td>
+</tr>
+</table>
+
 <div align="center">
 
 [![License: Dual](https://img.shields.io/badge/License-AGPL%2BCommercial-blue.svg)](LICENSE-DUAL.md)
@@ -19,27 +36,12 @@
 [![API](https://img.shields.io/badge/API-GraphQL%20%7C%20REST-purple?logo=graphql&logoColor=white)](#api-documentation)
 
 </div>
-
-> **Status: Active Development** - This project is under active development. APIs may change.
-
-A powerful Go application that transforms SQL database structures (MySQL, PostgreSQL) into Neo4j graph databases with interactive visualization and comprehensive performance analysis capabilities. Built with Domain Driven Design architecture and featuring flexible transformation rules, advanced performance benchmarking, and robust database connection management.
-
-<div align="center">
-
-**[Quick Start](#quick-start)** • 
-**[Live Demo](https://demo.example.com)** • 
-**[Documentation](https://docs.example.com)** • 
-**[Discussions](https://github.com/peter7775/sql-graph-visualizer/discussions)** • 
-**[Issues](https://github.com/peter7775/sql-graph-visualizer/issues)**
-
-</div>
-
 ---
 
 <div align="center">
 
 **[Quick Start](#quick-start)** • 
-**[Live Demo](https://sql-graph-visualizer-demo.railway.app)** • 
+**<a href="https://sql-graph-visualizer-production.up.railway.app" target="_blank">Live Demo</a>** • 
 **[Documentation](https://github.com/peter7775/sql-graph-visualizer/wiki)** • 
 **[Discussions](https://github.com/peter7775/sql-graph-visualizer/discussions)** • 
 **[Issues](https://github.com/peter7775/sql-graph-visualizer/issues)**

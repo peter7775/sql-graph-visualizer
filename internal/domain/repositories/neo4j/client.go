@@ -9,6 +9,7 @@
  * and graph visualization. Commercial use requires separate licensing.
  */
 
+// Package neo4j provides Neo4j graph database client functionality.
 package neo4j
 
 import (
@@ -20,16 +21,21 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+// Neo4jConfig represents Neo4j database connection configuration.
+//
+//nolint:revive // Neo4jConfig is consistent with package naming
 type Neo4jConfig struct {
 	URI      string
 	User     string
 	Password string
 }
 
+// Client represents a Neo4j database client.
 type Client struct {
 	driver neo4j.Driver
 }
 
+// NewNeo4jClient creates a new Neo4j client with the given configuration.
 func NewNeo4jClient(config Neo4jConfig) (*Client, error) {
 	driver, err := neo4j.NewDriver(config.URI,
 		neo4j.BasicAuth(config.User, config.Password, ""))
@@ -40,11 +46,13 @@ func NewNeo4jClient(config Neo4jConfig) (*Client, error) {
 	return &Client{driver: driver}, nil
 }
 
+// Close closes the Neo4j database connection.
 func (c *Client) Close() error {
 	return c.driver.Close()
 }
 
-func (c *Client) InsertData(data any) error {
+// InsertData inserts data into the Neo4j database.
+func (c *Client) InsertData(_ any) error {
 	session := c.driver.NewSession(neo4j.SessionConfig{})
 	defer func() {
 		if err := session.Close(); err != nil {
@@ -56,12 +64,14 @@ func (c *Client) InsertData(data any) error {
 	return nil
 }
 
-func (c *Client) SearchNodes(criteria string) ([]*graph.GraphAggregate, error) {
+// SearchNodes searches for nodes matching the given criteria.
+func (c *Client) SearchNodes(_ string) ([]*graph.GraphAggregate, error) {
 	// Implement the logic to search nodes based on criteria
 	// This is a placeholder implementation
 	return []*graph.GraphAggregate{}, nil
 }
 
+// ExportGraph exports graph data using the given Cypher query.
 func (c *Client) ExportGraph(query string) (any, error) {
 	session := c.driver.NewSession(neo4j.SessionConfig{})
 	defer func() {
@@ -82,6 +92,7 @@ func (c *Client) ExportGraph(query string) (any, error) {
 	return nil, nil
 }
 
+// StoreGraph persists a graph aggregate to the Neo4j database.
 func (c *Client) StoreGraph(graph *graph.GraphAggregate) error {
 	session := c.driver.NewSession(neo4j.SessionConfig{})
 	defer func() {
@@ -110,7 +121,6 @@ func (c *Client) StoreGraph(graph *graph.GraphAggregate) error {
 		logrus.Infof("Node saved: type=%s, properties=%+v", node.Type, node.Properties)
 	}
 
-	// Store relationships
 	logrus.Infof("Number of relationships to save: %d", len(graph.GetRelationships()))
 	for _, rel := range graph.GetRelationships() {
 		// Get the actual IDs from node properties instead of node entity IDs
@@ -127,7 +137,6 @@ func (c *Client) StoreGraph(graph *graph.GraphAggregate) error {
 
 		logrus.Infof("Creating relationship %s: %v -> %v", rel.Type, sourceID, targetID)
 
-		// Create relationship with proper name (not generic RELATION)
 		query := "MATCH (a:Node {id: $fromId}), (b:Node {id: $toId}) CREATE (a)-[r:" + rel.Type + "]->(b) SET r = $props"
 		params := map[string]any{
 			"fromId": sourceID,
@@ -141,7 +150,6 @@ func (c *Client) StoreGraph(graph *graph.GraphAggregate) error {
 			return err
 		}
 
-		// Check if relationship was actually created
 		summary, err := result.Consume()
 		if err != nil {
 			logrus.Warnf("Error consuming result for relationship %s: %v", rel.Type, err)
@@ -153,6 +161,7 @@ func (c *Client) StoreGraph(graph *graph.GraphAggregate) error {
 	return nil
 }
 
+// FetchNodes retrieves nodes of the specified type from Neo4j.
 func (c *Client) FetchNodes(nodeType string) ([]map[string]any, error) {
 	logrus.Infof("Loading nodes of type: %s", nodeType)
 	session := c.driver.NewSession(neo4j.SessionConfig{})

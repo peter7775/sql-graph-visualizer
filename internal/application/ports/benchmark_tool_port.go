@@ -1,3 +1,4 @@
+// Package ports defines interfaces for application layer dependencies.
 package ports
 
 import (
@@ -10,7 +11,6 @@ type BenchmarkToolPort interface {
 	// Execute runs a benchmark with the given configuration
 	Execute(ctx context.Context, config BenchmarkConfig) (*BenchmarkResult, error)
 
-	// Validate checks if the benchmark configuration is valid
 	Validate(config BenchmarkConfig) error
 
 	// GetSupportedTests returns list of supported test types
@@ -19,7 +19,6 @@ type BenchmarkToolPort interface {
 	// IsAvailable checks if the benchmark tool is available and configured
 	IsAvailable() bool
 
-	// GetVersion returns the version of the benchmark tool
 	GetVersion() (string, error)
 }
 
@@ -57,7 +56,6 @@ type BenchmarkResult struct {
 	// Query-level results for graph mapping
 	QueryResults []QueryPerformance `json:"query_results,omitempty"`
 
-	// Raw output from tool (for debugging)
 	RawOutput string `json:"raw_output,omitempty"`
 
 	// Status and errors
@@ -132,10 +130,15 @@ type QueryPerformance struct {
 type BenchmarkStatus string
 
 const (
-	BenchmarkStatusPending   BenchmarkStatus = "pending"
-	BenchmarkStatusRunning   BenchmarkStatus = "running"
+	// BenchmarkStatusPending indicates the benchmark is queued but not yet started
+	BenchmarkStatusPending BenchmarkStatus = "pending"
+	// BenchmarkStatusRunning indicates the benchmark is currently executing
+	BenchmarkStatusRunning BenchmarkStatus = "running"
+	// BenchmarkStatusCompleted indicates the benchmark finished successfully
 	BenchmarkStatusCompleted BenchmarkStatus = "completed"
-	BenchmarkStatusFailed    BenchmarkStatus = "failed"
+	// BenchmarkStatusFailed indicates the benchmark encountered an error
+	BenchmarkStatusFailed BenchmarkStatus = "failed"
+	// BenchmarkStatusCancelled indicates the benchmark was stopped before completion
 	BenchmarkStatusCancelled BenchmarkStatus = "cancelled"
 )
 

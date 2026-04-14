@@ -11,19 +11,26 @@
 
 package transform
 
+// RuleType represents the type of transformation rule.
 type RuleType string
 
 const (
-	NodeRule         RuleType = "node"
+	// NodeRule represents a node transformation rule
+	NodeRule RuleType = "node"
+	// RelationshipRule represents a relationship transformation rule
 	RelationshipRule RuleType = "relationship"
 )
 
+// NodeMapping represents mapping configuration for graph nodes.
 type NodeMapping struct {
 	Type        string `yaml:"type"`
 	Key         string `yaml:"key"`
 	TargetField string `yaml:"target_field"`
 }
 
+// TransformRule represents a data transformation rule configuration.
+//
+//nolint:revive // TransformRule is descriptive and follows project conventions
 type TransformRule struct {
 	Name          string            `yaml:"name"`
 	SourceTable   string            `yaml:"source_table"`
@@ -39,6 +46,7 @@ type TransformRule struct {
 	Priority      int               `yaml:"priority"`
 }
 
+// Validate checks if the RuleType is valid.
 func (rt RuleType) Validate() bool {
 	switch rt {
 	case NodeRule, RelationshipRule:
@@ -48,6 +56,7 @@ func (rt RuleType) Validate() bool {
 	}
 }
 
+// ParseDirection parses string direction into Direction enum.
 func ParseDirection(direction string) Direction {
 	switch direction {
 	case "incoming":

@@ -1,15 +1,7 @@
-# SQL Graph Visualizer - PostgreSQL Test with Chinook Sample Database
-# Chinook is a comprehensive sample database representing a digital music store
-# Download: https://github.com/lerocha/chinook-database/blob/master/ChinookDatabase/DataSources/Chinook_PostgreSql.sql
 
 database:
   type: "postgresql"
   postgresql:
-    # Local PostgreSQL with Chinook database
-    # To setup: 
-    # 1. Install PostgreSQL
-    # 2. Create database: createdb chinook
-    # 3. Import: psql -d chinook -f Chinook_PostgreSql.sql
     
     host: "localhost"
     port: 5432
@@ -18,10 +10,6 @@ database:
     database: "chinook"
     schema: "public"
     
-    # Alternative: Cloud PostgreSQL with Chinook
-    # host: "your-cloud-host.com"
-    # ssl:
-    #   mode: "require"
     
     ssl:
       mode: "prefer"
@@ -32,23 +20,19 @@ database:
     
     connection_mode: existing
     
-    # Chinook database has rich relational structure perfect for graph visualization
     data_filtering:
       schema_discovery: true
       
-      # Chinook database tables (all included for comprehensive test)
       table_whitelist: [
         "album", "artist", "customer", "employee", "genre", 
         "invoice", "invoiceline", "mediatype", "playlist", 
         "playlisttrack", "track"
       ]
       
-      table_blacklist: []  # Include all tables
+      table_blacklist: []
       
-      # Reasonable limits for testing - Chinook has moderate data size
-      row_limit_per_table: 0  # No limit - Chinook is reasonably sized
+      row_limit_per_table: 0
       
-      # No WHERE conditions needed - clean sample data
       where_conditions: {}
         
       query_timeout: 60
@@ -58,14 +42,13 @@ database:
       connection_timeout: 30
       query_timeout: 60
       max_connections: 10
-      allow_production_connections: false  # Local testing
+      allow_production_connections: false
       allowed_hosts: ["localhost", "127.0.0.1"]
       forbidden_patterns: [
         "DROP", "DELETE", "UPDATE", "INSERT", "TRUNCATE", 
         "ALTER", "CREATE"
       ]
     
-    # Perfect setup for rule generation testing
     auto_generated_rules:
       enabled: true
       strategy:
@@ -75,25 +58,21 @@ database:
           node_type_format: "PascalCase"
           relation_type_format: "UPPER_SNAKE"
       
-      # Chinook-specific table overrides for meaningful relationships
       table_overrides:
         invoiceline:
-          skip: true  # Junction table - create relationship instead
+          skip: true
         playlisttrack:
-          skip: true  # Junction table - create relationship instead
-        # All other tables become nodes
+          skip: true
 
-# Neo4j configuration
 neo4j:
   uri: "bolt://localhost:7687"
   user: "neo4j"
   password: "password"
   batch_processing:
-    batch_size: 1000   # Chinook has moderate size, can handle larger batches
+    batch_size: 1000
     commit_frequency: 5000
     memory_limit_mb: 512
 
-# Comprehensive transform rules for Chinook database structure
 transform_rules:
   - name: "artists_to_nodes"
     rule_type: "node_creation"
@@ -219,7 +198,6 @@ transform_rules:
             target: "name"
     priority: 1
   
-  # Relationship rules for complex joins
   - name: "album_artist_relationship"
     rule_type: "relationship_creation"
     source:
@@ -293,7 +271,7 @@ transform_rules:
     source_node:
       type: "Customer"
       key: "id"
-      target_field: "customerid"  # Through invoice table join
+      target_field: "customerid"
     target_node:
       type: "Track"
       key: "id" 
@@ -319,7 +297,6 @@ transform_rules:
       target_field: "reportsto"
     priority: 2
 
-# Global auto-generated rules
 auto_generated_rules:
   enabled: true
   strategy:

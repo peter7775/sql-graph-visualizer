@@ -1,4 +1,5 @@
-# Build stage
+# Multi-stage build to reduce final image size
+# Build date: 2025-10-01-14:32 - Cloud build approach
 FROM golang:1.24-alpine AS builder
 
 # Install build dependencies
@@ -7,31 +8,15 @@ RUN apk add --no-cache git ca-certificates tzdata
 # Set working directory
 WORKDIR /app
 
-# Copy go mod and sum files
+# Copy go mod files first for better caching
 COPY go.mod go.sum ./
-
-# Download dependencies
 RUN go mod download
 
 # Copy source code
 COPY . .
 
-# Install gqlgen and ensure all dependencies are available
-RUN go install github.com/99designs/gqlgen@latest && \
-    go mod tidy
-
-# Generate GraphQL code
-RUN gqlgen generate
-
-# Build the application
-ARG VERSION=dev
-ARG BUILD_DATE=unknown
-
-# Build binary with optimization flags
-RUN CGO_ENABLED=0 GOOS=linux go build \
-    -ldflags="-w -s -X main.Version=${VERSION} -X main.BuildDate=${BUILD_DATE}" \
-    -o sql-graph-visualizer \
-    ./cmd/main.go
+# Build the application with optimizations
+RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o sql-graph-visualizer cmd/main.go
 
 # Final stage
 FROM alpine:3.20
@@ -51,14 +36,25 @@ RUN addgroup -g 1000 appgroup && \
 # Set working directory
 WORKDIR /app
 
-# Copy built binary from builder stage
-COPY --from=builder /app/sql-graph-visualizer .
+# Copy binary from builder stage
+COPY --from=builder /app/sql-graph-visualizer ./sql-graph-visualizer
+RUN chmod +x ./sql-graph-visualizer
+
+# Copy go.mod so findProjectRoot() can locate project root
+COPY go.mod ./go.mod
 
 # Copy configuration files
-COPY --from=builder /app/config ./config
+COPY config ./config
 
-# Copy static files if any
-COPY --from=builder /app/internal/interfaces/web ./internal/interfaces/web
+# Copy static files if any  
+COPY internal/interfaces/web ./internal/interfaces/web
+
+# Copy init SQL for optional DB bootstrap
+COPY data/railway-mysql-init.sql ./railway-mysql-init.sql
+
+# Copy entrypoint
+COPY start.sh ./start.sh
+RUN chmod +x ./start.sh
 
 # Create directories for logs and data
 RUN mkdir -p /app/logs /app/data && \
@@ -70,13 +66,11 @@ USER appuser
 # Expose ports
 EXPOSE 3000 8080
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:8080/api/health || exit 1
+# Railway uses its own healthcheck system, so Docker HEALTHCHECK is not needed
 
 # Environment variables
 ENV GO_ENV=production
 ENV LOG_LEVEL=info
 
 # Default command
-CMD ["./sql-graph-visualizer"]
+CMD ["/app/start.sh"]

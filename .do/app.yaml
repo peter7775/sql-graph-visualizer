@@ -73,8 +73,8 @@ databases:
   production: false
   version: "7"
 
-# Note: DigitalOcean doesn't support Neo4j managed database
-# We'll need to use a separate Neo4j cloud instance or self-hosted
+
+
 
 workers:
 - name: neo4j-setup

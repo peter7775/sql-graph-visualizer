@@ -9,6 +9,7 @@
  * and graph visualization. Commercial use requires separate licensing.
  */
 
+// Package handlers provides HTTP request handlers.
 package handlers
 
 import (
@@ -19,16 +20,19 @@ import (
 	"sql-graph-visualizer/internal/domain/valueobjects"
 )
 
+// VisualizationHandler handles visualization HTTP requests.
 type VisualizationHandler struct {
 	service *visualization.VisualizationService
 }
 
+// NewVisualizationHandler creates a new visualization handler.
 func NewVisualizationHandler(service *visualization.VisualizationService) *VisualizationHandler {
 	return &VisualizationHandler{
 		service: service,
 	}
 }
 
+// GetGraphData handles requests for graph data.
 func (h *VisualizationHandler) GetGraphData(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
@@ -47,6 +51,7 @@ func (h *VisualizationHandler) GetGraphData(w http.ResponseWriter, r *http.Reque
 	}
 }
 
+// ExportGraph handles graph export requests.
 func (h *VisualizationHandler) ExportGraph(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	format := r.URL.Query().Get("format")
@@ -63,7 +68,8 @@ func (h *VisualizationHandler) ExportGraph(w http.ResponseWriter, r *http.Reques
 	}
 }
 
-func (h *VisualizationHandler) GetConfig(w http.ResponseWriter, r *http.Request) {
+// GetConfig handles configuration requests.
+func (h *VisualizationHandler) GetConfig(w http.ResponseWriter, _ *http.Request) {
 	config := h.service.GetConfig()
 	log.Printf("Config: %+v", config)
 	w.Header().Set("Content-Type", "application/json")
@@ -73,5 +79,3 @@ func (h *VisualizationHandler) GetConfig(w http.ResponseWriter, r *http.Request)
 		return
 	}
 }
-
-// Handler implementation

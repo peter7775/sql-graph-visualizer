@@ -9,6 +9,7 @@
  * and graph visualization. Commercial use requires separate licensing.
  */
 
+// Package graphql provides GraphQL server implementation.
 package graphql
 
 import (
@@ -49,12 +50,10 @@ func (s *Server) Start(addr string) error {
 		Config:    s.config,
 	}
 
-	// Create GraphQL handler
 	srv := handler.NewDefaultServer(generated.NewExecutableSchema(generated.Config{
 		Resolvers: resolver,
 	}))
 
-	// Create HTTP mux
 	mux := http.NewServeMux()
 
 	// GraphQL endpoint
@@ -63,7 +62,6 @@ func (s *Server) Start(addr string) error {
 	// GraphQL Playground
 	mux.Handle("/playground", playground.Handler("GraphQL playground", "/graphql"))
 
-	// Create HTTP server
 	s.server = &http.Server{
 		Addr:              addr,
 		Handler:           mux,

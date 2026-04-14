@@ -1,3 +1,4 @@
+// Package performance provides performance benchmarking and analysis services.
 package performance
 
 import (
@@ -151,7 +152,6 @@ func (s *BenchmarkService) ExecuteBenchmark(ctx context.Context, config ports.Be
 		return "", fmt.Errorf("maximum concurrent runs (%d) exceeded", s.config.MaxConcurrentRuns)
 	}
 
-	// Get benchmark tool
 	tool, err := s.getBenchmarkTool(toolName)
 	if err != nil {
 		return "", fmt.Errorf("failed to get benchmark tool: %w", err)
@@ -162,7 +162,6 @@ func (s *BenchmarkService) ExecuteBenchmark(ctx context.Context, config ports.Be
 		return "", fmt.Errorf("tool validation failed: %w", err)
 	}
 
-	// Create execution context
 	executionID := uuid.New().String()
 	executionCtx, cancel := context.WithTimeout(ctx, s.config.DefaultTimeout)
 
@@ -202,10 +201,8 @@ func (s *BenchmarkService) executeAsync(execution *BenchmarkExecution) {
 	defer s.cleanupExecution(execution.ID)
 	defer execution.CancelFunc()
 
-	// Update status to running
 	s.updateExecutionStatus(execution.ID, ports.BenchmarkStatusRunning, "executing benchmark")
 
-	// Execute the benchmark
 	result, err := execution.Tool.Execute(execution.Context, execution.Config)
 	if err != nil {
 		s.logger.WithFields(logrus.Fields{
@@ -228,13 +225,11 @@ func (s *BenchmarkService) executeAsync(execution *BenchmarkExecution) {
 		result.Status = ports.BenchmarkStatusCompleted
 	}
 
-	// Store result
 	execution.mutex.Lock()
 	execution.Result = result
 	execution.Status = result.Status
 	execution.mutex.Unlock()
 
-	// Log completion
 	s.logger.WithFields(logrus.Fields{
 		"execution_id": execution.ID,
 		"status":       result.Status,
@@ -286,7 +281,6 @@ func (s *BenchmarkService) GetBenchmarkProgress(executionID string) (*BenchmarkP
 	execution.mutex.RLock()
 	defer execution.mutex.RUnlock()
 
-	// Update elapsed time
 	execution.Progress.ElapsedTime = time.Since(execution.StartTime)
 
 	return execution.Progress, nil
@@ -418,9 +412,7 @@ func (s *BenchmarkService) updateExecutionStatus(executionID string, status port
 	}
 }
 
-func (s *BenchmarkService) cleanupExecution(executionID string) {
-	// Note: We don't immediately remove executions to allow result retrieval
-	// The cleanup routine will remove them after the retention period
+func (s *BenchmarkService) cleanupExecution(_ string) {
 }
 
 func (s *BenchmarkService) getActiveRunCount() int {
@@ -497,7 +489,7 @@ func defaultBenchmarkServiceConfig() *BenchmarkServiceConfig {
 // Additional methods for integration with existing graph services
 
 // CreatePerformanceGraph creates a graph enhanced with performance data
-func (s *BenchmarkService) CreatePerformanceGraph(ctx context.Context, benchmarkResult *ports.BenchmarkResult) (*PerformanceEnhancedGraph, error) {
+func (s *BenchmarkService) CreatePerformanceGraph(_ context.Context, benchmarkResult *ports.BenchmarkResult) (*PerformanceEnhancedGraph, error) {
 	if benchmarkResult == nil || benchmarkResult.Metrics == nil {
 		return nil, fmt.Errorf("benchmark result and metrics are required")
 	}
@@ -508,7 +500,6 @@ func (s *BenchmarkService) CreatePerformanceGraph(ctx context.Context, benchmark
 		return nil, fmt.Errorf("failed to extract relationships: %w", err)
 	}
 
-	// Create performance-enhanced graph
 	graph := &PerformanceEnhancedGraph{
 		ID:            fmt.Sprintf("perf-%s", benchmarkResult.ID),
 		BenchmarkID:   benchmarkResult.ID,
@@ -518,7 +509,6 @@ func (s *BenchmarkService) CreatePerformanceGraph(ctx context.Context, benchmark
 		Edges:         make([]PerformanceEdge, 0),
 	}
 
-	// Build nodes and edges with performance data
 	nodeMap := make(map[string]*PerformanceNode)
 
 	for _, queryResult := range benchmarkResult.QueryResults {
@@ -533,14 +523,15 @@ func (s *BenchmarkService) CreatePerformanceGraph(ctx context.Context, benchmark
 			}
 		}
 
-		// Create edges for joined tables
 		s.createPerformanceEdges(graph, &queryResult, nodeMap)
 	}
 
 	return graph, nil
 }
 
-// Performance graph data structures
+// PerformanceEnhancedGraph represents performance-enhanced graph data structures.
+//
+//nolint:revive // PerformanceEnhancedGraph is descriptive and follows project conventions
 type PerformanceEnhancedGraph struct {
 	ID            string                    `json:"id"`
 	BenchmarkID   string                    `json:"benchmark_id"`
@@ -550,6 +541,9 @@ type PerformanceEnhancedGraph struct {
 	Edges         []PerformanceEdge         `json:"edges"`
 }
 
+// PerformanceNode represents a table node with performance metrics.
+//
+//nolint:revive // PerformanceNode is descriptive and follows project conventions
 type PerformanceNode struct {
 	ID              string  `json:"id"`
 	TableName       string  `json:"table_name"`
@@ -561,6 +555,9 @@ type PerformanceNode struct {
 	IndexEfficiency float64 `json:"index_efficiency"`
 }
 
+// PerformanceEdge represents a relationship between tables with performance data.
+//
+//nolint:revive // PerformanceEdge is descriptive and follows project conventions
 type PerformanceEdge struct {
 	ID              string  `json:"id"`
 	SourceTable     string  `json:"source_table"`
@@ -595,6 +592,7 @@ func (s *BenchmarkService) extractTableRelationships(queryResults []ports.QueryP
 	return relationships, nil
 }
 
+// TableRelationship represents a relationship between database tables.
 type TableRelationship struct {
 	SourceTable string
 	TargetTable string
@@ -606,7 +604,7 @@ type TableRelationship struct {
 // Missing methods for API compatibility
 
 // ListRunningBenchmarks returns all running benchmarks
-func (s *BenchmarkService) ListRunningBenchmarks(ctx context.Context) []*BenchmarkExecution {
+func (s *BenchmarkService) ListRunningBenchmarks(_ context.Context) []*BenchmarkExecution {
 	s.runsMutex.RLock()
 	defer s.runsMutex.RUnlock()
 
@@ -623,7 +621,7 @@ func (s *BenchmarkService) ListRunningBenchmarks(ctx context.Context) []*Benchma
 }
 
 // GetBenchmarkStatus returns the status of a benchmark
-func (s *BenchmarkService) GetBenchmarkStatus(ctx context.Context, executionID string) *BenchmarkExecution {
+func (s *BenchmarkService) GetBenchmarkStatus(_ context.Context, executionID string) *BenchmarkExecution {
 	s.runsMutex.RLock()
 	defer s.runsMutex.RUnlock()
 
@@ -634,7 +632,7 @@ func (s *BenchmarkService) GetBenchmarkStatus(ctx context.Context, executionID s
 }
 
 // StopBenchmark stops a running benchmark
-func (s *BenchmarkService) StopBenchmark(ctx context.Context, executionID string) error {
+func (s *BenchmarkService) StopBenchmark(_ context.Context, executionID string) error {
 	s.runsMutex.RLock()
 	execution, exists := s.activeRuns[executionID]
 	s.runsMutex.RUnlock()
@@ -658,7 +656,7 @@ func (s *BenchmarkService) StopBenchmark(ctx context.Context, executionID string
 }
 
 // GetBenchmarkResults returns the results of a benchmark
-func (s *BenchmarkService) GetBenchmarkResults(ctx context.Context, executionID string) *ports.BenchmarkResult {
+func (s *BenchmarkService) GetBenchmarkResults(_ context.Context, executionID string) *ports.BenchmarkResult {
 	s.runsMutex.RLock()
 	defer s.runsMutex.RUnlock()
 
@@ -693,12 +691,11 @@ func (s *BenchmarkService) updateNodeMetrics(node *PerformanceNode, query *ports
 		float64(query.TotalTime.Milliseconds())
 	node.AvgLatency = totalLatency / float64(node.TotalQueries)
 
-	// Update derived metrics
 	node.HotspotScore = s.calculateHotspotScore(query)
 	node.IndexEfficiency = s.calculateIndexEfficiency(query)
 }
 
-func (s *BenchmarkService) createPerformanceEdges(graph *PerformanceEnhancedGraph, query *ports.QueryPerformance, nodeMap map[string]*PerformanceNode) {
+func (s *BenchmarkService) createPerformanceEdges(graph *PerformanceEnhancedGraph, query *ports.QueryPerformance, _ map[string]*PerformanceNode) {
 	if len(query.JoinedTables) == 0 {
 		return
 	}

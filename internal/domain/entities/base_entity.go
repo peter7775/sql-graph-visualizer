@@ -9,6 +9,7 @@
  * and graph visualization. Commercial use requires separate licensing.
  */
 
+// Package entities provides base domain entity types.
 package entities
 
 // BaseEntity provides basic entity functionality with an ID.

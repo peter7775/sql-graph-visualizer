@@ -1,0 +1,111 @@
+database:
+  type: "mysql"
+  mysql:
+    host: "demo.host"
+    port: 3306
+    user: "demo"
+    password: "demo"
+    database: "demo"
+    connection_mode: "existing"
+    data_filtering:
+      schema_discovery: true
+      row_limit_per_table: 1000
+    security:
+      read_only: false
+      connection_timeout: 30
+      query_timeout: 30
+      max_connections: 10
+
+neo4j:
+  uri: "bolt://demo:7687"
+  user: "neo4j"
+  password: "demo"
+  max_connection_pool_size: 50
+  connection_timeout: 10s
+  max_transaction_retry_time: 15s
+transform_rules:
+  - name: "actors_to_graph"
+    rule_type: "node"
+    source:
+      type: "query"
+      value: "SELECT actor_id, first_name, last_name, CONCAT(first_name, ' ', last_name) as full_name FROM actor LIMIT 50"
+    target_type: "Actor"
+    field_mappings:
+      actor_id: "actor_id"
+      first_name: "first_name"
+      last_name: "last_name"
+      full_name: "name"
+
+  - name: "films_to_graph"
+    rule_type: "node"
+    source:
+      type: "query"
+      value: "SELECT film_id, title, description, release_year, rating, length FROM film LIMIT 100"
+    target_type: "Film"
+    field_mappings:
+      film_id: "film_id"
+      title: "title"
+      description: "description"
+      release_year: "year"
+      rating: "rating"
+      length: "duration"
+
+  - name: "categories_to_graph"
+    rule_type: "node"
+    source:
+      type: "query"
+      value: "SELECT category_id, name FROM category"
+    target_type: "Category"
+    field_mappings:
+      category_id: "category_id"
+      name: "name"
+
+  - name: "actor_film_relationships"
+    rule_type: "relationship"
+    relationship_type: "ACTED_IN"
+    direction: "outgoing"
+    source:
+      type: "query"
+      value: "SELECT actor_id, film_id FROM film_actor LIMIT 200"
+    source_node:
+      type: "Actor"
+      key: "actor_id"
+      target_field: "actor_id"
+    target_node:
+      type: "Film"
+      key: "film_id"
+      target_field: "film_id"
+
+  - name: "film_category_relationships"
+    rule_type: "relationship"
+    relationship_type: "HAS_CATEGORY"
+    direction: "outgoing"
+    source:
+      type: "query"
+      value: "SELECT film_id, category_id FROM film_category LIMIT 200"
+    source_node:
+      type: "Film"
+      key: "film_id"
+      target_field: "film_id"
+    target_node:
+      type: "Category"
+      key: "category_id"
+      target_field: "category_id"
+
+logging:
+  level: info
+  format: json
+  output: stdout
+
+performance:
+  monitoring:
+    enabled: false
+  realtime:
+    enabled: false
+  benchmarks:
+    enabled: false
+
+demo:
+  enabled: false
+  show_demo_banner: true
+  message: "Railway production demo with Sakila movie database"

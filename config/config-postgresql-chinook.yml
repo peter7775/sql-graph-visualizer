@@ -98,7 +98,6 @@ transform_rules:
       country: "country"
       city: "city"
 
-  # Relationships
   - name: "album_artist_relationship"
     rule_type: "relationship"
     relationship_type: "CREATED_BY"

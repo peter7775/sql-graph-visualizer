@@ -1,40 +1,27 @@
-# SQL Graph Visualizer - PostgreSQL Public Database Test
-# Using publicly available PostgreSQL databases for testing Issue #7
 
-# Example 1: Using a public PostgreSQL sample database
-# Note: Replace with actual public database credentials when available
 database:
   type: "postgresql"
   postgresql:
-    # Public PostgreSQL database options:
-    # 1. ElephantSQL (free tier): https://www.elephantsql.com/
-    # 2. Supabase (free tier): https://supabase.com/
-    # 3. Neon (free tier): https://neon.tech/
-    # 4. Local PostgreSQL with sample data
     
-    host: "localhost"  # Replace with public host
+    host: "localhost"
     port: 5432
     user: "postgres"
-    password: "password"  # Use environment variable in production
-    database: "dvdrental"  # Popular PostgreSQL sample database
+    password: "password"
+    database: "dvdrental"
     schema: "public"
     
-    # PostgreSQL-specific SSL configuration for public databases
     ssl:
-      mode: "require"  # Use "require" for production/public databases
+      mode: "require"
       insecure_skip_verify: false
     
-    # Connection settings optimized for public databases
     application_name: "sql-graph-visualizer-test"
-    statement_timeout: 60  # Longer timeout for remote databases
+    statement_timeout: 60
     
     connection_mode: existing
     
-    # Data filtering - optimized for large public databases
     data_filtering:
       schema_discovery: true
       
-      # Focus on main tables in dvdrental database
       table_whitelist: [
         "customer", "film", "actor", "category", 
         "film_actor", "film_category", "rental", 
@@ -42,34 +29,32 @@ database:
       ]
       
       table_blacklist: [
-        "payment",  # Often very large table
-        "rental_backup", "customer_backup"  # Backup tables if they exist
+        "payment",
+        "rental_backup", "customer_backup"
       ]
       
-      row_limit_per_table: 10000  # Reasonable limit for testing
+      row_limit_per_table: 10000
       
       where_conditions:
-        rental: "rental_date >= '2005-01-01' AND rental_date < '2006-01-01'"  # Limit to specific year
+        rental: "rental_date >= '2005-01-01' AND rental_date < '2006-01-01'"
         payment: "payment_date >= '2005-01-01' AND payment_date < '2006-01-01'"
-        customer: "active = 1"  # Only active customers
-        film: "length IS NOT NULL AND length > 0"  # Valid films only
+        customer: "active = 1"
+        film: "length IS NOT NULL AND length > 0"
         
-      query_timeout: 60  # Longer timeout for remote connections
+      query_timeout: 60
     
-    # Enhanced security for public database connections
     security:
       read_only: true
       connection_timeout: 30
       query_timeout: 60
-      max_connections: 5  # Conservative for public databases
-      allow_production_connections: true  # Allow connecting to public databases
-      allowed_hosts: ["*"]  # Allow any host for public databases
+      max_connections: 5
+      allow_production_connections: true
+      allowed_hosts: ["*"]
       forbidden_patterns: [
         "DROP", "DELETE", "UPDATE", "INSERT", "TRUNCATE", 
         "ALTER", "CREATE", "GRANT", "REVOKE"
       ]
     
-    # PostgreSQL-specific rule generation
     auto_generated_rules:
       enabled: true
       strategy:
@@ -79,7 +64,6 @@ database:
           node_type_format: "PascalCase"
           relation_type_format: "UPPER_SNAKE"
       
-      # DVD Rental specific table overrides
       table_overrides:
         film_actor:
           relationship_type: "ACTED_IN"
@@ -90,21 +74,19 @@ database:
         rental:
           relationship_type: "RENTED"
         customer_address:
-          skip: true  # Skip junction tables that aren't meaningful as nodes
+          skip: true
         staff_address:
           skip: true
 
-# Neo4j configuration
 neo4j:
   uri: "bolt://localhost:7687"
   user: "neo4j"
   password: "password"
   batch_processing:
-    batch_size: 500   # Smaller batches for testing
+    batch_size: 500
     commit_frequency: 2500
     memory_limit_mb: 256
 
-# PostgreSQL-specific transform rules for DVD Rental database
 transform_rules:
   - name: "customers_to_person_nodes"
     rule_type: "node_creation"
@@ -211,13 +193,12 @@ transform_rules:
     target_node:
       type: "Film"
       key: "id"
-      target_field: "film_id"  # Through inventory table
+      target_field: "film_id"
     properties:
       rental_date: "rental_date"
       return_date: "return_date"
     priority: 3
 
-# Global auto-generated rules
 auto_generated_rules:
   enabled: true
   strategy:

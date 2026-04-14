@@ -13,10 +13,10 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"sql-graph-visualizer/internal/domain/repositories"
 	"time"
 
 	"sql-graph-visualizer/internal/domain/models"
-	"sql-graph-visualizer/internal/domain/repository"
 
 	"github.com/sirupsen/logrus"
 )
@@ -24,7 +24,7 @@ import (
 // UniversalDatabaseService orchestrates database operations for any supported database type
 // Works with MySQL, PostgreSQL, and future database types through the generic DatabaseRepository interface
 type UniversalDatabaseService struct {
-	repo              repository.DatabaseRepository
+	repo              repositories.DatabaseRepository
 	config            models.DatabaseConfig
 	dbType            models.DatabaseType
 	securityValidator *SecurityValidationService
@@ -32,7 +32,7 @@ type UniversalDatabaseService struct {
 
 // NewUniversalDatabaseService creates a new universal database service
 func NewUniversalDatabaseService(
-	repo repository.DatabaseRepository,
+	repo repositories.DatabaseRepository,
 	config models.DatabaseConfig,
 ) *UniversalDatabaseService {
 
@@ -40,11 +40,11 @@ func NewUniversalDatabaseService(
 	var securityValidator *SecurityValidationService
 	switch config.GetDatabaseType() {
 	case models.DatabaseTypeMySQL:
-		if mysqlConfig, ok := config.(*models.MySQLConfig); ok {
+		if mysqlConfig, ok := config.GetEffectiveConfig().(*models.MySQLConfig); ok {
 			securityValidator = NewSecurityValidationService(&mysqlConfig.Security)
 		}
 	case models.DatabaseTypePostgreSQL:
-		if pgConfig, ok := config.(*models.PostgreSQLConfig); ok {
+		if pgConfig, ok := config.GetEffectiveConfig().(*models.PostgreSQLConfig); ok {
 			securityValidator = NewSecurityValidationService(&pgConfig.Security)
 		}
 	}
@@ -82,7 +82,7 @@ func (s *UniversalDatabaseService) ConnectAndAnalyze(ctx context.Context) (*mode
 
 		switch s.dbType {
 		case models.DatabaseTypeMySQL:
-			if mysqlConfig, ok := s.config.(*models.MySQLConfig); ok {
+			if mysqlConfig, ok := s.config.GetEffectiveConfig().(*models.MySQLConfig); ok {
 				securityResult, err = s.securityValidator.ValidateConnectionSecurity(ctx, mysqlConfig)
 			}
 		case models.DatabaseTypePostgreSQL:
@@ -133,7 +133,6 @@ func (s *UniversalDatabaseService) ConnectAndAnalyze(ctx context.Context) (*mode
 		return result, nil
 	}
 
-	// Populate database connection info
 	result.DatabaseInfo.Host = s.config.GetHost()
 	result.DatabaseInfo.Port = s.config.GetPort()
 	result.DatabaseInfo.User = s.config.GetUsername()
@@ -193,7 +192,7 @@ func (s *UniversalDatabaseService) TestConnection(ctx context.Context) (*models.
 	if s.securityValidator != nil {
 		switch s.dbType {
 		case models.DatabaseTypeMySQL:
-			if mysqlConfig, ok := s.config.(*models.MySQLConfig); ok {
+			if mysqlConfig, ok := s.config.GetEffectiveConfig().(*models.MySQLConfig); ok {
 				securityResult, err := s.securityValidator.ValidateConnectionSecurity(ctx, mysqlConfig)
 				if err != nil || !securityResult.IsValid {
 					testResult.ErrorMessage = "Connection failed security validation"
@@ -206,13 +205,16 @@ func (s *UniversalDatabaseService) TestConnection(ctx context.Context) (*models.
 		}
 	}
 
-	// Attempt connection
 	db, err := s.repo.Connect(ctx, s.config)
 	if err != nil {
 		testResult.ErrorMessage = fmt.Sprintf("Connection failed: %v", err)
 		return testResult, nil
 	}
-	defer db.Close()
+	defer func() {
+		if err := db.Close(); err != nil {
+			logrus.WithError(err).Error("Failed to close database connection")
+		}
+	}()
 
 	// Test connectivity
 	if err := db.PingContext(ctx); err != nil {
@@ -220,7 +222,6 @@ func (s *UniversalDatabaseService) TestConnection(ctx context.Context) (*models.
 		return testResult, nil
 	}
 
-	// Get database information
 	dbName, err := s.repo.GetDatabaseName(ctx)
 	if err == nil {
 		testResult.DatabaseName = dbName
@@ -233,7 +234,6 @@ func (s *UniversalDatabaseService) TestConnection(ctx context.Context) (*models.
 
 	testResult.UserName = s.config.GetUsername()
 
-	// Get table count
 	tables, err := s.repo.GetTables(ctx, s.config.GetDataFiltering())
 	if err != nil {
 		testResult.Warnings = append(testResult.Warnings, "Could not list tables")
@@ -249,20 +249,18 @@ func (s *UniversalDatabaseService) TestConnection(ctx context.Context) (*models.
 }
 
 // analyzeSchema performs schema analysis using the generic repository interface
-func (s *UniversalDatabaseService) analyzeSchema(ctx context.Context, db *sql.DB) (*models.UniversalSchemaAnalysisResult, error) {
+func (s *UniversalDatabaseService) analyzeSchema(ctx context.Context, _ *sql.DB) (*models.UniversalSchemaAnalysisResult, error) {
 	result := &models.UniversalSchemaAnalysisResult{
 		DatabaseName: "",
 		Tables:       []*models.UniversalTableInfo{},
 		DiscoveredAt: time.Now(),
 	}
 
-	// Get current database name
 	dbName, err := s.repo.GetDatabaseName(ctx)
 	if err == nil {
 		result.DatabaseName = dbName
 	}
 
-	// Get all tables
 	tableNames, err := s.repo.GetTables(ctx, s.config.GetDataFiltering())
 	if err != nil {
 		return nil, fmt.Errorf("failed to get tables: %w", err)
@@ -294,14 +292,12 @@ func (s *UniversalDatabaseService) analyzeTable(ctx context.Context, tableName s
 		Recommendations: []string{},
 	}
 
-	// Get column information
 	columns, err := s.repo.GetColumns(ctx, tableName)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get columns for table %s: %w", tableName, err)
 	}
 	tableInfo.Columns = columns
 
-	// Get row count estimate
 	rowCount, err := s.repo.GetTableRowCount(ctx, tableName)
 	if err == nil {
 		tableInfo.EstimatedRows = rowCount
@@ -325,7 +321,7 @@ func (s *UniversalDatabaseService) generateAnalysisSummary(result *models.Univer
 	case models.DatabaseTypePostgreSQL:
 		summary.Recommendations = append(summary.Recommendations,
 			"PostgreSQL detected - consider using schema-specific filtering for better performance")
-		if pgConfig, ok := s.config.(*models.PostgreSQLConfig); ok {
+		if pgConfig, ok := s.config.GetEffectiveConfig().(*models.PostgreSQLConfig); ok {
 			if pgConfig.SSLConfig.Mode == "disable" {
 				summary.Warnings = append(summary.Warnings,
 					"SSL is disabled - consider enabling SSL for production databases")
@@ -342,7 +338,6 @@ func (s *UniversalDatabaseService) generateAnalysisSummary(result *models.Univer
 			"Large number of tables detected - consider using table filtering to focus on important entities")
 	}
 
-	// Check for potential issues
 	totalRows := int64(0)
 	for _, table := range result.SchemaAnalysis.Tables {
 		totalRows += table.EstimatedRows

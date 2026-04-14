@@ -9,6 +9,7 @@
  * and graph visualization. Commercial use requires separate licensing.
  */
 
+// Package graphql provides GraphQL resolvers and schema integration.
 package graphql
 
 import (
@@ -20,6 +21,7 @@ import (
 //
 // It serves as dependency injection for your app, add any dependencies you require here.
 
+// Resolver is the root GraphQL resolver with dependency injection.
 type Resolver struct {
 	Neo4jRepo ports.Neo4jPort
 	Config    *models.Config

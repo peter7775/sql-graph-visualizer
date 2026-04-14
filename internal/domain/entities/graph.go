@@ -11,12 +11,14 @@
 
 package entities
 
+// Graph represents a basic graph entity with ID and nodes.
 type Graph struct {
 	BaseEntity
 	Nodes     []*Node
 	Relations []*Relation
 }
 
+// NewGraph creates a new graph entity with the given ID.
 func NewGraph(id string) *Graph {
 	return &Graph{
 		BaseEntity: BaseEntity{ID: id},

@@ -18,15 +18,18 @@ import (
 	"sql-graph-visualizer/internal/domain/valueobjects"
 )
 
+// Transaction defines database transaction interface.
 type Transaction interface {
 	Commit() error
 	Rollback() error
 }
 
+// Repository defines basic repository interface.
 type Repository interface {
 	WithTransaction(ctx context.Context, fn func(tx Transaction) error) error
 }
 
+// GraphRepository defines graph data repository interface.
 type GraphRepository interface {
 	Repository
 	Save(ctx context.Context, graph *graph.GraphAggregate) error
@@ -34,11 +37,13 @@ type GraphRepository interface {
 	FindByCriteria(ctx context.Context, criteria valueobjects.SearchCriteria) ([]*graph.GraphAggregate, error)
 }
 
+// MySQLRepository defines MySQL database repository interface.
 type MySQLRepository interface {
 	FetchData() ([]map[string]any, error)
 	Close() error
 }
 
+// Neo4jRepository defines Neo4j graph database repository interface.
 type Neo4jRepository interface {
 	StoreGraph(graph *graph.GraphAggregate) error
 	SearchNodes(criteria string) ([]*graph.GraphAggregate, error)
@@ -47,6 +52,7 @@ type Neo4jRepository interface {
 	Close() error
 }
 
+// TransformRuleRepository defines transformation rule repository interface.
 type TransformRuleRepository interface {
 	Repository
 	GetAllRules(ctx context.Context) ([]*transform.RuleAggregate, error)

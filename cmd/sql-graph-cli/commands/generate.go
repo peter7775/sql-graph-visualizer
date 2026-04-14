@@ -44,7 +44,7 @@ Available templates:
 
   # Generate Sakila database example
   sql-graph-cli generate --template sakila`,
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, _ []string) error {
 			return runGenerate(generateOptions{
 				OutputDir: outputDir,
 				Template:  template,

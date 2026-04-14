@@ -9,8 +9,12 @@
  * and graph visualization. Commercial use requires separate licensing.
  */
 
+// Package postgresql provides PostgreSQL database persistence.
 package postgresql
 
+// PostgreSQLConfig represents PostgreSQL-specific configuration.
+//
+//nolint:revive // PostgreSQLConfig is consistent with package naming
 type PostgreSQLConfig struct {
 	Host     string
 	Port     int

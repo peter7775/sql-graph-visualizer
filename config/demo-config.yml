@@ -1,7 +1,4 @@
-# SQL Graph Visualizer - Demo Configuration
-# This configuration is optimized for live demo deployment
 
-# Server Configuration
 server:
   port: 3000
   api_port: 8080
@@ -10,7 +7,6 @@ server:
   write_timeout: 30s
   idle_timeout: 120s
 
-# MySQL Demo Database - E-commerce Sample Data
 mysql:
   host: mysql-demo
   port: 3306
@@ -24,7 +20,6 @@ mysql:
   timeout: 10s
   charset: utf8mb4
 
-# PostgreSQL Demo Database - Analytics Sample Data  
 postgresql:
   host: postgres-demo
   port: 5432
@@ -38,7 +33,6 @@ postgresql:
   conn_max_idle_time: 10m
   timeout: 10s
 
-# Neo4j Graph Database
 neo4j:
   uri: bolt://neo4j-demo:7687
   user: neo4j
@@ -47,7 +41,6 @@ neo4j:
   connection_timeout: 10s
   max_transaction_retry_time: 15s
 
-# Demo-specific settings
 demo:
   enabled: true
   auto_transform_on_start: true
@@ -56,7 +49,6 @@ demo:
   show_demo_banner: true
   demo_scenario: "ecommerce_analytics"
 
-# Performance Benchmarking (enabled for demo)
 benchmark:
   enabled: true
   sysbench:
@@ -92,9 +84,7 @@ benchmark:
           weight: 20
           description: "Category popularity"
 
-# Transformation Rules - E-commerce to Graph
 transform_rules:
-  # Users as nodes
   - name: "users_to_graph"
     rule_type: "node"
     source:
@@ -111,7 +101,6 @@ transform_rules:
       country: "country"
       city: "city"
 
-  # Products as nodes
   - name: "products_to_graph"
     rule_type: "node"
     source:
@@ -127,7 +116,6 @@ transform_rules:
       category_name: "category"
       created_at: "created_date"
 
-  # Categories as nodes
   - name: "categories_to_graph"
     rule_type: "node"
     source:
@@ -139,7 +127,6 @@ transform_rules:
       name: "category_name"
       description: "description"
 
-  # User-Order relationships
   - name: "user_orders"
     rule_type: "relationship"
     relationship_type: "PLACED_ORDER"
@@ -160,7 +147,6 @@ transform_rules:
       total_amount: "total_amount"
       status: "order_status"
 
-  # Order-Product relationships (through order_items)
   - name: "order_products"
     rule_type: "relationship"
     relationship_type: "CONTAINS_PRODUCT"
@@ -180,7 +166,6 @@ transform_rules:
       quantity: "quantity"
       unit_price: "unit_price"
 
-  # Product-Category relationships
   - name: "product_categories"
     rule_type: "relationship"
     relationship_type: "BELONGS_TO_CATEGORY"
@@ -197,14 +182,12 @@ transform_rules:
       key: "category_id"
       target_field: "category_id"
 
-# Processing Configuration
 processing:
   batch_size: 1000
   max_memory_mb: 1024
   parallel_workers: 4
   transaction_size: 500
 
-# Logging
 logging:
   level: info
   format: json
@@ -213,7 +196,6 @@ logging:
   log_slow_queries: true
   slow_query_threshold: 1s
 
-# API Configuration
 api:
   cors:
     allowed_origins: ["*"]
@@ -231,25 +213,23 @@ api:
     introspection_enabled: true
     complexity_limit: 1000
 
-# Visualization Settings
 visualization:
   node_colors:
-    User: "#4CAF50"
-    Product: "#2196F3" 
-    Category: "#FF9800"
-    Order: "#9C27B0"
+    User: "#3498db"
+    Product: "#e74c3c"
+    Category: "#f39c12"
+    Order: "#2ecc71"
   
   relationship_colors:
-    PLACED_ORDER: "#757575"
-    CONTAINS_PRODUCT: "#607D8B"
-    BELONGS_TO_CATEGORY: "#795548"
+    PLACED_ORDER: "#9b59b6"
+    CONTAINS_PRODUCT: "#34495e"
+    BELONGS_TO_CATEGORY: "#e67e22"
   
   layout:
     algorithm: "force"
     node_size_property: "degree"
     enable_clustering: true
 
-# Monitoring and Health Checks
 monitoring:
   health_check:
     enabled: true
@@ -261,14 +241,12 @@ monitoring:
     endpoint: "/api/metrics"
     include_performance_metrics: true
 
-# Security (relaxed for demo)
 security:
   enable_auth: false
   cors_enabled: true
   rate_limiting_enabled: true
   input_validation_enabled: true
 
-# Demo Data Information
 demo_info:
   description: "E-commerce platform with users, products, orders, and categories"
   datasets:

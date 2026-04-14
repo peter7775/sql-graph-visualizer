@@ -7,6 +7,7 @@
  * Patent Pending - Application filed for innovative database transformation techniques
  */
 
+// Package commands provides CLI command implementations.
 package commands
 
 import (
@@ -75,7 +76,7 @@ Supports both MySQL and PostgreSQL databases with database-specific optimization
 
   # Save analysis to JSON file
   sql-graph-cli analyze --db-type postgresql --host localhost --database chinook --output analysis.json`,
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, _ []string) error {
 			return runAnalyze(cmd, analyzeOptions{
 				DBType:            models.DatabaseType(dbType),
 				Host:              host,
@@ -139,9 +140,15 @@ Supports both MySQL and PostgreSQL databases with database-specific optimization
 	cmd.Flags().IntVar(&statementTimeout, "stmt-timeout", 30, "PostgreSQL statement timeout in seconds")
 
 	// Required flags
-	cmd.MarkFlagRequired("username")
-	cmd.MarkFlagRequired("password")
-	cmd.MarkFlagRequired("database")
+	if err := cmd.MarkFlagRequired("username"); err != nil {
+		fmt.Printf("Warning: Failed to mark username flag as required: %v\n", err)
+	}
+	if err := cmd.MarkFlagRequired("password"); err != nil {
+		fmt.Printf("Warning: Failed to mark password flag as required: %v\n", err)
+	}
+	if err := cmd.MarkFlagRequired("database"); err != nil {
+		fmt.Printf("Warning: Failed to mark database flag as required: %v\n", err)
+	}
 
 	return cmd
 }
@@ -174,7 +181,7 @@ type analyzeOptions struct {
 	StatementTimeout int
 }
 
-func runAnalyze(cmd *cobra.Command, opts analyzeOptions) error {
+func runAnalyze(_ *cobra.Command, opts analyzeOptions) error {
 	fmt.Println("SQL Graph Visualizer - Database Analysis")
 	fmt.Println("=============================================")
 
@@ -192,7 +199,7 @@ func runAnalyze(cmd *cobra.Command, opts analyzeOptions) error {
 	var config models.DatabaseConfig
 	switch opts.DBType {
 	case models.DatabaseTypeMySQL:
-		config = &models.MySQLConfig{
+		config = models.DatabaseConfig{Type: models.DatabaseTypeMySQL, MySQL: &models.MySQLConfig{
 			Host:           opts.Host,
 			Port:           opts.Port,
 			Username:       opts.Username,
@@ -225,10 +232,10 @@ func runAnalyze(cmd *cobra.Command, opts analyzeOptions) error {
 					},
 				},
 			},
-		}
+		}}
 
 	case models.DatabaseTypePostgreSQL:
-		config = &models.PostgreSQLConfig{
+		config = models.DatabaseConfig{Type: models.DatabaseTypePostgreSQL, PostgreSQL: &models.PostgreSQLConfig{
 			Host:           opts.Host,
 			Port:           opts.Port,
 			Username:       opts.Username,
@@ -238,7 +245,7 @@ func runAnalyze(cmd *cobra.Command, opts analyzeOptions) error {
 			ConnectionMode: models.ConnectionModeExisting,
 
 			// PostgreSQL-specific settings
-			SSLConfig: models.PostgreSQLSSLConfig{
+			SSLConfig: models.SSLConfig{
 				Mode:     opts.SSLMode,
 				CertFile: opts.SSLCertFile,
 				KeyFile:  opts.SSLKeyFile,
@@ -272,23 +279,20 @@ func runAnalyze(cmd *cobra.Command, opts analyzeOptions) error {
 					},
 				},
 			},
-		}
+		}}
 
 	default:
 		return fmt.Errorf("unsupported database type: %s", opts.DBType)
 	}
 
-	// Create database repository based on type
 	factory := factories.NewDatabaseRepositoryFactory()
 	repo, err := factory.CreateRepository(opts.DBType)
 	if err != nil {
 		return fmt.Errorf("failed to create database repository: %w", err)
 	}
 
-	// Create universal database service
 	dbService := services.NewUniversalDatabaseService(repo, config)
 
-	// Validate configuration
 	fmt.Printf("🔧 Validating configuration...\n")
 	if err := dbService.ValidateConfiguration(); err != nil {
 		return fmt.Errorf("configuration validation failed: %w", err)
@@ -296,7 +300,6 @@ func runAnalyze(cmd *cobra.Command, opts analyzeOptions) error {
 
 	ctx := context.Background()
 
-	// Show connection info
 	fmt.Printf("📡 Connecting to %s database: %s@%s:%d/%s\n", strings.ToUpper(string(opts.DBType)), opts.Username, opts.Host, opts.Port, opts.Database)
 	if opts.DBType == models.DatabaseTypePostgreSQL && opts.Schema != "" {
 		fmt.Printf("   Schema: %s\n", opts.Schema)
@@ -317,7 +320,6 @@ func runAnalyze(cmd *cobra.Command, opts analyzeOptions) error {
 		fmt.Printf("Dry run mode: analysis only, no rule generation\n")
 	}
 
-	// Start analysis
 	fmt.Printf("\n🔍 Starting database analysis...\n")
 	startTime := time.Now()
 
@@ -355,29 +357,29 @@ func outputSummary(result *models.UniversalDatabaseAnalysisResult, outputFile st
 	// Connection info
 	output.WriteString("🔗 CONNECTION INFORMATION:\n")
 	if result.DatabaseInfo != nil {
-		output.WriteString(fmt.Sprintf("   Database Type: %s\n", strings.ToUpper(string(result.DatabaseType))))
-		output.WriteString(fmt.Sprintf("   Database: %s@%s:%d/%s\n",
+		fmt.Fprintf(&output, "   Database Type: %s\n", strings.ToUpper(string(result.DatabaseType)))
+		fmt.Fprintf(&output, "   Database: %s@%s:%d/%s\n",
 			result.DatabaseInfo.User, result.DatabaseInfo.Host,
-			result.DatabaseInfo.Port, result.DatabaseInfo.Database))
-		output.WriteString(fmt.Sprintf("   Server Version: %s\n", result.DatabaseInfo.Version))
+		result.DatabaseInfo.Port, result.DatabaseInfo.Database)
+		fmt.Fprintf(&output, "   Server Version: %s\n", result.DatabaseInfo.Version)
 	}
-	output.WriteString(fmt.Sprintf("   Processing Time: %v\n", result.ProcessingDuration))
+	fmt.Fprintf(&output, "   Processing Time: %v\n", result.ProcessingDuration)
 	if result.SecurityValidation != nil {
-		output.WriteString(fmt.Sprintf("   Security Level: %s\n", result.SecurityValidation.SecurityLevel))
+		fmt.Fprintf(&output, "   Security Level: %s\n", result.SecurityValidation.SecurityLevel)
 	}
 
 	// Summary statistics
 	if result.Summary != nil {
 		summary := result.Summary
 		output.WriteString("\nSTATS ANALYSIS SUMMARY:\n")
-		output.WriteString(fmt.Sprintf("   Tables Analyzed: %d\n", summary.TotalTables))
+		fmt.Fprintf(&output, "   Tables Analyzed: %d\n", summary.TotalTables)
 
 		if len(summary.Warnings) > 0 {
-			output.WriteString(fmt.Sprintf("   WARN  Warnings: %d\n", len(summary.Warnings)))
+			fmt.Fprintf(&output, "   WARN  Warnings: %d\n", len(summary.Warnings))
 		}
 
 		if len(summary.Recommendations) > 0 {
-			output.WriteString(fmt.Sprintf("   TIP Recommendations: %d\n", len(summary.Recommendations)))
+			fmt.Fprintf(&output, "   TIP Recommendations: %d\n", len(summary.Recommendations))
 		}
 	}
 
@@ -389,21 +391,21 @@ func outputSummary(result *models.UniversalDatabaseAnalysisResult, outputFile st
 			if table.Schema != "" {
 				schemaInfo = fmt.Sprintf(" (%s)", table.Schema)
 			}
-			output.WriteString(fmt.Sprintf("   %-20s%s - %d rows, %d columns\n",
-				table.Name, schemaInfo, table.EstimatedRows, len(table.Columns)))
+			fmt.Fprintf(&output, "   %-20s%s - %d rows, %d columns\n",
+			table.Name, schemaInfo, table.EstimatedRows, len(table.Columns))
 
 			// Show column details for first few tables
 			if len(result.SchemaAnalysis.Tables) <= 3 && len(table.Columns) > 0 {
 				for i, col := range table.Columns {
 					if i >= 5 {
-						output.WriteString(fmt.Sprintf("     ... and %d more columns\n", len(table.Columns)-5))
+						fmt.Fprintf(&output, "     ... and %d more columns\n", len(table.Columns)-5)
 						break
 					}
 					primaryKey := ""
 					if col.IsKey && col.KeyType == "PRIMARY" {
 						primaryKey = " (PK)"
 					}
-					output.WriteString(fmt.Sprintf("     • %s %s%s\n", col.Name, col.DataType, primaryKey))
+					fmt.Fprintf(&output, "     • %s %s%s\n", col.Name, col.DataType, primaryKey)
 				}
 			}
 		}
@@ -414,20 +416,20 @@ func outputSummary(result *models.UniversalDatabaseAnalysisResult, outputFile st
 		if len(result.Summary.Warnings) > 0 {
 			output.WriteString("\nWARN  WARNINGS:\n")
 			for _, warning := range result.Summary.Warnings {
-				output.WriteString(fmt.Sprintf("   • %s\n", warning))
+				fmt.Fprintf(&output, "   • %s\n", warning)
 			}
 		}
 
 		if len(result.Summary.Recommendations) > 0 {
 			output.WriteString("\nTIP RECOMMENDATIONS:\n")
 			for _, rec := range result.Summary.Recommendations {
-				output.WriteString(fmt.Sprintf("   • %s\n", rec))
+				fmt.Fprintf(&output, "   • %s\n", rec)
 			}
 		}
 	}
 
 	if !result.Success {
-		output.WriteString(fmt.Sprintf("\nERROR: %s\n", result.ErrorMessage))
+		fmt.Fprintf(&output, "\nERROR: %s\n", result.ErrorMessage)
 	}
 
 	output.WriteString("\n" + strings.Repeat("=", 60) + "\n")

@@ -9,6 +9,7 @@
  * and graph visualization. Commercial use requires separate licensing.
  */
 
+// Package middleware provides HTTP middleware implementations.
 package middleware
 
 import (
@@ -17,6 +18,7 @@ import (
 	"github.com/rs/cors"
 )
 
+// CORSOptions represents CORS configuration options.
 type CORSOptions struct {
 	AllowedOrigins   []string
 	AllowedMethods   []string
@@ -24,6 +26,7 @@ type CORSOptions struct {
 	AllowCredentials bool
 }
 
+// NewCORSHandler creates a new CORS middleware handler.
 func NewCORSHandler(options CORSOptions) func(http.Handler) http.Handler {
 	c := cors.New(cors.Options{
 		AllowedOrigins:   options.AllowedOrigins,

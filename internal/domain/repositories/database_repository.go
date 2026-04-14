@@ -9,7 +9,8 @@
  * and graph visualization. Commercial use requires separate licensing.
  */
 
-package repository
+// Package repositories defines domain repository interfaces.
+package repositories
 
 import (
 	"context"
@@ -19,37 +20,30 @@ import (
 
 // DatabaseRepository defines the interface for database-specific operations
 type DatabaseRepository interface {
-	// Connection management
 	Connect(ctx context.Context, config models.DatabaseConfig) (*sql.DB, error)
 	Close() error
 	TestConnection(ctx context.Context) error
 
-	// Schema introspection
 	GetTables(ctx context.Context, filters models.DataFilteringConfig) ([]string, error)
 	GetColumns(ctx context.Context, tableName string) ([]*models.ColumnInfo, error)
 	GetForeignKeys(ctx context.Context, tableName string) ([]models.ForeignKeyInfo, error)
 	GetIndexes(ctx context.Context, tableName string) ([]models.IndexInfo, error)
 	GetConstraints(ctx context.Context, tableName string) ([]models.Constraint, error)
 
-	// Database metadata
 	GetDatabaseName(ctx context.Context) (string, error)
 	GetDatabaseVersion(ctx context.Context) (string, error)
 	GetSchemaNames(ctx context.Context) ([]string, error)
 
-	// Data sampling and analysis
 	GetTableRowCount(ctx context.Context, tableName string) (int64, error)
 	SampleTableData(ctx context.Context, tableName string, limit int) ([]map[string]interface{}, error)
 	AnalyzeColumnStatistics(ctx context.Context, tableName, columnName string) (*models.ColumnStatistics, error)
 
-	// Performance and optimization
 	GetTableSize(ctx context.Context, tableName string) (*models.TableSize, error)
 	GetQueryExecutionPlan(ctx context.Context, query string) (string, error)
 
-	// Security validation
 	ValidatePermissions(ctx context.Context, requiredPerms []string) error
 	CheckUserPrivileges(ctx context.Context) (*models.UserPrivileges, error)
 
-	// Database-specific utility methods
 	EscapeIdentifier(identifier string) string
 	GetQuoteChar() string
 	GetDatabaseType() models.DatabaseType
@@ -64,28 +58,23 @@ type DatabaseRepositoryFactory interface {
 
 // QueryBuilder defines interface for building database-specific queries
 type QueryBuilder interface {
-	// Schema queries
 	BuildTablesQuery(filters models.DataFilteringConfig) string
 	BuildColumnsQuery(tableName string) string
 	BuildForeignKeysQuery(tableName string) string
 	BuildIndexesQuery(tableName string) string
 	BuildConstraintsQuery(tableName string) string
 
-	// Metadata queries
 	BuildDatabaseVersionQuery() string
 	BuildSchemaNamesQuery() string
 	BuildTableRowCountQuery(tableName string) string
 	BuildTableSizeQuery(tableName string) string
 
-	// Data analysis queries
 	BuildSampleDataQuery(tableName string, limit int) string
 	BuildColumnStatisticsQuery(tableName, columnName string) string
 
-	// Security queries
 	BuildUserPrivilegesQuery() string
 	BuildPermissionCheckQuery(permission string) string
 
-	// Utility methods
 	FormatTableName(tableName string, schema ...string) string
 	FormatColumnName(columnName string) string
 	BuildLimitClause(limit int) string

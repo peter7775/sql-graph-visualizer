@@ -11,6 +11,7 @@
 
 package entities
 
+// Node represents a graph node entity with properties.
 type Node struct {
 	BaseEntity
 	Type       string
@@ -20,6 +21,7 @@ type Node struct {
 	Properties map[string]any
 }
 
+// NewNode creates a new node with the given ID and label.
 func NewNode(id string, label string) *Node {
 	return &Node{
 		BaseEntity: BaseEntity{ID: id},
@@ -28,6 +30,7 @@ func NewNode(id string, label string) *Node {
 	}
 }
 
+// NewNodeWithType creates a new node with specified type and properties.
 func NewNodeWithType(id string, nodeType string, key any, field string) *Node {
 	return &Node{
 		BaseEntity: BaseEntity{ID: id},

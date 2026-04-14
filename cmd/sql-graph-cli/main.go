@@ -7,13 +7,15 @@
  * Patent Pending - Application filed for innovative database transformation techniques
  */
 
+// Package main provides the command-line interface for sql-graph-visualizer.
 package main
 
 import (
 	"os"
 
-	"github.com/spf13/cobra"
 	"sql-graph-visualizer/cmd/sql-graph-cli/commands"
+
+	"github.com/spf13/cobra"
 )
 
 var rootCmd = &cobra.Command{
@@ -32,7 +34,6 @@ func init() {
 	rootCmd.PersistentFlags().BoolP("verbose", "v", false, "Enable verbose logging")
 	rootCmd.PersistentFlags().BoolP("quiet", "q", false, "Suppress output except errors")
 
-	// Add commands
 	rootCmd.AddCommand(commands.NewAnalyzeCmd())
 	rootCmd.AddCommand(commands.NewTestCmd())
 	rootCmd.AddCommand(commands.NewGenerateCmd())

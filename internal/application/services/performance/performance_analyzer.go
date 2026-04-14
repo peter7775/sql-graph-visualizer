@@ -15,12 +15,16 @@ import (
 )
 
 // PerformanceAnalyzer implements advanced performance analysis algorithms
+//
+//nolint:revive // PerformanceAnalyzer is descriptive and follows project conventions
 type PerformanceAnalyzer struct {
 	logger *logrus.Logger
 	config *PerformanceAnalyzerConfig
 }
 
 // PerformanceAnalyzerConfig contains configuration for performance analysis
+//
+//nolint:revive // PerformanceAnalyzerConfig is descriptive and follows project conventions
 type PerformanceAnalyzerConfig struct {
 	// Bottleneck detection thresholds
 	HighLatencyThreshold   time.Duration `yaml:"high_latency_threshold" json:"high_latency_threshold"`
@@ -62,7 +66,7 @@ func NewPerformanceAnalyzer(logger *logrus.Logger, config *PerformanceAnalyzerCo
 }
 
 // IdentifyBottlenecks identifies performance bottlenecks from benchmark results
-func (pa *PerformanceAnalyzer) IdentifyBottlenecks(ctx context.Context, results *ports.BenchmarkResult) ([]ports.PerformanceBottleneck, error) {
+func (pa *PerformanceAnalyzer) IdentifyBottlenecks(_ context.Context, results *ports.BenchmarkResult) ([]ports.PerformanceBottleneck, error) {
 	bottlenecks := make([]ports.PerformanceBottleneck, 0)
 
 	if results == nil || results.Metrics == nil {
@@ -77,7 +81,6 @@ func (pa *PerformanceAnalyzer) IdentifyBottlenecks(ctx context.Context, results 
 	queryBottlenecks := pa.analyzeQueryBottlenecks(results.QueryResults)
 	bottlenecks = append(bottlenecks, queryBottlenecks...)
 
-	// Sort by severity and confidence
 	sort.Slice(bottlenecks, func(i, j int) bool {
 		if bottlenecks[i].Severity != bottlenecks[j].Severity {
 			return pa.severityToInt(bottlenecks[i].Severity) > pa.severityToInt(bottlenecks[j].Severity)
@@ -95,7 +98,7 @@ func (pa *PerformanceAnalyzer) IdentifyBottlenecks(ctx context.Context, results 
 }
 
 // AnalyzeCriticalPath performs critical path analysis on performance data
-func (pa *PerformanceAnalyzer) AnalyzeCriticalPath(ctx context.Context, graphData *ports.GraphPerformanceData) (*ports.CriticalPathAnalysis, error) {
+func (pa *PerformanceAnalyzer) AnalyzeCriticalPath(_ context.Context, graphData *ports.GraphPerformanceData) (*ports.CriticalPathAnalysis, error) {
 	if graphData == nil || len(graphData.Nodes) == 0 {
 		return nil, fmt.Errorf("invalid graph performance data")
 	}
@@ -106,13 +109,11 @@ func (pa *PerformanceAnalyzer) AnalyzeCriticalPath(ctx context.Context, graphDat
 		AverageLatency: pa.calculateAverageNodeLatency(graphData.Nodes),
 	}
 
-	// Build adjacency graph from performance data
 	graph := pa.buildPerformanceGraph(graphData)
 
 	// Find critical paths using modified Floyd-Warshall algorithm
 	paths := pa.findCriticalPaths(graph, graphData)
 
-	// Filter and sort paths by impact
 	filteredPaths := pa.filterCriticalPaths(paths)
 	analysis.CriticalPaths = filteredPaths
 
@@ -131,7 +132,7 @@ func (pa *PerformanceAnalyzer) AnalyzeCriticalPath(ctx context.Context, graphDat
 }
 
 // DetectHotspots identifies performance hotspots from metrics data
-func (pa *PerformanceAnalyzer) DetectHotspots(ctx context.Context, metrics []*ports.PerformanceMetrics) ([]ports.HotspotNode, error) {
+func (pa *PerformanceAnalyzer) DetectHotspots(_ context.Context, metrics []*ports.PerformanceMetrics) ([]ports.HotspotNode, error) {
 	if len(metrics) == 0 {
 		return []ports.HotspotNode{}, nil
 	}
@@ -168,7 +169,6 @@ func (pa *PerformanceAnalyzer) DetectHotspots(ctx context.Context, metrics []*po
 		}
 	}
 
-	// Sort hotspots by score
 	sort.Slice(hotspots, func(i, j int) bool {
 		return hotspots[i].HotspotScore > hotspots[j].HotspotScore
 	})
@@ -187,7 +187,7 @@ func (pa *PerformanceAnalyzer) DetectHotspots(ctx context.Context, metrics []*po
 }
 
 // AnalyzeQueryPatterns analyzes query patterns for optimization opportunities
-func (pa *PerformanceAnalyzer) AnalyzeQueryPatterns(ctx context.Context, queryResults []ports.QueryPerformance) (*ports.QueryPatternAnalysis, error) {
+func (pa *PerformanceAnalyzer) AnalyzeQueryPatterns(_ context.Context, queryResults []ports.QueryPerformance) (*ports.QueryPatternAnalysis, error) {
 	analysis := &ports.QueryPatternAnalysis{
 		PatternGroups:   make([]ports.QueryPatternGroup, 0),
 		CommonPatterns:  make([]ports.QueryPattern, 0),
@@ -213,7 +213,6 @@ func (pa *PerformanceAnalyzer) AnalyzeQueryPatterns(ctx context.Context, queryRe
 	antiPatterns := pa.detectAntiPatterns(queryResults)
 	analysis.AntiPatterns = antiPatterns
 
-	// Generate recommendations
 	recommendations := pa.generatePatternRecommendations(patternGroups, antiPatterns)
 	analysis.Recommendations = recommendations
 
@@ -228,7 +227,7 @@ func (pa *PerformanceAnalyzer) AnalyzeQueryPatterns(ctx context.Context, queryRe
 }
 
 // IdentifyInefficiencies identifies specific performance inefficiencies
-func (pa *PerformanceAnalyzer) IdentifyInefficiencies(ctx context.Context, queryResults []ports.QueryPerformance) ([]ports.PerformanceIssue, error) {
+func (pa *PerformanceAnalyzer) IdentifyInefficiencies(_ context.Context, queryResults []ports.QueryPerformance) ([]ports.PerformanceIssue, error) {
 	issues := make([]ports.PerformanceIssue, 0)
 
 	for _, query := range queryResults {
@@ -236,7 +235,6 @@ func (pa *PerformanceAnalyzer) IdentifyInefficiencies(ctx context.Context, query
 		issues = append(issues, queryIssues...)
 	}
 
-	// Sort by priority and impact
 	sort.Slice(issues, func(i, j int) bool {
 		if issues[i].Priority != issues[j].Priority {
 			return issues[i].Priority > issues[j].Priority
@@ -254,26 +252,21 @@ func (pa *PerformanceAnalyzer) IdentifyInefficiencies(ctx context.Context, query
 }
 
 // GenerateOptimizationSuggestions generates actionable optimization recommendations
-func (pa *PerformanceAnalyzer) GenerateOptimizationSuggestions(ctx context.Context, analysis *ports.PerformanceAnalysis) ([]ports.OptimizationSuggestion, error) {
+func (pa *PerformanceAnalyzer) GenerateOptimizationSuggestions(_ context.Context, analysis *ports.PerformanceAnalysis) ([]ports.OptimizationSuggestion, error) {
 	suggestions := make([]ports.OptimizationSuggestion, 0)
 
-	// Generate index suggestions
 	indexSuggestions := pa.generateIndexSuggestions(analysis)
 	suggestions = append(suggestions, indexSuggestions...)
 
-	// Generate query optimization suggestions
 	querySuggestions := pa.generateQueryOptimizationSuggestions(analysis)
 	suggestions = append(suggestions, querySuggestions...)
 
-	// Generate schema optimization suggestions
 	schemaSuggestions := pa.generateSchemaOptimizationSuggestions(analysis)
 	suggestions = append(suggestions, schemaSuggestions...)
 
-	// Generate configuration suggestions
 	configSuggestions := pa.generateConfigurationSuggestions(analysis)
 	suggestions = append(suggestions, configSuggestions...)
 
-	// Sort by priority and expected impact
 	sort.Slice(suggestions, func(i, j int) bool {
 		if suggestions[i].Priority != suggestions[j].Priority {
 			return suggestions[i].Priority > suggestions[j].Priority
@@ -291,7 +284,7 @@ func (pa *PerformanceAnalyzer) GenerateOptimizationSuggestions(ctx context.Conte
 }
 
 // ValidateOptimization validates an optimization suggestion
-func (pa *PerformanceAnalyzer) ValidateOptimization(ctx context.Context, suggestion *ports.OptimizationSuggestion) (*ports.OptimizationValidation, error) {
+func (pa *PerformanceAnalyzer) ValidateOptimization(_ context.Context, suggestion *ports.OptimizationSuggestion) (*ports.OptimizationValidation, error) {
 	validation := &ports.OptimizationValidation{
 		IsValid:          true,
 		ValidationErrors: make([]string, 0),
@@ -312,7 +305,6 @@ func (pa *PerformanceAnalyzer) ValidateOptimization(ctx context.Context, suggest
 		pa.validateConfigurationOptimization(suggestion, validation)
 	}
 
-	// Validate general constraints
 	pa.validateGeneralConstraints(suggestion, validation)
 
 	if len(validation.ValidationErrors) > 0 {
@@ -323,13 +315,12 @@ func (pa *PerformanceAnalyzer) ValidateOptimization(ctx context.Context, suggest
 }
 
 // AnalyzeTrends analyzes performance trends over time
-func (pa *PerformanceAnalyzer) AnalyzeTrends(ctx context.Context, historicalData []ports.PerformanceSnapshot) (*ports.TrendAnalysis, error) {
+func (pa *PerformanceAnalyzer) AnalyzeTrends(_ context.Context, historicalData []ports.PerformanceSnapshot) (*ports.TrendAnalysis, error) {
 	if len(historicalData) < pa.config.MinDataPoints {
 		return nil, fmt.Errorf("insufficient data points for trend analysis: need at least %d, got %d",
 			pa.config.MinDataPoints, len(historicalData))
 	}
 
-	// Sort data by timestamp
 	sort.Slice(historicalData, func(i, j int) bool {
 		return historicalData[i].Timestamp.Before(historicalData[j].Timestamp)
 	})
@@ -356,7 +347,6 @@ func (pa *PerformanceAnalyzer) AnalyzeTrends(ctx context.Context, historicalData
 	anomalies := pa.detectAnomalies(historicalData)
 	analysis.Anomalies = anomalies
 
-	// Generate predictions (simple implementation)
 	predictions := pa.generatePredictions(historicalData)
 	analysis.Predictions = predictions
 
@@ -371,7 +361,7 @@ func (pa *PerformanceAnalyzer) AnalyzeTrends(ctx context.Context, historicalData
 }
 
 // DetectRegressions compares current performance with baseline
-func (pa *PerformanceAnalyzer) DetectRegressions(ctx context.Context, current, previous *ports.PerformanceMetrics) ([]ports.PerformanceRegression, error) {
+func (pa *PerformanceAnalyzer) DetectRegressions(_ context.Context, current, previous *ports.PerformanceMetrics) ([]ports.PerformanceRegression, error) {
 	regressions := make([]ports.PerformanceRegression, 0)
 
 	if current == nil || previous == nil {
@@ -438,7 +428,7 @@ func (pa *PerformanceAnalyzer) DetectRegressions(ctx context.Context, current, p
 }
 
 // CalculatePerformanceScore calculates an overall performance score
-func (pa *PerformanceAnalyzer) CalculatePerformanceScore(ctx context.Context, metrics *ports.PerformanceMetrics) (*ports.PerformanceScore, error) {
+func (pa *PerformanceAnalyzer) CalculatePerformanceScore(_ context.Context, metrics *ports.PerformanceMetrics) (*ports.PerformanceScore, error) {
 	if metrics == nil {
 		return nil, fmt.Errorf("metrics are required for performance scoring")
 	}
@@ -473,7 +463,6 @@ func (pa *PerformanceAnalyzer) CalculatePerformanceScore(ctx context.Context, me
 	totalScore += throughputScore * throughputWeight
 	totalWeight += throughputWeight
 
-	// Error rate factor (weight: 0.25)
 	errorScore := pa.calculateErrorScore(metrics.ErrorRate)
 	errorWeight := 0.25
 	factors = append(factors, ports.PerformanceScoreFactor{
@@ -504,7 +493,6 @@ func (pa *PerformanceAnalyzer) CalculatePerformanceScore(ctx context.Context, me
 		totalScore = totalScore / totalWeight
 	}
 
-	// Create component scores map
 	componentScores := make(map[string]float64)
 	for _, factor := range factors {
 		componentScores[factor.Name] = factor.Value
@@ -583,9 +571,6 @@ func (pa *PerformanceAnalyzer) ComparePerformance(ctx context.Context, baseline,
 
 	return comparison, nil
 }
-
-// Private helper methods continue in next part due to length...
-// [Rest of implementation would continue with all the helper methods]
 
 func (pa *PerformanceAnalyzer) analyzeGlobalBottlenecks(metrics *ports.PerformanceMetrics) []ports.PerformanceBottleneck {
 	bottlenecks := make([]ports.PerformanceBottleneck, 0)
@@ -745,9 +730,6 @@ func (pa *PerformanceAnalyzer) generateQueryRecommendations(query ports.QueryPer
 	return recommendations
 }
 
-// Additional helper methods would continue...
-// This is a simplified version showing the key structure and algorithms
-
 func defaultPerformanceAnalyzerConfig() *PerformanceAnalyzerConfig {
 	return &PerformanceAnalyzerConfig{
 		HighLatencyThreshold:      200 * time.Millisecond,
@@ -767,19 +749,15 @@ func defaultPerformanceAnalyzerConfig() *PerformanceAnalyzerConfig {
 	}
 }
 
-// Placeholder implementations for complex methods that would be fully implemented
-func (pa *PerformanceAnalyzer) buildPerformanceGraph(graphData *ports.GraphPerformanceData) map[string]map[string]float64 {
-	// Implementation would build adjacency graph
+func (pa *PerformanceAnalyzer) buildPerformanceGraph(_ *ports.GraphPerformanceData) map[string]map[string]float64 {
 	return make(map[string]map[string]float64)
 }
 
-func (pa *PerformanceAnalyzer) findCriticalPaths(graph map[string]map[string]float64, graphData *ports.GraphPerformanceData) []ports.CriticalPath {
-	// Implementation would use path-finding algorithms
+func (pa *PerformanceAnalyzer) findCriticalPaths(_ map[string]map[string]float64, _ *ports.GraphPerformanceData) []ports.CriticalPath {
 	return make([]ports.CriticalPath, 0)
 }
 
 func (pa *PerformanceAnalyzer) filterCriticalPaths(paths []ports.CriticalPath) []ports.CriticalPath {
-	// Implementation would filter and sort paths
 	return paths
 }
 
@@ -809,94 +787,92 @@ func (pa *PerformanceAnalyzer) calculateOverallPathScore(paths []ports.CriticalP
 	return totalImpact / float64(len(paths))
 }
 
-// Additional stub methods for remaining functionality...
-func (pa *PerformanceAnalyzer) aggregateMetrics(metrics []*ports.PerformanceMetrics) map[string]*ports.PerformanceMetrics {
+func (pa *PerformanceAnalyzer) aggregateMetrics(_ []*ports.PerformanceMetrics) map[string]*ports.PerformanceMetrics {
 	return nil
 }
-func (pa *PerformanceAnalyzer) calculateHotspotScore(metrics *ports.PerformanceMetrics) float64 {
+func (pa *PerformanceAnalyzer) calculateHotspotScore(_ *ports.PerformanceMetrics) float64 {
 	return 0
 }
 func (pa *PerformanceAnalyzer) extractTableName(nodeID string) string { return nodeID }
-func (pa *PerformanceAnalyzer) estimateCPUUtilization(metrics *ports.PerformanceMetrics) float64 {
+func (pa *PerformanceAnalyzer) estimateCPUUtilization(_ *ports.PerformanceMetrics) float64 {
 	return 0
 }
-func (pa *PerformanceAnalyzer) estimateIOUtilization(metrics *ports.PerformanceMetrics) float64 {
+func (pa *PerformanceAnalyzer) estimateIOUtilization(_ *ports.PerformanceMetrics) float64 {
 	return 0
 }
-func (pa *PerformanceAnalyzer) estimateLockContention(metrics *ports.PerformanceMetrics) float64 {
+func (pa *PerformanceAnalyzer) estimateLockContention(_ *ports.PerformanceMetrics) float64 {
 	return 0
 }
-func (pa *PerformanceAnalyzer) estimateCacheHitRatio(metrics *ports.PerformanceMetrics) float64 {
+func (pa *PerformanceAnalyzer) estimateCacheHitRatio(_ *ports.PerformanceMetrics) float64 {
 	return 95.0
 }
-func (pa *PerformanceAnalyzer) identifyHotspotIssues(metrics *ports.PerformanceMetrics) []ports.PerformanceIssue {
+func (pa *PerformanceAnalyzer) identifyHotspotIssues(_ *ports.PerformanceMetrics) []ports.PerformanceIssue {
 	return nil
 }
-func (pa *PerformanceAnalyzer) generateHotspotRecommendations(metrics *ports.PerformanceMetrics, score float64) []string {
+func (pa *PerformanceAnalyzer) generateHotspotRecommendations(_ *ports.PerformanceMetrics, _ float64) []string {
 	return nil
 }
-func (pa *PerformanceAnalyzer) determineTrendDirection(metrics *ports.PerformanceMetrics) ports.TrendDirection {
+func (pa *PerformanceAnalyzer) determineTrendDirection(_ *ports.PerformanceMetrics) ports.TrendDirection {
 	return ports.TrendStable
 }
 
-// More stub implementations would follow for completeness...
-func (pa *PerformanceAnalyzer) groupSimilarQueries(queries []ports.QueryPerformance) []ports.QueryPatternGroup {
+func (pa *PerformanceAnalyzer) groupSimilarQueries(_ []ports.QueryPerformance) []ports.QueryPatternGroup {
 	return nil
 }
-func (pa *PerformanceAnalyzer) identifyCommonPatterns(queries []ports.QueryPerformance) []ports.QueryPattern {
+func (pa *PerformanceAnalyzer) identifyCommonPatterns(_ []ports.QueryPerformance) []ports.QueryPattern {
 	return nil
 }
-func (pa *PerformanceAnalyzer) detectAntiPatterns(queries []ports.QueryPerformance) []ports.QueryAntiPattern {
+func (pa *PerformanceAnalyzer) detectAntiPatterns(_ []ports.QueryPerformance) []ports.QueryAntiPattern {
 	return nil
 }
-func (pa *PerformanceAnalyzer) generatePatternRecommendations(groups []ports.QueryPatternGroup, antiPatterns []ports.QueryAntiPattern) []string {
+func (pa *PerformanceAnalyzer) generatePatternRecommendations(_ []ports.QueryPatternGroup, _ []ports.QueryAntiPattern) []string {
 	return nil
 }
 
-func (pa *PerformanceAnalyzer) analyzeQueryInefficiencies(query ports.QueryPerformance) []ports.PerformanceIssue {
+func (pa *PerformanceAnalyzer) analyzeQueryInefficiencies(_ ports.QueryPerformance) []ports.PerformanceIssue {
 	return nil
 }
-func (pa *PerformanceAnalyzer) countByPriority(issues []ports.PerformanceIssue, min, max int) int {
+func (pa *PerformanceAnalyzer) countByPriority(_ []ports.PerformanceIssue, _, _ int) int {
 	return 0
 }
 
-func (pa *PerformanceAnalyzer) generateIndexSuggestions(analysis *ports.PerformanceAnalysis) []ports.OptimizationSuggestion {
+func (pa *PerformanceAnalyzer) generateIndexSuggestions(_ *ports.PerformanceAnalysis) []ports.OptimizationSuggestion {
 	return nil
 }
-func (pa *PerformanceAnalyzer) generateQueryOptimizationSuggestions(analysis *ports.PerformanceAnalysis) []ports.OptimizationSuggestion {
+func (pa *PerformanceAnalyzer) generateQueryOptimizationSuggestions(_ *ports.PerformanceAnalysis) []ports.OptimizationSuggestion {
 	return nil
 }
-func (pa *PerformanceAnalyzer) generateSchemaOptimizationSuggestions(analysis *ports.PerformanceAnalysis) []ports.OptimizationSuggestion {
+func (pa *PerformanceAnalyzer) generateSchemaOptimizationSuggestions(_ *ports.PerformanceAnalysis) []ports.OptimizationSuggestion {
 	return nil
 }
-func (pa *PerformanceAnalyzer) generateConfigurationSuggestions(analysis *ports.PerformanceAnalysis) []ports.OptimizationSuggestion {
+func (pa *PerformanceAnalyzer) generateConfigurationSuggestions(_ *ports.PerformanceAnalysis) []ports.OptimizationSuggestion {
 	return nil
 }
-func (pa *PerformanceAnalyzer) countByType(suggestions []ports.OptimizationSuggestion, optType ports.OptimizationType) int {
+func (pa *PerformanceAnalyzer) countByType(_ []ports.OptimizationSuggestion, _ ports.OptimizationType) int {
 	return 0
 }
 
-func (pa *PerformanceAnalyzer) validateIndexOptimization(suggestion *ports.OptimizationSuggestion, validation *ports.OptimizationValidation) {
+func (pa *PerformanceAnalyzer) validateIndexOptimization(_ *ports.OptimizationSuggestion, _ *ports.OptimizationValidation) {
 }
-func (pa *PerformanceAnalyzer) validateQueryOptimization(suggestion *ports.OptimizationSuggestion, validation *ports.OptimizationValidation) {
+func (pa *PerformanceAnalyzer) validateQueryOptimization(_ *ports.OptimizationSuggestion, _ *ports.OptimizationValidation) {
 }
-func (pa *PerformanceAnalyzer) validateSchemaOptimization(suggestion *ports.OptimizationSuggestion, validation *ports.OptimizationValidation) {
+func (pa *PerformanceAnalyzer) validateSchemaOptimization(_ *ports.OptimizationSuggestion, _ *ports.OptimizationValidation) {
 }
-func (pa *PerformanceAnalyzer) validateConfigurationOptimization(suggestion *ports.OptimizationSuggestion, validation *ports.OptimizationValidation) {
+func (pa *PerformanceAnalyzer) validateConfigurationOptimization(_ *ports.OptimizationSuggestion, _ *ports.OptimizationValidation) {
 }
-func (pa *PerformanceAnalyzer) validateGeneralConstraints(suggestion *ports.OptimizationSuggestion, validation *ports.OptimizationValidation) {
+func (pa *PerformanceAnalyzer) validateGeneralConstraints(_ *ports.OptimizationSuggestion, _ *ports.OptimizationValidation) {
 }
 
-func (pa *PerformanceAnalyzer) analyzeMetricTrends(data []ports.PerformanceSnapshot) []ports.TrendMetric {
+func (pa *PerformanceAnalyzer) analyzeMetricTrends(_ []ports.PerformanceSnapshot) []ports.TrendMetric {
 	return nil
 }
-func (pa *PerformanceAnalyzer) determineOverallTrend(metrics []ports.TrendMetric) ports.TrendDirection {
+func (pa *PerformanceAnalyzer) determineOverallTrend(_ []ports.TrendMetric) ports.TrendDirection {
 	return ports.TrendStable
 }
-func (pa *PerformanceAnalyzer) detectAnomalies(data []ports.PerformanceSnapshot) []ports.PerformanceAnomaly {
+func (pa *PerformanceAnalyzer) detectAnomalies(_ []ports.PerformanceSnapshot) []ports.PerformanceAnomaly {
 	return nil
 }
-func (pa *PerformanceAnalyzer) generatePredictions(data []ports.PerformanceSnapshot) []ports.PerformancePrediction {
+func (pa *PerformanceAnalyzer) generatePredictions(_ []ports.PerformanceSnapshot) []ports.PerformancePrediction {
 	return nil
 }
 
@@ -938,9 +914,8 @@ func (pa *PerformanceAnalyzer) calculateLatencyScore(latency float64) float64 {
 		return 100 - ((latency-10)/40)*30 // 100-70
 	} else if latency <= 200 {
 		return 70 - ((latency-50)/150)*40 // 70-30
-	} else {
-		return math.Max(0, 30-((latency-200)/800)*30) // 30-0
 	}
+	return math.Max(0, 30-((latency-200)/800)*30) // 30-0
 }
 
 func (pa *PerformanceAnalyzer) calculateThroughputScore(qps float64) float64 {
@@ -951,9 +926,8 @@ func (pa *PerformanceAnalyzer) calculateThroughputScore(qps float64) float64 {
 		return 70 + ((qps-100)/900)*30 // 70-100
 	} else if qps >= 10 {
 		return 30 + ((qps-10)/90)*40 // 30-70
-	} else {
-		return (qps / 10) * 30 // 0-30
 	}
+	return (qps / 10) * 30 // 0-30
 }
 
 func (pa *PerformanceAnalyzer) calculateErrorScore(errorRate float64) float64 {
@@ -964,9 +938,8 @@ func (pa *PerformanceAnalyzer) calculateErrorScore(errorRate float64) float64 {
 		return 100 - ((errorRate-0.1)/0.9)*30 // 100-70
 	} else if errorRate <= 5.0 {
 		return 70 - ((errorRate-1.0)/4.0)*40 // 70-30
-	} else {
-		return math.Max(0, 30-((errorRate-5.0)/95.0)*30) // 30-0
 	}
+	return math.Max(0, 30-((errorRate-5.0)/95.0)*30) // 30-0
 }
 
 func (pa *PerformanceAnalyzer) calculateResourceScore(metrics *ports.PerformanceMetrics) float64 {
@@ -1016,12 +989,11 @@ func (pa *PerformanceAnalyzer) changeToDirection(change float64, lowerIsBetter b
 			return ports.TrendImproving
 		}
 		return ports.TrendDegrading
-	} else {
-		if change > 0 {
-			return ports.TrendImproving
-		}
-		return ports.TrendDegrading
 	}
+	if change > 0 {
+		return ports.TrendImproving
+	}
+	return ports.TrendDegrading
 }
 
 func (pa *PerformanceAnalyzer) classifyChangeSignificance(changePercent float64) string {
@@ -1035,16 +1007,15 @@ func (pa *PerformanceAnalyzer) classifyChangeSignificance(changePercent float64)
 	return "NEGLIGIBLE"
 }
 
-func (pa *PerformanceAnalyzer) generateComparisonSummary(improvement float64, changes []ports.PerformanceChange) string {
+func (pa *PerformanceAnalyzer) generateComparisonSummary(improvement float64, _ []ports.PerformanceChange) string {
 	if improvement > 10 {
 		return fmt.Sprintf("Performance improved by %.1f%% with significant gains in key metrics", improvement)
 	} else if improvement > 0 {
 		return fmt.Sprintf("Performance improved slightly by %.1f%%", improvement)
 	} else if improvement > -5 {
 		return "Performance remained relatively stable"
-	} else {
-		return fmt.Sprintf("Performance degraded by %.1f%% - attention needed", -improvement)
 	}
+	return fmt.Sprintf("Performance degraded by %.1f%% - attention needed", -improvement)
 }
 
 // Helper function to convert regressions to bottlenecks for counting

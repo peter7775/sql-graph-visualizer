@@ -9,30 +9,36 @@
  * and graph visualization. Commercial use requires separate licensing.
  */
 
+// Package events contains domain event types and handling.
 package events
 
 import "time"
 
+// DomainEvent defines the interface for all domain events.
 type DomainEvent interface {
 	GetAggregateID() string
 	GetEventType() string
 	GetOccurredOn() time.Time
 }
 
+// BaseDomainEvent provides a base implementation for domain events.
 type BaseDomainEvent struct {
 	AggregateID string
 	EventType   string
 	OccurredOn  time.Time
 }
 
-func (e *BaseDomainEvent) GetAggregateID() string {
-	return e.AggregateID
+// GetAggregateID returns the aggregate ID associated with this event.
+func (b *BaseDomainEvent) GetAggregateID() string {
+	return b.AggregateID
 }
 
-func (e *BaseDomainEvent) GetEventType() string {
-	return e.EventType
+// GetEventType returns the type of this domain event.
+func (b *BaseDomainEvent) GetEventType() string {
+	return b.EventType
 }
 
-func (e *BaseDomainEvent) GetOccurredOn() time.Time {
-	return e.OccurredOn
+// GetOccurredOn returns the time when this event occurred.
+func (b *BaseDomainEvent) GetOccurredOn() time.Time {
+	return b.OccurredOn
 }

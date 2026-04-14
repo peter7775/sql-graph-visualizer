@@ -16,6 +16,7 @@ import (
 	"sql-graph-visualizer/internal/domain/aggregates/transform"
 )
 
+// TransformRuleRepository defines the interface for transformation rule persistence
 type TransformRuleRepository interface {
 	GetAllRules(ctx context.Context) ([]*transform.RuleAggregate, error)
 	SaveRule(ctx context.Context, rule *transform.RuleAggregate) error

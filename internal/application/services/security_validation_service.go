@@ -117,7 +117,6 @@ func (s *SecurityValidationService) validateConnectionParameters(
 
 	result.Validations["port_security"] = portCheck
 
-	// Validate credentials
 	credCheck := &models.ValidationCheck{
 		CheckName:   "credentials_security",
 		Passed:      true,
@@ -148,7 +147,7 @@ func (s *SecurityValidationService) validateConnectionParameters(
 
 // validateNetworkSecurity performs network-level security validation
 func (s *SecurityValidationService) validateNetworkSecurity(
-	ctx context.Context,
+	_ context.Context,
 	dbConfig *models.MySQLConfig,
 	result *models.SecurityValidationResult,
 ) error {
@@ -160,7 +159,6 @@ func (s *SecurityValidationService) validateNetworkSecurity(
 		Description: "Network connectivity and security validation",
 	}
 
-	// Test network connectivity with timeout
 	timeout := 5 * time.Second
 	conn, err := net.DialTimeout("tcp", fmt.Sprintf("%s:%d", dbConfig.Host, dbConfig.Port), timeout)
 	if err != nil {
@@ -170,7 +168,10 @@ func (s *SecurityValidationService) validateNetworkSecurity(
 		result.Validations["network_security"] = networkCheck
 		return nil
 	}
-	defer conn.Close()
+	defer func() {
+		// Ignore connection close error for validation
+		_ = conn.Close()
+	}()
 
 	// Check if connection is over public network
 	if s.isPublicIP(dbConfig.Host) && !dbConfig.SSLConfig.Enabled {
@@ -383,7 +384,6 @@ func (s *SecurityValidationService) isWeakPassword(password string) bool {
 		return true
 	}
 
-	// Check for common weak patterns
 	weakPatterns := []string{
 		`^password`,
 		`^123`,
@@ -436,7 +436,6 @@ func (s *SecurityValidationService) validateSSLCertificates(sslConfig models.SSL
 			return fmt.Errorf("failed to load SSL certificate: %w", err)
 		}
 
-		// Parse certificate to check validity
 		x509Cert, err := x509.ParseCertificate(cert.Certificate[0])
 		if err != nil {
 			return fmt.Errorf("failed to parse SSL certificate: %w", err)

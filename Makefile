@@ -134,6 +134,7 @@ dev: install generate format test
 sec-scan:
 	@echo "🔍 Running security scans..."
 	@echo "Installing security tools..."
+	go clean -cache -modcache -testcache
 	go install golang.org/x/vuln/cmd/govulncheck@latest
 	go install github.com/securego/gosec/v2/cmd/gosec@latest
 	@echo "Running govulncheck..."
