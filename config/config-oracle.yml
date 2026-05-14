@@ -1,0 +1,35 @@
+# Oracle Database Configuration Example
+# For use with SQL Graph Visualizer
+
+database:
+  type: "oracle"
+  oracle:
+    # Simple connection method
+    host: "localhost"
+    port: 1521
+    service_name: "XEPDB1"    # Or use sid: "XE"
+    # dsn: "(DESCRIPTION=...)"  # TNS descriptor (alternative)
+
+    username: "hr"
+    password: "password"
+
+    # Connection pool
+    max_open_conns: 10
+    max_idle_conns: 5
+    conn_max_lifetime: 60      # minutes
+
+    # Timeouts
+    connection_timeout: 30     # seconds
+    query_timeout: 30          # seconds
+
+    # Optional
+    timezone: "UTC"
+    application_name: "sql-graph-visualizer"
+    # wallet_location: "/path/to/wallet"  # For Oracle Wallet auth
+
+neo4j:
+  uri: "bolt://localhost:7687"
+  user: "neo4j"
+  password: "password"
+
+# Transformation rules will be auto-generated from Oracle schema

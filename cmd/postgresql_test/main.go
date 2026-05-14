@@ -36,7 +36,7 @@ func main() {
 		Schema:   "public",
 
 		// SSL configuration
-		SSLConfig: models.PostgreSQLSSLConfig{
+		SSLConfig: models.SSLConfig{
 			Mode:               "prefer",
 			InsecureSkipVerify: true,
 		},
@@ -80,7 +80,11 @@ func main() {
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Minute)
 	defer cancel()
 
-	db, err := repo.Connect(ctx, config)
+	dbConfig := models.DatabaseConfig{
+		Type:       models.DatabaseTypePostgreSQL,
+		PostgreSQL: config,
+	}
+	db, err := repo.Connect(ctx, dbConfig)
 	if err != nil {
 		log.Fatalf("❌ Failed to connect to PostgreSQL: %v", err)
 	}

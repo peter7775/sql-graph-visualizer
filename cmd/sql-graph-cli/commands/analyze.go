@@ -106,7 +106,7 @@ Supports both MySQL and PostgreSQL databases with database-specific optimization
 	}
 
 	// Database type and connection flags
-	cmd.Flags().StringVar(&dbType, "db-type", "mysql", "Database type: mysql, postgresql")
+	cmd.Flags().StringVar(&dbType, "db-type", "mysql", "Database type: mysql, postgresql, oracle")
 	cmd.Flags().StringVar(&host, "host", "localhost", "Database host")
 	cmd.Flags().IntVar(&port, "port", 0, "Database port (0 = auto-detect: MySQL=3306, PostgreSQL=5432)")
 	cmd.Flags().StringVar(&username, "username", "", "Database username")
@@ -199,7 +199,7 @@ func runAnalyze(_ *cobra.Command, opts analyzeOptions) error {
 	var config models.DatabaseConfig
 	switch opts.DBType {
 	case models.DatabaseTypeMySQL:
-		config = &models.MySQLConfig{
+		config = models.DatabaseConfig{Type: models.DatabaseTypeMySQL, MySQL: &models.MySQLConfig{
 			Host:           opts.Host,
 			Port:           opts.Port,
 			Username:       opts.Username,
@@ -232,10 +232,10 @@ func runAnalyze(_ *cobra.Command, opts analyzeOptions) error {
 					},
 				},
 			},
-		}
+		}}
 
 	case models.DatabaseTypePostgreSQL:
-		config = &models.PostgreSQLConfig{
+		config = models.DatabaseConfig{Type: models.DatabaseTypePostgreSQL, PostgreSQL: &models.PostgreSQLConfig{
 			Host:           opts.Host,
 			Port:           opts.Port,
 			Username:       opts.Username,
@@ -245,7 +245,7 @@ func runAnalyze(_ *cobra.Command, opts analyzeOptions) error {
 			ConnectionMode: models.ConnectionModeExisting,
 
 			// PostgreSQL-specific settings
-			SSLConfig: models.PostgreSQLSSLConfig{
+			SSLConfig: models.SSLConfig{
 				Mode:     opts.SSLMode,
 				CertFile: opts.SSLCertFile,
 				KeyFile:  opts.SSLKeyFile,
@@ -279,7 +279,26 @@ func runAnalyze(_ *cobra.Command, opts analyzeOptions) error {
 					},
 				},
 			},
+		}}
+
+	case models.DatabaseTypeOracle:
+		port := opts.Port
+		if port == 0 {
+			port = 1521
 		}
+		config = models.DatabaseConfig{Type: models.DatabaseTypeOracle, Oracle: &models.OracleConfig{
+			Host:        opts.Host,
+			Port:        port,
+			ServiceName: opts.Database,
+			Username:    opts.Username,
+			Password:    opts.Password,
+			Security: models.SecurityConfig{
+				ReadOnly:          true,
+				ConnectionTimeout: opts.ConnectionTimeout,
+				QueryTimeout:      opts.QueryTimeout,
+				MaxConnections:    opts.MaxConnections,
+			},
+		}}
 
 	default:
 		return fmt.Errorf("unsupported database type: %s", opts.DBType)
@@ -360,7 +379,7 @@ func outputSummary(result *models.UniversalDatabaseAnalysisResult, outputFile st
 		fmt.Fprintf(&output, "   Database Type: %s\n", strings.ToUpper(string(result.DatabaseType)))
 		fmt.Fprintf(&output, "   Database: %s@%s:%d/%s\n",
 			result.DatabaseInfo.User, result.DatabaseInfo.Host,
-		result.DatabaseInfo.Port, result.DatabaseInfo.Database)
+			result.DatabaseInfo.Port, result.DatabaseInfo.Database)
 		fmt.Fprintf(&output, "   Server Version: %s\n", result.DatabaseInfo.Version)
 	}
 	fmt.Fprintf(&output, "   Processing Time: %v\n", result.ProcessingDuration)
@@ -392,7 +411,7 @@ func outputSummary(result *models.UniversalDatabaseAnalysisResult, outputFile st
 				schemaInfo = fmt.Sprintf(" (%s)", table.Schema)
 			}
 			fmt.Fprintf(&output, "   %-20s%s - %d rows, %d columns\n",
-			table.Name, schemaInfo, table.EstimatedRows, len(table.Columns))
+				table.Name, schemaInfo, table.EstimatedRows, len(table.Columns))
 
 			// Show column details for first few tables
 			if len(result.SchemaAnalysis.Tables) <= 3 && len(table.Columns) > 0 {

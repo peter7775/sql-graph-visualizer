@@ -38,9 +38,9 @@ func NewPostgreSQLDatabaseRepository() repositories.DatabaseRepository {
 
 // Connect establishes connection to PostgreSQL database
 func (r *PostgreSQLDatabaseRepository) Connect(ctx context.Context, config models.DatabaseConfig) (*sql.DB, error) {
-	pgConfig, ok := config.(*models.PostgreSQLConfig)
+	pgConfig, ok := config.GetEffectiveConfig().(*models.PostgreSQLConfig)
 	if !ok {
-		return nil, fmt.Errorf("expected PostgreSQLConfig, got %T", config)
+		return nil, fmt.Errorf("expected PostgreSQLConfig, got %T", config.GetEffectiveConfig())
 	}
 
 	username := pgConfig.GetUsername()
@@ -555,7 +555,7 @@ func (r *PostgreSQLDatabaseRepository) GetDatabaseType() models.DatabaseType {
 
 // GetConnectionString builds PostgreSQL connection string from config.
 func (r *PostgreSQLDatabaseRepository) GetConnectionString(config models.DatabaseConfig) string {
-	pgConfig, ok := config.(*models.PostgreSQLConfig)
+	pgConfig, ok := config.GetEffectiveConfig().(*models.PostgreSQLConfig)
 	if !ok {
 		return ""
 	}

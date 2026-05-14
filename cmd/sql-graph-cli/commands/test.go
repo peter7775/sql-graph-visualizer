@@ -90,7 +90,7 @@ This command provides immediate feedback on:
 	}
 
 	// Database type and connection flags
-	cmd.Flags().StringVar(&dbType, "db-type", "mysql", "Database type: mysql, postgresql")
+	cmd.Flags().StringVar(&dbType, "db-type", "mysql", "Database type: mysql, postgresql, oracle")
 	cmd.Flags().StringVar(&host, "host", "localhost", "Database host")
 	cmd.Flags().IntVar(&port, "port", 0, "Database port (0 = auto-detect: MySQL=3306, PostgreSQL=5432)")
 	cmd.Flags().StringVar(&username, "username", "", "Database username")
@@ -160,7 +160,7 @@ func runTest(opts testOptions) error {
 	var config models.DatabaseConfig
 	switch opts.DBType {
 	case models.DatabaseTypeMySQL:
-		config = &models.MySQLConfig{
+		config = models.DatabaseConfig{Type: models.DatabaseTypeMySQL, MySQL: &models.MySQLConfig{
 			Host:           opts.Host,
 			Port:           opts.Port,
 			Username:       opts.Username,
@@ -180,10 +180,10 @@ func runTest(opts testOptions) error {
 				QueryTimeout:      30, // Short timeout for testing
 				MaxConnections:    1,  // Single connection for testing
 			},
-		}
+		}}
 
 	case models.DatabaseTypePostgreSQL:
-		config = &models.PostgreSQLConfig{
+		config = models.DatabaseConfig{Type: models.DatabaseTypePostgreSQL, PostgreSQL: &models.PostgreSQLConfig{
 			Host:           opts.Host,
 			Port:           opts.Port,
 			Username:       opts.Username,
@@ -193,7 +193,7 @@ func runTest(opts testOptions) error {
 			ConnectionMode: models.ConnectionModeExisting,
 
 			// PostgreSQL-specific settings
-			SSLConfig: models.PostgreSQLSSLConfig{
+			SSLConfig: models.SSLConfig{
 				Mode:     opts.SSLMode,
 				CertFile: opts.SSLCertFile,
 				KeyFile:  opts.SSLKeyFile,
@@ -213,7 +213,26 @@ func runTest(opts testOptions) error {
 				QueryTimeout:      30, // Short timeout for testing
 				MaxConnections:    1,  // Single connection for testing
 			},
+		}}
+
+	case models.DatabaseTypeOracle:
+		port := opts.Port
+		if port == 0 {
+			port = 1521
 		}
+		config = models.DatabaseConfig{Type: models.DatabaseTypeOracle, Oracle: &models.OracleConfig{
+			Host:        opts.Host,
+			Port:        port,
+			ServiceName: opts.Database,
+			Username:    opts.Username,
+			Password:    opts.Password,
+			Security: models.SecurityConfig{
+				ReadOnly:          true,
+				ConnectionTimeout: opts.ConnectionTimeout,
+				QueryTimeout:      30,
+				MaxConnections:    1,
+			},
+		}}
 
 	default:
 		return fmt.Errorf("unsupported database type: %s", opts.DBType)

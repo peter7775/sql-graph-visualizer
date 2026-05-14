@@ -37,10 +37,11 @@ func NewMySQLDatabaseRepository() repositories.DatabaseRepository {
 }
 
 // Connect establishes connection to MySQL database
+// Connect establishes connection to MySQL database
 func (r *MySQLDatabaseRepository) Connect(ctx context.Context, config models.DatabaseConfig) (*sql.DB, error) {
-	mysqlConfig, ok := config.(*models.MySQLConfig)
+	mysqlConfig, ok := config.GetEffectiveConfig().(*models.MySQLConfig)
 	if !ok {
-		return nil, fmt.Errorf("expected MySQLConfig, got %T", config)
+		return nil, fmt.Errorf("expected MySQLConfig, got %T", config.GetEffectiveConfig())
 	}
 
 	username := mysqlConfig.GetUsername()
@@ -469,7 +470,7 @@ func (r *MySQLDatabaseRepository) GetDatabaseType() models.DatabaseType {
 
 // GetConnectionString builds MySQL connection string from config.
 func (r *MySQLDatabaseRepository) GetConnectionString(config models.DatabaseConfig) string {
-	mysqlConfig, ok := config.(*models.MySQLConfig)
+	mysqlConfig, ok := config.GetEffectiveConfig().(*models.MySQLConfig)
 	if !ok {
 		return ""
 	}

@@ -40,11 +40,11 @@ func NewUniversalDatabaseService(
 	var securityValidator *SecurityValidationService
 	switch config.GetDatabaseType() {
 	case models.DatabaseTypeMySQL:
-		if mysqlConfig, ok := config.(*models.MySQLConfig); ok {
+		if mysqlConfig, ok := config.GetEffectiveConfig().(*models.MySQLConfig); ok {
 			securityValidator = NewSecurityValidationService(&mysqlConfig.Security)
 		}
 	case models.DatabaseTypePostgreSQL:
-		if pgConfig, ok := config.(*models.PostgreSQLConfig); ok {
+		if pgConfig, ok := config.GetEffectiveConfig().(*models.PostgreSQLConfig); ok {
 			securityValidator = NewSecurityValidationService(&pgConfig.Security)
 		}
 	}
@@ -82,7 +82,7 @@ func (s *UniversalDatabaseService) ConnectAndAnalyze(ctx context.Context) (*mode
 
 		switch s.dbType {
 		case models.DatabaseTypeMySQL:
-			if mysqlConfig, ok := s.config.(*models.MySQLConfig); ok {
+			if mysqlConfig, ok := s.config.GetEffectiveConfig().(*models.MySQLConfig); ok {
 				securityResult, err = s.securityValidator.ValidateConnectionSecurity(ctx, mysqlConfig)
 			}
 		case models.DatabaseTypePostgreSQL:
@@ -192,7 +192,7 @@ func (s *UniversalDatabaseService) TestConnection(ctx context.Context) (*models.
 	if s.securityValidator != nil {
 		switch s.dbType {
 		case models.DatabaseTypeMySQL:
-			if mysqlConfig, ok := s.config.(*models.MySQLConfig); ok {
+			if mysqlConfig, ok := s.config.GetEffectiveConfig().(*models.MySQLConfig); ok {
 				securityResult, err := s.securityValidator.ValidateConnectionSecurity(ctx, mysqlConfig)
 				if err != nil || !securityResult.IsValid {
 					testResult.ErrorMessage = "Connection failed security validation"
@@ -321,7 +321,7 @@ func (s *UniversalDatabaseService) generateAnalysisSummary(result *models.Univer
 	case models.DatabaseTypePostgreSQL:
 		summary.Recommendations = append(summary.Recommendations,
 			"PostgreSQL detected - consider using schema-specific filtering for better performance")
-		if pgConfig, ok := s.config.(*models.PostgreSQLConfig); ok {
+		if pgConfig, ok := s.config.GetEffectiveConfig().(*models.PostgreSQLConfig); ok {
 			if pgConfig.SSLConfig.Mode == "disable" {
 				summary.Warnings = append(summary.Warnings,
 					"SSL is disabled - consider enabling SSL for production databases")
