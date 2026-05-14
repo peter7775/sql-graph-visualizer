@@ -63,21 +63,34 @@ test-integration:
 		./internal/tests/integration/...
 	@echo "Integration tests completed"
 
-# Build the application
+# Build the unified CLI application
 build:
-	@echo "Building application..."
-	go build -o sql-graph-visualizer cmd/main.go
-	@echo "Build completed"
+	@echo "Building sql-graph-visualizer CLI..."
+	go build -ldflags "-X sql-graph-visualizer/internal/application/bootstrap.Version=v1.2.0" \
+		-o sql-graph-visualizer cmd/sql-graph-visualizer/main.go
+	@echo "Build completed: ./sql-graph-visualizer"
 
-# Run the application
+# Build legacy entry point (deprecated)
+build-legacy:
+	@echo "Building legacy entry point (deprecated)..."
+	go build -o sql-graph-visualizer-legacy cmd/main.go
+	@echo "Legacy build completed"
+
+# Run the application (new CLI)
 run:
 	@echo "Starting application..."
+	go run cmd/sql-graph-visualizer/main.go serve
+
+# Run legacy entry point (deprecated)
+run-legacy:
+	@echo "Starting application (legacy, deprecated)..."
 	go run cmd/main.go
 
 # Clean build artifacts
 clean:
 	@echo "Cleaning build artifacts..."
 	rm -f sql-graph-visualizer
+	rm -f sql-graph-visualizer-legacy
 	rm -f coverage.out
 	rm -f integration-coverage.out
 	@echo "Clean completed"

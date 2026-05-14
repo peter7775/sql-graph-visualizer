@@ -48,6 +48,9 @@ import (
 )
 
 func main() {
+	logrus.Warn("DEPRECATED: This entry point (cmd/main.go) is deprecated.")
+	logrus.Warn("Use 'sql-graph-visualizer serve' instead. See: sql-graph-visualizer --help")
+
 	ctx := context.Background()
 	logger := logrus.StandardLogger()
 
