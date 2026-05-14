@@ -6,7 +6,7 @@
 <tr>
 <td width="60%">
 
-A powerful Go application that transforms SQL database structures (MySQL, PostgresSQL) into Neo4j graph databases with interactive visualization and comprehensive performance analysis capabilities. Built with Domain Driven Design architecture and featuring flexible transformation rules, advanced performance benchmarking, and robust database connection management.
+A powerful Go application that transforms SQL database structures (MySQL, PostgreSQL, Oracle, SQL Server) into Neo4j graph databases with interactive visualization and comprehensive performance analysis capabilities. Built with Domain Driven Design architecture and featuring a unified CLI, flexible transformation rules, advanced performance benchmarking, and robust database connection management.
 
 </td>
 <td width="40%">
@@ -28,6 +28,8 @@ A powerful Go application that transforms SQL database structures (MySQL, Postgr
 
 [![MySQL](https://img.shields.io/badge/MySQL-8.0+-4479A1?logo=mysql&logoColor=white)](https://mysql.com/)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-13+-336791?logo=postgresql&logoColor=white)](https://postgresql.org/)
+[![SQL Server](https://img.shields.io/badge/SQL%20Server-2017+-CC2927?logo=microsoftsqlserver&logoColor=white)](https://www.microsoft.com/sql-server)
+[![Oracle](https://img.shields.io/badge/Oracle-19c+-F80000?logo=oracle&logoColor=white)](https://www.oracle.com/database/)
 [![Neo4j](https://img.shields.io/badge/Neo4j-4.4+-008CC1?logo=neo4j&logoColor=white)](https://neo4j.com/)
 [![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?logo=docker&logoColor=white)](https://hub.docker.com/)
 
@@ -70,7 +72,7 @@ A powerful Go application that transforms SQL database structures (MySQL, Postgr
 ## Features
 
 ### **Database Transformation**
-- **Complete SQL to Neo4j conversion** with support for MySQL and PostgreSQL
+- **Complete SQL to Neo4j conversion** with support for MySQL, PostgreSQL, Oracle, and SQL Server
 - **Flexible rule-based mapping** with custom transformation rules
 - **Custom SQL query support** - transform not just tables, but any SQL query result
 - **Relationship modeling** - define directional logical links between nodes
@@ -114,9 +116,13 @@ This project follows **Domain Driven Design (DDD)** principles with a clean laye
 ```
 sql-graph-visualizer/
 ├── cmd/
-│   └── main.go                 # Application entry point
+│   ├── sql-graph-visualizer/   # Unified CLI entry point (cobra)
+│   │   ├── main.go
+│   │   └── commands/           # CLI subcommands
+│   └── main.go                 # Legacy entry point (deprecated)
 ├── internal/
 │   ├── application/            # Application Layer
+│   │   ├── bootstrap/          # App initialization & lifecycle
 │   │   ├── ports/              # Interface definitions
 │   │   └── services/           # Application services
 │   ├── domain/                 # Domain Layer
@@ -126,7 +132,7 @@ sql-graph-visualizer/
 │   │   └── models/             # Domain models
 │   ├── infrastructure/         # Infrastructure Layer
 │   │   ├── middleware/         # HTTP middleware
-│   │   └── persistence/        # Database repositories
+│   │   └── persistence/        # Database repositories (MySQL, PostgreSQL, Oracle, MSSQL, Neo4j)
 │   └── interfaces/             # Interface Layer
 │       └── web/                # Web interface files
 ├── config/                     # Configuration files
@@ -136,8 +142,9 @@ sql-graph-visualizer/
 
 ### **Tech Stack**
 - **Language**: Go 1.24+
-- **Source Databases**: MySQL 8.0+, PostgreSQL 13+
+- **Source Databases**: MySQL 8.0+, PostgreSQL 13+, Oracle 19c+, SQL Server 2017+
 - **Graph Database**: Neo4j 4.4+
+- **CLI Framework**: Cobra with shell completion
 - **API Layer**: GraphQL (gqlgen), REST (Gorilla Mux)
 - **Frontend**: HTML5, JavaScript, Neovis.js
 - **Configuration**: Viper + YAML
@@ -151,7 +158,7 @@ sql-graph-visualizer/
 
 ### Prerequisites
 - Go 1.24 or higher
-- MySQL 8.0+ or PostgreSQL 13+
+- MySQL 8.0+, PostgreSQL 13+, Oracle 19c+, or SQL Server 2017+
 - Neo4j 4.4+ (or use Docker)
 - Git
 
@@ -175,12 +182,17 @@ cp config/config.yml.example config/config.yml
 
 ### 4. Run the Application
 ```bash
-# Development mode with debug logging
-LOG_LEVEL=debug go run cmd/main.go
+# Build the unified CLI
+make build
 
-# Or build and run
-go build -o sql-graph-visualizer cmd/main.go
-./sql-graph-visualizer
+# Run transformation only
+./sql-graph-visualizer transform
+
+# Start full server (transform + web UI + API)
+./sql-graph-visualizer serve
+
+# Start with specific config and debug logging
+./sql-graph-visualizer serve -c config/config.yml -v
 ```
 
 ### 5. Access the Application
@@ -195,7 +207,7 @@ go build -o sql-graph-visualizer cmd/main.go
 ```bash
 git clone https://github.com/peter7775/sql-graph-visualizer.git
 cd sql-graph-visualizer
-go build -o sql-graph-visualizer cmd/main.go
+make build
 ```
 
 ### Using Docker
@@ -764,6 +776,9 @@ Ready to contribute and earn equity? **[Create a Contributor Intent Issue](https
 - [x] **Automated bottleneck detection** and optimization suggestions
 - [x] **Robust connection management** with pooling and failover
 - [x] **Multi-database connection** support
+- [x] **Oracle Database Support** with full schema discovery
+- [x] **SQL Server (MSSQL) Support** with INFORMATION_SCHEMA + sys.* queries
+- [x] **Unified CLI** with cobra subcommands (`transform`, `serve`, `check`, `analyze`, `config`, `generate`, `version`)
 
 ### In Progress
 - [ ] **Real-time performance monitoring** dashboard
@@ -772,8 +787,6 @@ Ready to contribute and earn equity? **[Create a Contributor Intent Issue](https
 - [ ] **Enterprise authentication** and authorization
 
 ### Future Plans 
-- [ ] **Oracle Database Support**: Enterprise database integration
-- [ ] **SQL Server Support**: Microsoft ecosystem compatibility
 - [ ] **Reverse Transformation**: Neo4j to SQL conversion
 - [ ] **Advanced Analytics**: Graph algorithms integration (PageRank, Community Detection)
 - [ ] **Cloud Deployment**: Kubernetes manifests and Helm charts
@@ -823,7 +836,7 @@ processing:
 
 **Debug Mode**
 ```bash
-LOG_LEVEL=debug go run cmd/main.go
+./sql-graph-visualizer serve -v
 ```
 
 ### PostgreSQL Connection Issues
