@@ -26,8 +26,9 @@ WARP.md
 /.local-documentation/
 
 # Build artifacts and binaries
-sql-graph-visualizer
-sql-graph-cli
+/sql-graph-visualizer
+/sql-graph-visualizer-legacy
+/sql-graph-cli
 integration.test
 coverage.out
 # Allow railway-binary for deployment
