@@ -15,6 +15,7 @@ import (
 	"testing"
 
 	"sql-graph-visualizer/internal/domain/models"
+	"sql-graph-visualizer/internal/infrastructure/persistence/mssql"
 	"sql-graph-visualizer/internal/infrastructure/persistence/oracle"
 )
 
@@ -64,12 +65,28 @@ func TestCreateRepository_Unsupported(t *testing.T) {
 	}
 }
 
+func TestCreateRepository_MSSQL(t *testing.T) {
+	factory := NewDatabaseRepositoryFactory()
+	repo, err := factory.CreateRepository(models.DatabaseTypeMSSQL)
+	if err != nil {
+		t.Fatalf("expected no error, got: %v", err)
+	}
+	if repo == nil {
+		t.Fatal("expected non-nil repository")
+	}
+
+	_, ok := repo.(*mssql.MSSQLDatabaseRepository)
+	if !ok {
+		t.Errorf("expected *mssql.MSSQLDatabaseRepository, got %T", repo)
+	}
+}
+
 func TestGetSupportedDatabaseTypes(t *testing.T) {
 	factory := NewDatabaseRepositoryFactory()
 	types := factory.GetSupportedDatabaseTypes()
 
-	if len(types) != 3 {
-		t.Fatalf("expected 3 supported types, got %d", len(types))
+	if len(types) != 4 {
+		t.Fatalf("expected 4 supported types, got %d", len(types))
 	}
 
 	typeMap := make(map[models.DatabaseType]bool)
@@ -85,6 +102,9 @@ func TestGetSupportedDatabaseTypes(t *testing.T) {
 	}
 	if !typeMap[models.DatabaseTypeOracle] {
 		t.Error("Oracle should be in supported types")
+	}
+	if !typeMap[models.DatabaseTypeMSSQL] {
+		t.Error("MSSQL should be in supported types")
 	}
 }
 

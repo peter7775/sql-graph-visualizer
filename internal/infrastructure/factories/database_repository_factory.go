@@ -16,6 +16,7 @@ import (
 	"fmt"
 	"sql-graph-visualizer/internal/domain/models"
 	"sql-graph-visualizer/internal/domain/repositories"
+	"sql-graph-visualizer/internal/infrastructure/persistence/mssql"
 	"sql-graph-visualizer/internal/infrastructure/persistence/mysql"
 	"sql-graph-visualizer/internal/infrastructure/persistence/oracle"
 	"sql-graph-visualizer/internal/infrastructure/persistence/postgresql"
@@ -38,6 +39,8 @@ func (f *DatabaseRepositoryFactory) CreateRepository(dbType models.DatabaseType)
 		return postgresql.NewPostgreSQLDatabaseRepository(), nil
 	case models.DatabaseTypeOracle:
 		return oracle.NewOracleDatabaseRepository(), nil
+	case models.DatabaseTypeMSSQL:
+		return mssql.NewMSSQLDatabaseRepository(), nil
 	default:
 		return nil, fmt.Errorf("unsupported database type: %s", dbType)
 	}
@@ -49,5 +52,6 @@ func (f *DatabaseRepositoryFactory) GetSupportedDatabaseTypes() []models.Databas
 		models.DatabaseTypeMySQL,
 		models.DatabaseTypePostgreSQL,
 		models.DatabaseTypeOracle,
+		models.DatabaseTypeMSSQL,
 	}
 }
