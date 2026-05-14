@@ -32,8 +32,8 @@ import (
 	"sql-graph-visualizer/internal/infrastructure/persistence/neo4j"
 	postgresqlrepo "sql-graph-visualizer/internal/infrastructure/persistence/postgresql"
 
-	_ "github.com/go-sql-driver/mysql"
-	_ "github.com/lib/pq"
+	_ "github.com/go-sql-driver/mysql" // MySQL driver registration
+	_ "github.com/lib/pq"              // PostgreSQL driver registration
 )
 
 // Resources holds all initialized application resources.
@@ -70,7 +70,9 @@ func (r *Resources) Cleanup() {
 // If configPath is empty, it falls back to the default config.Load() behavior.
 func LoadConfig(configPath string) (*models.Config, error) {
 	if configPath != "" {
-		os.Setenv("CONFIG_PATH", configPath)
+		if err := os.Setenv("CONFIG_PATH", configPath); err != nil {
+			return nil, fmt.Errorf("failed to set CONFIG_PATH: %w", err)
+		}
 	}
 	cfg, err := config.Load()
 	if err != nil {
