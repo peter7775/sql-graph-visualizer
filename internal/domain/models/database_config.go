@@ -26,14 +26,17 @@ const (
 	DatabaseTypePostgreSQL DatabaseType = "postgresql"
 	// DatabaseTypeOracle represents Oracle database type
 	DatabaseTypeOracle DatabaseType = "oracle"
+	// DatabaseTypeMSSQL represents Microsoft SQL Server database type
+	DatabaseTypeMSSQL DatabaseType = "mssql"
 )
 
 // DatabaseSelector represents configuration for choosing database type
 type DatabaseSelector struct {
-	Type         DatabaseType      `yaml:"type"` // "mysql" or "postgresql"
+	Type         DatabaseType      `yaml:"type"` // "mysql", "postgresql", "oracle", or "mssql"
 	MySQL        *MySQLConfig      `yaml:"mysql,omitempty"`
 	PostgreSQL   *PostgreSQLConfig `yaml:"postgresql,omitempty"`
 	OracleConfig *OracleConfig     `yaml:"oracle,omitempty"`
+	MSSQL        *MSSQLConfig      `yaml:"mssql,omitempty"`
 }
 
 // DatabaseConfig represents database connection configuration
@@ -42,6 +45,7 @@ type DatabaseConfig struct {
 	MySQL      *MySQLConfig      `yaml:"mysql,omitempty" json:"mysql,omitempty"`
 	PostgreSQL *PostgreSQLConfig `yaml:"postgresql,omitempty" json:"postgresql,omitempty"`
 	Oracle     *OracleConfig     `yaml:"oracle,omitempty" json:"oracle,omitempty"`
+	MSSQL      *MSSQLConfig      `yaml:"mssql,omitempty" json:"mssql,omitempty"`
 }
 
 // PostgreSQLConfig represents PostgreSQL database configuration
@@ -110,6 +114,13 @@ func (ds *DatabaseSelector) GetActiveConfig() DatabaseConfig {
 			return DatabaseConfig{
 				Type:   DatabaseTypeOracle,
 				Oracle: ds.OracleConfig,
+			}
+		}
+	case DatabaseTypeMSSQL:
+		if ds.MSSQL != nil {
+			return DatabaseConfig{
+				Type:  DatabaseTypeMSSQL,
+				MSSQL: ds.MSSQL,
 			}
 		}
 	}
@@ -252,6 +263,10 @@ func (d *DatabaseConfig) GetHost() string {
 		if d.Oracle != nil {
 			return d.Oracle.Host
 		}
+	case DatabaseTypeMSSQL:
+		if d.MSSQL != nil {
+			return d.MSSQL.Host
+		}
 	}
 	return ""
 }
@@ -270,6 +285,10 @@ func (d *DatabaseConfig) GetPort() int {
 	case DatabaseTypeOracle:
 		if d.Oracle != nil {
 			return d.Oracle.Port
+		}
+	case DatabaseTypeMSSQL:
+		if d.MSSQL != nil {
+			return d.MSSQL.Port
 		}
 	}
 	return 0
@@ -290,6 +309,10 @@ func (d *DatabaseConfig) GetUsername() string {
 		if d.Oracle != nil {
 			return d.Oracle.Username
 		}
+	case DatabaseTypeMSSQL:
+		if d.MSSQL != nil {
+			return d.MSSQL.Username
+		}
 	}
 	return ""
 }
@@ -305,6 +328,10 @@ func (d *DatabaseConfig) GetDataFiltering() DataFilteringConfig {
 		if d.PostgreSQL != nil {
 			return d.PostgreSQL.DataFiltering
 		}
+	case DatabaseTypeMSSQL:
+		if d.MSSQL != nil {
+			return d.MSSQL.DataFiltering
+		}
 	}
 	return DataFilteringConfig{}
 }
@@ -318,6 +345,8 @@ func (d *DatabaseConfig) GetEffectiveConfig() interface{} {
 		return d.PostgreSQL
 	case DatabaseTypeOracle:
 		return d.Oracle
+	case DatabaseTypeMSSQL:
+		return d.MSSQL
 	default:
 		return nil
 	}
@@ -341,6 +370,11 @@ func (d *DatabaseConfig) Validate() error {
 			return fmt.Errorf("oracle configuration is required when type is oracle")
 		}
 		return d.Oracle.Validate()
+	case DatabaseTypeMSSQL:
+		if d.MSSQL == nil {
+			return fmt.Errorf("mssql configuration is required when type is mssql")
+		}
+		return d.MSSQL.Validate()
 	default:
 		return fmt.Errorf("unsupported database type: %s", d.Type)
 	}
@@ -350,7 +384,7 @@ func (d *DatabaseConfig) Validate() error {
 // IsSupported checks if the database type is supported
 func (dt DatabaseType) IsSupported() bool {
 	switch dt {
-	case DatabaseTypeMySQL, DatabaseTypePostgreSQL, DatabaseTypeOracle:
+	case DatabaseTypeMySQL, DatabaseTypePostgreSQL, DatabaseTypeOracle, DatabaseTypeMSSQL:
 		return true
 	default:
 		return false
@@ -368,4 +402,98 @@ func (ds *DatabaseSelector) Validate() error {
 // String returns string representation of database type
 func (dt DatabaseType) String() string {
 	return string(dt)
+}
+
+// MSSQLConfig represents Microsoft SQL Server database configuration.
+//
+//nolint:revive // MSSQLConfig is descriptive and follows project naming conventions
+type MSSQLConfig struct {
+	Host     string `yaml:"host" json:"host"`
+	Port     int    `yaml:"port" json:"port"`
+	Instance string `yaml:"instance,omitempty" json:"instance,omitempty"` // Named instance (e.g. SQLEXPRESS)
+	Username string `yaml:"username" json:"username"`
+	Password string `yaml:"password" json:"password"`
+	Database string `yaml:"database" json:"database"`
+	Schema   string `yaml:"schema,omitempty" json:"schema,omitempty"` // Default: dbo
+
+	Encrypt                 string `yaml:"encrypt,omitempty" json:"encrypt,omitempty"` // disable, false, true, strict
+	TrustServerCertificate  bool   `yaml:"trust_server_certificate,omitempty" json:"trust_server_certificate,omitempty"`
+	ApplicationName         string `yaml:"application_name,omitempty" json:"application_name,omitempty"`
+	ConnectionTimeout       int    `yaml:"connection_timeout,omitempty" json:"connection_timeout,omitempty"` // seconds
+	QueryTimeout            int    `yaml:"query_timeout,omitempty" json:"query_timeout,omitempty"`           // seconds
+	MaxConnections          int    `yaml:"max_connections,omitempty" json:"max_connections,omitempty"`
+
+	ConnectionMode     ConnectionMode           `yaml:"connection_mode,omitempty" json:"connection_mode,omitempty"`
+	DataFiltering      DataFilteringConfig      `yaml:"data_filtering,omitempty" json:"data_filtering,omitempty"`
+	Security           SecurityConfig           `yaml:"security" json:"security"`
+	AutoGeneratedRules AutoGeneratedRulesConfig `yaml:"auto_generated_rules,omitempty" json:"auto_generated_rules,omitempty"`
+}
+
+// Validate checks if MSSQL configuration is valid.
+func (c *MSSQLConfig) Validate() error {
+	if c.Username == "" {
+		return fmt.Errorf("mssql username is required")
+	}
+	if c.Password == "" {
+		return fmt.Errorf("mssql password is required")
+	}
+	if c.Host == "" {
+		return fmt.Errorf("mssql host is required")
+	}
+	if c.Database == "" {
+		return fmt.Errorf("mssql database is required")
+	}
+	if c.Port <= 0 {
+		c.Port = 1433
+	}
+	if c.Schema == "" {
+		c.Schema = "dbo"
+	}
+	if c.ConnectionTimeout <= 0 {
+		c.ConnectionTimeout = 30
+	}
+	if c.QueryTimeout <= 0 {
+		c.QueryTimeout = 30
+	}
+	if c.MaxConnections <= 0 {
+		c.MaxConnections = 10
+	}
+	if c.ApplicationName == "" {
+		c.ApplicationName = "sql-graph-visualizer"
+	}
+	if c.Security.MaxConnections <= 0 {
+		c.Security.MaxConnections = c.MaxConnections
+	}
+	if c.Security.ConnectionTimeout <= 0 {
+		c.Security.ConnectionTimeout = c.ConnectionTimeout
+	}
+	if c.Security.QueryTimeout <= 0 {
+		c.Security.QueryTimeout = c.QueryTimeout
+	}
+	return nil
+}
+
+// BuildConnectionString creates a SQL Server connection URL.
+func (c *MSSQLConfig) BuildConnectionString() string {
+	host := c.Host
+	if c.Instance != "" {
+		host = fmt.Sprintf("%s\\%s", c.Host, c.Instance)
+	}
+
+	connStr := fmt.Sprintf("sqlserver://%s:%s@%s:%d?database=%s",
+		c.Username, c.Password, host, c.Port, c.Database)
+
+	if c.Encrypt != "" {
+		connStr += fmt.Sprintf("&encrypt=%s", c.Encrypt)
+	}
+	if c.TrustServerCertificate {
+		connStr += "&TrustServerCertificate=true"
+	}
+	if c.ApplicationName != "" {
+		connStr += fmt.Sprintf("&app+name=%s", c.ApplicationName)
+	}
+	if c.ConnectionTimeout > 0 {
+		connStr += fmt.Sprintf("&connection+timeout=%d", c.ConnectionTimeout)
+	}
+	return connStr
 }

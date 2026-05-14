@@ -32,8 +32,9 @@ import (
 	"sql-graph-visualizer/internal/infrastructure/persistence/neo4j"
 	postgresqlrepo "sql-graph-visualizer/internal/infrastructure/persistence/postgresql"
 
-	_ "github.com/go-sql-driver/mysql" // MySQL driver registration
-	_ "github.com/lib/pq"              // PostgreSQL driver registration
+	_ "github.com/go-sql-driver/mysql"    // MySQL driver registration
+	_ "github.com/lib/pq"                 // PostgreSQL driver registration
+	_ "github.com/microsoft/go-mssqldb"   // SQL Server driver registration
 )
 
 // Resources holds all initialized application resources.
@@ -206,6 +207,24 @@ func (r *Resources) connectDatabase(_ context.Context) error {
 			}
 			r.DBPort = mysqlrepo.NewMySQLDatabasePort(r.DB)
 			logrus.Info("Successfully connected to MySQL database")
+
+		case models.DatabaseTypeMSSQL:
+			mssqlConfig := cfg.Database.MSSQL
+			if err := mssqlConfig.Validate(); err != nil {
+				return fmt.Errorf("invalid MSSQL configuration: %w", err)
+			}
+			connString := mssqlConfig.BuildConnectionString()
+			logrus.Infof("Connecting to SQL Server: %s@%s:%d/%s",
+				mssqlConfig.Username, mssqlConfig.Host, mssqlConfig.Port, mssqlConfig.Database)
+			r.DB, err = sql.Open("sqlserver", connString)
+			if err != nil {
+				return fmt.Errorf("failed to connect to SQL Server: %w", err)
+			}
+			// Use a generic DatabasePort — for now reuse MySQL port adapter
+			// as both use database/sql underneath. Full MSSQL-specific port
+			// can be added later if needed.
+			r.DBPort = mysqlrepo.NewMySQLDatabasePort(r.DB)
+			logrus.Info("Successfully connected to SQL Server database")
 
 		default:
 			return fmt.Errorf("unsupported database type: %s", cfg.Database.Type)

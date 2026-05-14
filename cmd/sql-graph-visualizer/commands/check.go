@@ -89,7 +89,7 @@ This command provides immediate feedback on:
 	}
 
 	// Database type and connection flags
-	cmd.Flags().StringVar(&dbType, "db-type", "mysql", "Database type: mysql, postgresql, oracle")
+	cmd.Flags().StringVar(&dbType, "db-type", "mysql", "Database type: mysql, postgresql, oracle, mssql")
 	cmd.Flags().StringVar(&host, "host", "localhost", "Database host")
 	cmd.Flags().IntVar(&port, "port", 0, "Database port (0 = auto-detect: MySQL=3306, PostgreSQL=5432)")
 	cmd.Flags().StringVar(&username, "username", "", "Database username")
@@ -152,6 +152,8 @@ func runTest(opts testOptions) error {
 			opts.Port = 3306
 		case models.DatabaseTypePostgreSQL:
 			opts.Port = 5432
+		case models.DatabaseTypeMSSQL:
+			opts.Port = 1433
 		}
 	}
 
@@ -211,6 +213,26 @@ func runTest(opts testOptions) error {
 				ConnectionTimeout: opts.ConnectionTimeout,
 				QueryTimeout:      30, // Short timeout for testing
 				MaxConnections:    1,  // Single connection for testing
+			},
+		}}
+
+	case models.DatabaseTypeMSSQL:
+		config = models.DatabaseConfig{Type: models.DatabaseTypeMSSQL, MSSQL: &models.MSSQLConfig{
+			Host:           opts.Host,
+			Port:           opts.Port,
+			Username:       opts.Username,
+			Password:       opts.Password,
+			Database:       opts.Database,
+			ConnectionMode: models.ConnectionModeExisting,
+			DataFiltering: models.DataFilteringConfig{
+				SchemaDiscovery:  true,
+				RowLimitPerTable: 1,
+			},
+			Security: models.SecurityConfig{
+				ReadOnly:          true,
+				ConnectionTimeout: opts.ConnectionTimeout,
+				QueryTimeout:      30,
+				MaxConnections:    1,
 			},
 		}}
 
