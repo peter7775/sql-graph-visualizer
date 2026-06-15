@@ -2,6 +2,8 @@ module sql-graph-visualizer
 
 go 1.26.2
 
+toolchain go1.26.4
+
 require (
 	github.com/99designs/gqlgen v0.17.91
 	github.com/go-sql-driver/mysql v1.9.3
