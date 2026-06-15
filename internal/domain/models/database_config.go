@@ -416,12 +416,12 @@ type MSSQLConfig struct {
 	Database string `yaml:"database" json:"database"`
 	Schema   string `yaml:"schema,omitempty" json:"schema,omitempty"` // Default: dbo
 
-	Encrypt                 string `yaml:"encrypt,omitempty" json:"encrypt,omitempty"` // disable, false, true, strict
-	TrustServerCertificate  bool   `yaml:"trust_server_certificate,omitempty" json:"trust_server_certificate,omitempty"`
-	ApplicationName         string `yaml:"application_name,omitempty" json:"application_name,omitempty"`
-	ConnectionTimeout       int    `yaml:"connection_timeout,omitempty" json:"connection_timeout,omitempty"` // seconds
-	QueryTimeout            int    `yaml:"query_timeout,omitempty" json:"query_timeout,omitempty"`           // seconds
-	MaxConnections          int    `yaml:"max_connections,omitempty" json:"max_connections,omitempty"`
+	Encrypt                string `yaml:"encrypt,omitempty" json:"encrypt,omitempty"` // disable, false, true, strict
+	TrustServerCertificate bool   `yaml:"trust_server_certificate,omitempty" json:"trust_server_certificate,omitempty"`
+	ApplicationName        string `yaml:"application_name,omitempty" json:"application_name,omitempty"`
+	ConnectionTimeout      int    `yaml:"connection_timeout,omitempty" json:"connection_timeout,omitempty"` // seconds
+	QueryTimeout           int    `yaml:"query_timeout,omitempty" json:"query_timeout,omitempty"`           // seconds
+	MaxConnections         int    `yaml:"max_connections,omitempty" json:"max_connections,omitempty"`
 
 	ConnectionMode     ConnectionMode           `yaml:"connection_mode,omitempty" json:"connection_mode,omitempty"`
 	DataFiltering      DataFilteringConfig      `yaml:"data_filtering,omitempty" json:"data_filtering,omitempty"`

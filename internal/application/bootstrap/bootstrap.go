@@ -32,23 +32,23 @@ import (
 	"sql-graph-visualizer/internal/infrastructure/persistence/neo4j"
 	postgresqlrepo "sql-graph-visualizer/internal/infrastructure/persistence/postgresql"
 
-	_ "github.com/go-sql-driver/mysql"    // MySQL driver registration
-	_ "github.com/lib/pq"                 // PostgreSQL driver registration
-	_ "github.com/microsoft/go-mssqldb"   // SQL Server driver registration
+	_ "github.com/go-sql-driver/mysql"  // MySQL driver registration
+	_ "github.com/lib/pq"               // PostgreSQL driver registration
+	_ "github.com/microsoft/go-mssqldb" // SQL Server driver registration
 )
 
 // Resources holds all initialized application resources.
 type Resources struct {
-	Config            *models.Config
-	DB                *sql.DB
-	DBPort            ports.DatabasePort
-	Neo4jRepo         ports.Neo4jPort
-	RealNeo4jRepo     *neo4j.Neo4jRepository
-	TransformService  *transform.TransformService
-	DeploymentAdapter ports.DeploymentPort
+	Config              *models.Config
+	DB                  *sql.DB
+	DBPort              ports.DatabasePort
+	Neo4jRepo           ports.Neo4jPort
+	RealNeo4jRepo       *neo4j.Neo4jRepository
+	TransformService    *transform.TransformService
+	DeploymentAdapter   ports.DeploymentPort
 	PerformanceServices *PerformanceServiceContainer
-	MetricsInjector   *performance.SimpleMetricsInjector
-	cleanupFuncs      []func()
+	MetricsInjector     *performance.SimpleMetricsInjector
+	cleanupFuncs        []func()
 }
 
 // PerformanceServiceContainer holds all performance-related services.

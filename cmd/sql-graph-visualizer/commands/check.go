@@ -56,7 +56,7 @@ This command provides immediate feedback on:
 - Authentication
 - Basic permissions
 - Server information`,
-	Example: `  # Quick MySQL connection test
+		Example: `  # Quick MySQL connection test
   sql-graph-visualizer check --db-type mysql --host localhost --username user --password pass --database mydb
 
   # PostgreSQL connection test
