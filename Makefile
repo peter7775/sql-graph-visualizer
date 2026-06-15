@@ -77,7 +77,9 @@ build-legacy:
 	@echo "Legacy build completed"
 
 # Run the application (new CLI)
-run:
+run: docker-up
+	@echo "Waiting for Neo4j to be ready..."
+	@sleep 15
 	@echo "Starting application..."
 	go run cmd/sql-graph-visualizer/main.go serve
 
@@ -98,7 +100,7 @@ clean:
 # Start Docker services
 docker-up:
 	@echo "Starting Docker services..."
-	docker-compose up -d neo4j-test
+	docker-compose up -d neo4j-test mysql-test
 	@echo "Docker services started"
 
 # Stop Docker services
