@@ -359,7 +359,12 @@ func initPerformanceServices(cfg *models.Config, db *sql.DB) *PerformanceService
 	realtimeMonitor := performance.NewRealtimePerformanceMonitor(logger, realtimeConfig, psAdapter, performanceAnalyzer, graphMapper)
 
 	benchmarkConfig := createBenchmarkConfig(cfg)
+	// The source/graph repositories are intentionally nil here: the current
+	// benchmark execution path runs sysbench, which connects to the database
+	// directly via the configured DatabaseURL. Repositories will be wired in when
+	// benchmark-result persistence is added.
 	benchmarkService := performance.NewBenchmarkService(nil, nil, nil, performanceAnalyzer, logger, benchmarkConfig)
+	registerBenchmarkTools(benchmarkService, cfg, logger)
 
 	if cfg.Performance.Realtime != nil && cfg.Performance.Realtime.Enabled {
 		ctx := context.Background()
@@ -431,19 +436,108 @@ func createRealtimeConfig(cfg *models.Config) *performance.RealtimeMonitorConfig
 }
 
 func createBenchmarkConfig(cfg *models.Config) *performance.BenchmarkServiceConfig {
-	config := &performance.BenchmarkServiceConfig{}
-	if cfg.Performance.Benchmarks != nil {
-		defaultDuration, _ := time.ParseDuration(cfg.Performance.Benchmarks.DefaultDuration)
-		maxDuration, _ := time.ParseDuration(cfg.Performance.Benchmarks.MaxDuration)
-		resultsRetention, _ := time.ParseDuration(cfg.Performance.Benchmarks.ResultsRetention)
-		config.DefaultTimeout = defaultDuration
-		config.MaxDuration = maxDuration
-		config.RetainResults = resultsRetention
-		config.CleanupInterval = 15 * time.Minute
-		if cfg.Performance.Benchmarks.Limits != nil {
-			config.MaxConcurrentRuns = cfg.Performance.Benchmarks.Limits.MaxConcurrentBenchmarks
-			config.MaxResultsInMemory = cfg.Performance.Benchmarks.Limits.MemoryLimitMB
+	// Start from sane defaults so safety limits and execution defaults are always
+	// populated, then override with user configuration where provided.
+	config := performance.DefaultBenchmarkServiceConfig()
+
+	// Default the benchmark target to the configured source database so that
+	// benchmark requests work without explicitly specifying a connection.
+	if url, dbType := benchmarkDatabaseURL(cfg); url != "" {
+		config.DefaultDatabaseURL = url
+		config.DefaultDatabaseType = dbType
+	}
+
+	if b := cfg.Performance.Benchmarks; b != nil {
+		if d, err := time.ParseDuration(b.DefaultDuration); err == nil && d > 0 {
+			config.DefaultTestDuration = d
+		}
+		if d, err := time.ParseDuration(b.MaxDuration); err == nil && d > 0 {
+			config.MaxDuration = d
+		}
+		if d, err := time.ParseDuration(b.ResultsRetention); err == nil && d > 0 {
+			config.RetainResults = d
+		}
+		if b.Limits != nil {
+			if b.Limits.MaxConcurrentBenchmarks > 0 {
+				config.MaxConcurrentRuns = b.Limits.MaxConcurrentBenchmarks
+			}
+			if b.Limits.MemoryLimitMB > 0 {
+				config.MaxResultsInMemory = b.Limits.MemoryLimitMB
+			}
+		}
+		if b.Sysbench != nil && b.Sysbench.Defaults != nil {
+			if b.Sysbench.Defaults.Threads > 0 {
+				config.DefaultThreads = b.Sysbench.Defaults.Threads
+			}
+			if b.Sysbench.Defaults.TableSize > 0 {
+				config.DefaultTableSize = b.Sysbench.Defaults.TableSize
+			}
+			if b.Sysbench.Defaults.Time > 0 {
+				config.DefaultTestDuration = time.Duration(b.Sysbench.Defaults.Time) * time.Second
+			}
 		}
 	}
+
+	// The execution context must comfortably outlast a default-length run.
+	if config.DefaultTimeout <= config.DefaultTestDuration {
+		config.DefaultTimeout = config.DefaultTestDuration + 5*time.Minute
+	}
+	if config.MaxDuration < config.DefaultTestDuration {
+		config.MaxDuration = config.DefaultTestDuration
+	}
+
 	return config
+}
+
+// registerBenchmarkTools wires the available benchmark tools (currently
+// sysbench) into the benchmark service. Unavailable tools are logged and
+// skipped so the application keeps running without benchmarking support.
+func registerBenchmarkTools(svc *performance.BenchmarkService, cfg *models.Config, logger *logrus.Logger) {
+	if b := cfg.Performance.Benchmarks; b != nil && !b.Enabled {
+		logrus.Info("Benchmarking disabled in configuration; skipping benchmark tool registration")
+		return
+	}
+
+	sysbenchAdapter := performance.NewSysbenchAdapter(logger, createSysbenchConfig(cfg))
+	if err := svc.RegisterBenchmarkTool("sysbench", sysbenchAdapter); err != nil {
+		logrus.Warnf("Sysbench benchmark tool unavailable; sysbench benchmarks disabled: %v", err)
+		return
+	}
+	logrus.Info("Registered sysbench benchmark tool")
+}
+
+// createSysbenchConfig maps user configuration onto the sysbench adapter config,
+// starting from the adapter defaults.
+func createSysbenchConfig(cfg *models.Config) *performance.SysbenchConfig {
+	sbConfig := performance.DefaultSysbenchConfig()
+
+	if b := cfg.Performance.Benchmarks; b != nil && b.Sysbench != nil {
+		if b.Sysbench.ExecutablePath != "" {
+			sbConfig.BinaryPath = b.Sysbench.ExecutablePath
+		}
+		if d := b.Sysbench.Defaults; d != nil && d.TableSize > 0 {
+			sbConfig.DefaultTableSize = d.TableSize
+		}
+	}
+
+	return sbConfig
+}
+
+// benchmarkDatabaseURL builds a sysbench-compatible database URL and driver type
+// from the active source database configuration.
+func benchmarkDatabaseURL(cfg *models.Config) (string, string) {
+	dbCfg := cfg.GetDatabaseConfig()
+	switch dbCfg.Type {
+	case models.DatabaseTypePostgreSQL:
+		if pg := dbCfg.PostgreSQL; pg != nil {
+			return fmt.Sprintf("postgresql://%s:%s@%s:%d/%s",
+				pg.GetUsername(), pg.GetPassword(), pg.GetHost(), pg.GetPort(), pg.GetDatabase()), "postgresql"
+		}
+	case models.DatabaseTypeMySQL:
+		if my := dbCfg.MySQL; my != nil {
+			return fmt.Sprintf("mysql://%s:%s@%s:%d/%s",
+				my.GetUsername(), my.GetPassword(), my.GetHost(), my.GetPort(), my.GetDatabase()), "mysql"
+		}
+	}
+	return "", ""
 }

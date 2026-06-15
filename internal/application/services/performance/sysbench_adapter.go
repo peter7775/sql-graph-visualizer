@@ -568,6 +568,13 @@ func (s *SysbenchAdapter) classifyPerformanceImpact(avgLatency float64) string {
 	return "HIGH"
 }
 
+// DefaultSysbenchConfig returns the default sysbench adapter configuration.
+// Exported so callers (e.g. bootstrap) can start from sane defaults and
+// override individual fields from user configuration.
+func DefaultSysbenchConfig() *SysbenchConfig {
+	return defaultSysbenchConfig()
+}
+
 // defaultSysbenchConfig returns default sysbench configuration
 func defaultSysbenchConfig() *SysbenchConfig {
 	return &SysbenchConfig{
