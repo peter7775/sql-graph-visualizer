@@ -216,7 +216,7 @@ func (c *Config) GetDatabaseType() DatabaseType {
 
 // PerformanceConfig represents the main performance .monitoring configuration
 type PerformanceConfig struct {
-	Monitoring    *MonitoringConfig    `yaml:".monitoring,omitempty"`
+	Monitoring    *MonitoringConfig    `yaml:"monitoring,omitempty"`
 	Realtime      *RealtimeConfig      `yaml:"realtime,omitempty"`
 	Benchmarks    *BenchmarksConfig    `yaml:"benchmarks,omitempty"`
 	Visualization *VisualizationConfig `yaml:"visualization,omitempty"`

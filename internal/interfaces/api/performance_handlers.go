@@ -44,10 +44,22 @@ type Error struct {
 
 // BenchmarkRequest represents a benchmark execution request
 type BenchmarkRequest struct {
-	BenchmarkType string                 `json:"benchmark_type"`
-	Config        map[string]interface{} `json:"config"`
-	Duration      int                    `json:"duration_seconds"`
-	Description   string                 `json:"description,omitempty"`
+	// BenchmarkType is kept for backward compatibility. Historically the
+	// dashboard sends the tool name here (e.g. "sysbench"); it may also carry a
+	// sysbench test type (e.g. "oltp_read_write").
+	BenchmarkType string `json:"benchmark_type"`
+	Tool          string `json:"tool,omitempty"`
+	TestType      string `json:"test_type,omitempty"`
+	Threads       int    `json:"threads,omitempty"`
+	Tables        int    `json:"tables,omitempty"`
+	TableSize     int    `json:"table_size,omitempty"`
+	WarmupSeconds int    `json:"warmup_seconds,omitempty"`
+	DatabaseURL   string `json:"database_url,omitempty"`
+	DatabaseType  string `json:"database_type,omitempty"`
+
+	Config      map[string]interface{} `json:"config"`
+	Duration    int                    `json:"duration_seconds"`
+	Description string                 `json:"description,omitempty"`
 }
 
 // BenchmarkStatusResponse represents benchmark status
@@ -158,20 +170,25 @@ func (ph *PerformanceHandlers) StartBenchmark(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	// Validate request
-	if req.BenchmarkType == "" {
-		ph.sendErrorResponse(w, http.StatusBadRequest, "validation_error", "benchmark_type is required", "")
-		return
-	}
+	// Resolve the tool to run and the sysbench test type. For backward
+	// compatibility the dashboard sends the tool name in benchmark_type; it may
+	// also carry a test type. An empty test type lets the service apply its
+	// configured default.
+	tool, testType := resolveBenchmarkRequest(req)
 
-	// Create benchmark configuration from ports
 	config := ports.BenchmarkConfig{
-		TestType:     req.BenchmarkType,
+		TestType:     testType,
 		Duration:     time.Duration(req.Duration) * time.Second,
+		Threads:      req.Threads,
+		Tables:       req.Tables,
+		TableSize:    req.TableSize,
+		WarmupTime:   time.Duration(req.WarmupSeconds) * time.Second,
+		DatabaseType: req.DatabaseType,
+		DatabaseURL:  req.DatabaseURL,
 		CustomParams: req.Config,
 	}
 
-	executionID, err := ph.benchmarkService.ExecuteBenchmark(r.Context(), config, req.BenchmarkType)
+	executionID, err := ph.benchmarkService.ExecuteBenchmark(r.Context(), config, tool)
 	if err != nil {
 		ph.sendErrorResponse(w, http.StatusInternalServerError, "benchmark_error", "Failed to start benchmark", err.Error())
 		return
@@ -183,8 +200,9 @@ func (ph *PerformanceHandlers) StartBenchmark(w http.ResponseWriter, r *http.Req
 		StartTime: time.Now(),
 		Progress:  0.0,
 		Metadata: map[string]interface{}{
-			"benchmark_type": req.BenchmarkType,
-			"duration":       req.Duration,
+			"tool":      tool,
+			"test_type": testType,
+			"duration":  req.Duration,
 		},
 	}
 
@@ -193,6 +211,36 @@ func (ph *PerformanceHandlers) StartBenchmark(w http.ResponseWriter, r *http.Req
 		Data:      response,
 		Timestamp: time.Now(),
 	})
+}
+
+// knownBenchmarkTools enumerates tool selectors accepted in the legacy
+// benchmark_type field for backward compatibility with the dashboard.
+var knownBenchmarkTools = map[string]bool{"sysbench": true, "custom": true}
+
+// resolveBenchmarkRequest determines the benchmark tool and (optional) sysbench
+// test type from a request. It preserves backward compatibility with the
+// dashboard, which sends the tool name in benchmark_type. An empty test type is
+// returned when none is specified, letting the service apply its default.
+func resolveBenchmarkRequest(req BenchmarkRequest) (tool, testType string) {
+	tool = req.Tool
+	testType = req.TestType
+
+	switch {
+	case tool != "":
+		// explicit tool wins
+	case knownBenchmarkTools[req.BenchmarkType]:
+		tool = req.BenchmarkType
+	case req.BenchmarkType != "":
+		// benchmark_type carried a test type; default the tool to sysbench
+		tool = "sysbench"
+		if testType == "" {
+			testType = req.BenchmarkType
+		}
+	default:
+		tool = "sysbench"
+	}
+
+	return tool, testType
 }
 
 // GetBenchmark handles requests to get a specific benchmark.

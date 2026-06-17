@@ -50,6 +50,15 @@ type BenchmarkServiceConfig struct {
 	MaxDuration  time.Duration `yaml:"max_duration" json:"max_duration"`
 	MaxThreads   int           `yaml:"max_threads" json:"max_threads"`
 
+	// Default execution parameters (applied when a request omits them)
+	DefaultDatabaseURL  string        `yaml:"default_database_url" json:"default_database_url"`
+	DefaultDatabaseType string        `yaml:"default_database_type" json:"default_database_type"`
+	DefaultTestType     string        `yaml:"default_test_type" json:"default_test_type"`
+	DefaultTestDuration time.Duration `yaml:"default_test_duration" json:"default_test_duration"`
+	DefaultThreads      int           `yaml:"default_threads" json:"default_threads"`
+	DefaultTables       int           `yaml:"default_tables" json:"default_tables"`
+	DefaultTableSize    int           `yaml:"default_table_size" json:"default_table_size"`
+
 	// Tool configurations
 	EnabledTools       []string               `yaml:"enabled_tools" json:"enabled_tools"`
 	ToolConfigurations map[string]interface{} `yaml:"tool_configurations" json:"tool_configurations"`
@@ -142,6 +151,10 @@ func (s *BenchmarkService) GetAvailableTools() []string {
 
 // ExecuteBenchmark runs a benchmark with the specified configuration
 func (s *BenchmarkService) ExecuteBenchmark(ctx context.Context, config ports.BenchmarkConfig, toolName string) (string, error) {
+	// Fill in any unset fields from the service defaults (database URL, threads,
+	// table sizing, duration, ...) so callers can submit a minimal request.
+	s.applyConfigDefaults(&config)
+
 	// Validate configuration
 	if err := s.validateConfig(config); err != nil {
 		return "", fmt.Errorf("invalid configuration: %w", err)
@@ -163,7 +176,10 @@ func (s *BenchmarkService) ExecuteBenchmark(ctx context.Context, config ports.Be
 	}
 
 	executionID := uuid.New().String()
-	executionCtx, cancel := context.WithTimeout(ctx, s.config.DefaultTimeout)
+	// Detach from the caller's context: benchmarks run asynchronously and must
+	// outlive the originating HTTP request. Cancellation is handled explicitly
+	// through CancelBenchmark/StopBenchmark via the stored cancel function.
+	executionCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), s.config.DefaultTimeout)
 
 	execution := &BenchmarkExecution{
 		ID:         executionID,
@@ -357,6 +373,33 @@ func (s *BenchmarkService) validateConfig(config ports.BenchmarkConfig) error {
 	return nil
 }
 
+// applyConfigDefaults fills unset benchmark configuration fields from the
+// service defaults so that minimal requests (e.g. only a tool name) still
+// produce a runnable configuration.
+func (s *BenchmarkService) applyConfigDefaults(config *ports.BenchmarkConfig) {
+	if config.TestType == "" {
+		config.TestType = s.config.DefaultTestType
+	}
+	if config.DatabaseURL == "" {
+		config.DatabaseURL = s.config.DefaultDatabaseURL
+	}
+	if config.DatabaseType == "" {
+		config.DatabaseType = s.config.DefaultDatabaseType
+	}
+	if config.Threads <= 0 {
+		config.Threads = s.config.DefaultThreads
+	}
+	if config.Tables <= 0 {
+		config.Tables = s.config.DefaultTables
+	}
+	if config.TableSize <= 0 {
+		config.TableSize = s.config.DefaultTableSize
+	}
+	if config.Duration <= 0 {
+		config.Duration = s.config.DefaultTestDuration
+	}
+}
+
 func (s *BenchmarkService) getBenchmarkTool(name string) (ports.BenchmarkToolPort, error) {
 	s.toolsMutex.RLock()
 	defer s.toolsMutex.RUnlock()
@@ -473,17 +516,30 @@ func (s *BenchmarkService) cleanupOldExecutions() {
 // defaultBenchmarkServiceConfig returns default configuration
 func defaultBenchmarkServiceConfig() *BenchmarkServiceConfig {
 	return &BenchmarkServiceConfig{
-		MaxConcurrentRuns:  5,
-		DefaultTimeout:     30 * time.Minute,
-		CleanupInterval:    15 * time.Minute,
-		RetainResults:      2 * time.Hour,
-		MaxResultsInMemory: 100,
-		MaxTableSize:       1000000, // 1M rows
-		MaxDuration:        1 * time.Hour,
-		MaxThreads:         64,
-		EnabledTools:       []string{"sysbench", "custom"},
-		ToolConfigurations: make(map[string]interface{}),
+		MaxConcurrentRuns:   5,
+		DefaultTimeout:      30 * time.Minute,
+		CleanupInterval:     15 * time.Minute,
+		RetainResults:       2 * time.Hour,
+		MaxResultsInMemory:  100,
+		MaxTableSize:        1000000, // 1M rows
+		MaxDuration:         1 * time.Hour,
+		MaxThreads:          64,
+		EnabledTools:        []string{"sysbench", "custom"},
+		ToolConfigurations:  make(map[string]interface{}),
+		DefaultDatabaseType: "mysql",
+		DefaultTestType:     "oltp_read_write",
+		DefaultTestDuration: 60 * time.Second,
+		DefaultThreads:      4,
+		DefaultTables:       4,
+		DefaultTableSize:    10000,
 	}
+}
+
+// DefaultBenchmarkServiceConfig returns the default benchmark service
+// configuration. Exported so callers (e.g. bootstrap) can start from sane
+// defaults and override individual fields from user configuration.
+func DefaultBenchmarkServiceConfig() *BenchmarkServiceConfig {
+	return defaultBenchmarkServiceConfig()
 }
 
 // Additional methods for integration with existing graph services
