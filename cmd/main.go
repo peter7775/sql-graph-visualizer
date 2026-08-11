@@ -274,6 +274,7 @@ func main() {
 			performanceServices.GraphMapper,
 			performanceServices.RealtimeMonitor,
 			performanceServices.PSAdapter,
+			neo4jRepo,
 		)
 		performanceHandlers.RegisterRoutes(router)
 		logrus.Info("Performance API routes registered")
