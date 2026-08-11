@@ -114,7 +114,7 @@ func (s *FileBenchmarkResultStore) Save(_ context.Context, result *ports.Benchma
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	f, err := os.OpenFile(s.filePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o640)
+	f, err := os.OpenFile(s.filePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o600)
 	if err != nil {
 		return fmt.Errorf("failed to open benchmark results file %q: %w", s.filePath, err)
 	}
@@ -207,7 +207,7 @@ func (s *FileBenchmarkResultStore) DeleteOlderThan(_ context.Context, cutoff tim
 // Callers must hold s.mu.
 func (s *FileBenchmarkResultStore) rewriteLocked() error {
 	tmpPath := s.filePath + ".tmp"
-	f, err := os.OpenFile(tmpPath, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0o640)
+	f, err := os.OpenFile(tmpPath, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0o600)
 	if err != nil {
 		return fmt.Errorf("failed to create temporary benchmark results file: %w", err)
 	}

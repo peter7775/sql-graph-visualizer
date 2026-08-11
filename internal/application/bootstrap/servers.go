@@ -374,7 +374,6 @@ func initPerformanceServices(cfg *models.Config, db *sql.DB) *PerformanceService
 		benchmarkService.SetResultStore(store)
 	}
 
-
 	if cfg.Performance.Realtime != nil && cfg.Performance.Realtime.Enabled {
 		ctx := context.Background()
 		if err := realtimeMonitor.Start(ctx); err != nil {

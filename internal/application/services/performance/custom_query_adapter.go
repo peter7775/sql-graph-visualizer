@@ -94,7 +94,7 @@ func (c *CustomQueryAdapter) Execute(ctx context.Context, config ports.Benchmark
 		wg.Add(1)
 		go func(seed int64) {
 			defer wg.Done()
-			rnd := rand.New(rand.NewSource(seed)) //nolint:gosec // non-cryptographic query selection
+			rnd := rand.New(rand.NewSource(seed)) // #nosec G404 -- non-cryptographic query selection, used only to pick which benchmark query to run
 			for time.Now().Before(deadline) {
 				select {
 				case <-ctx.Done():

@@ -229,8 +229,10 @@ func (s *BenchmarkService) ExecuteBenchmark(ctx context.Context, config ports.Be
 	// Register execution
 	s.registerExecution(execution)
 
-	// Start execution asynchronously
-	go s.executeAsync(execution)
+	// Start execution asynchronously. executeAsync intentionally persists
+	// results with context.Background() (see below) since the request-scoped
+	// execution.Context may already be cancelled/timed out by completion time.
+	go s.executeAsync(execution) // #nosec G118 -- executeAsync uses context.Background() deliberately for post-execution persistence
 
 	s.logger.WithFields(logrus.Fields{
 		"execution_id": executionID,

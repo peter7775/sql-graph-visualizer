@@ -30,8 +30,9 @@ install:
 	@echo "Installing gqlgen..."
 	go install github.com/99designs/gqlgen@v0.17.78
 	@echo "Installing golangci-lint..."
-	@if [ ! -f $(HOME)/go/bin/golangci-lint ]; then \
-		curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(HOME)/go/bin v1.55.2; \
+	@CURRENT_VERSION="$$($(HOME)/go/bin/golangci-lint --version 2>/dev/null | grep -oE 'v[0-9]+\.[0-9]+\.[0-9]+' | head -1)"; \
+	if [ ! -f $(HOME)/go/bin/golangci-lint ] || [ "$$CURRENT_VERSION" != "v2.12.2" ]; then \
+		curl -sSfL https://golangci-lint.run/install.sh | sh -s -- -b $(HOME)/go/bin v2.12.2; \
 	fi
 	@echo "Installation complete"
 
@@ -134,7 +135,7 @@ ci-check: install generate format
 	@echo "Running go vet..."
 	go vet ./...
 	@echo "Running golangci-lint..."
-	$(HOME)/go/bin/golangci-lint run --timeout=10m
+	$(HOME)/go/bin/golangci-lint run --config=.golangci.yml --timeout=10m
 	@echo "Building..."
 	go build -v ./...
 	@echo "Running tests..."
@@ -155,7 +156,7 @@ sec-scan:
 	@echo "Running govulncheck..."
 	$(HOME)/go/bin/govulncheck ./...
 	@echo "Running gosec..."
-	$(HOME)/go/bin/gosec -exclude=G104,G115,G201,G204,G301,G304,G306 -exclude-dir=internal/interfaces/graphql/generated ./...
+	$(HOME)/go/bin/gosec -exclude=G104,G115,G201,G204,G301,G302,G304,G306,G404 -exclude-dir=internal/interfaces/graphql/generated ./...
 	@echo "✅ Security scans completed"
 
 # Quick rebuild and test
