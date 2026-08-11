@@ -87,13 +87,13 @@ A powerful Go application that transforms SQL database structures (MySQL, Postgr
 - **Filter and search** capabilities within the graph
 
 ### **Performance Analysis & Benchmarking**
-- **Database performance benchmarking** with sysbench, pgbench integration
+- **Database performance benchmarking** with sysbench and custom SQL query sets
+- **Live MySQL Performance Schema** metrics collection (statements, table I/O, indexes, connections)
 - **Automated bottleneck detection** and hotspot analysis
-- **Query performance analysis** with optimization suggestions
-- **Critical path identification** through database relationships
-- **Performance trend analysis** with historical data tracking
-- **Custom benchmark scenarios** for specific workload testing
-- **Real-time performance monitoring** with visual load mapping
+- **Query pattern analysis** with optimization suggestions
+- **Performance regression detection** across historical benchmark runs
+- **Benchmark result persistence** with JSON/CSV export and summary reporting
+- **Real-time performance monitoring** via WebSocket with visual graph load mapping
 
 ### **Enterprise Architecture**
 - **Domain Driven Design (DDD)** - clean, maintainable codebase
@@ -151,7 +151,7 @@ sql-graph-visualizer/
 - **Logging**: Logrus with structured logging
 - **Testing**: Testify framework
 - **Containerization**: Docker & Docker Compose
-- **Performance Tools**: sysbench, pgbench integration
+- **Performance Tools**: sysbench, custom SQL benchmark suites
 - **Connection Management**: Database/sql with connection pooling
 
 ## Quick Start
@@ -324,69 +324,62 @@ Create Neo4j relationships between nodes:
 
 ## Performance Benchmarking
 
-The application includes comprehensive performance benchmarking capabilities to analyze database performance and optimize graph transformations.
+The application includes comprehensive performance benchmarking capabilities to analyze database performance and optimize graph transformations. Benchmarks are configured under `performance.benchmarks` in `config/config.yml` and executed via the [Performance Benchmarking API](#performance-benchmarking-api).
 
 ### Supported Benchmark Tools
 
 #### sysbench (MySQL/PostgreSQL)
 ```yaml
-benchmark:
-  sysbench:
+performance:
+  benchmarks:
     enabled: true
-    executable_path: "/usr/bin/sysbench"
-    test_types:
-      - "oltp_read_write"
-      - "oltp_read_only"
-      - "oltp_write_only"
-      - "select_random_points"
+    default_duration: "2m"
+    max_duration: "30m"
+    results_dir: "data/performance/benchmarks"
+    sysbench:
+      executable_path: "/usr/bin/sysbench"
+      defaults:
+        table_size: 100000
+        threads: 4
+        time: 120
 ```
+Supported sysbench test types: `oltp_read_write`, `oltp_read_only`, `oltp_write_only`, `oltp_point_select`, `oltp_insert`, `oltp_update_index`, `oltp_update_non_index`, `oltp_delete`, `select_random_points`, `select_random_ranges`, `bulk_insert`.
 
-#### pgbench (PostgreSQL)
-```yaml
-benchmark:
-  pgbench:
-    enabled: true
-    executable_path: "/usr/bin/pgbench"
-    default_scale: 10
-    test_duration: "5m"
-```
+### Custom Query Benchmarks
 
-### Custom Benchmark Configuration
+Define named sets of SELECT/INSERT/UPDATE queries to benchmark against the active source database (DDL and DELETE/TRUNCATE statements are rejected as a safety measure):
 
 ```yaml
-custom_benchmarks:
-  - name: "user_relationships"
-    description: "Test user-to-team relationship queries"
-    duration: "2m"
-    threads: 4
-    queries:
-      - query: "SELECT u.*, t.name FROM users u JOIN team_members tm ON u.id = tm.user_id JOIN teams t ON tm.team_id = t.id WHERE u.is_active = 1"
-        weight: 70
-        description: "Active user team memberships"
-      - query: "SELECT COUNT(*) FROM users u JOIN team_members tm ON u.id = tm.user_id GROUP BY tm.team_id"
-        weight: 30
-        description: "Team member counts"
+performance:
+  benchmarks:
+    custom_queries:
+      - name: "user_relationships"
+        description: "Test user-to-team relationship queries"
+        duration: "2m"
+        threads: 4
+        queries:
+          - query: "SELECT u.*, t.name FROM users u JOIN team_members tm ON u.id = tm.user_id JOIN teams t ON tm.team_id = t.id WHERE u.is_active = 1"
+            weight: 70
+            description: "Active user team memberships"
+          - query: "SELECT COUNT(*) FROM users u JOIN team_members tm ON u.id = tm.user_id GROUP BY tm.team_id"
+            weight: 30
+            description: "Team member counts"
 ```
+Run it with `POST /api/performance/benchmarks` using `"tool": "custom"` and `"query_set": "user_relationships"`.
 
 ### Performance Analysis Features
 
-#### Automated Bottleneck Detection
-- **Query performance analysis** with execution plan inspection
-- **Index usage monitoring** and missing index detection
-- **Join efficiency analysis** with optimization suggestions
-- **Lock contention detection** and deadlock prevention
+#### Automated Bottleneck & Hotspot Detection
+- **Bottleneck identification** from benchmark metrics and slow queries
+- **Hotspot detection** across benchmark history, scored by latency/frequency/resource weight
+- **Query pattern analysis** to group similar queries and flag anti-patterns
+- **Regression detection** comparing the latest run against the previous one
 
-#### Hotspot Analysis
-- **Table access patterns** identification
-- **High-load relationship** detection
-- **Resource utilization** tracking (CPU, I/O, memory)
-- **Critical path analysis** through database relationships
-
-#### Optimization Suggestions
-- **Automatic index recommendations** based on query patterns
-- **Query optimization hints** with before/after comparisons
-- **Schema improvement** suggestions
-- **Connection pooling** optimization
+#### Optimization Suggestions & Reporting
+- **Automatic optimization suggestions** (indexing, query rewrites, schema, configuration)
+- **Overall performance scoring** with a rating per benchmark run
+- **Summary reports** via `GET /api/performance/reports/summary` combining bottlenecks, hotspots, query patterns, and regressions
+- **Export** persisted benchmark history as JSON or CSV via `GET /api/performance/export`
 
 ## Database Connection Management
 
@@ -469,125 +462,114 @@ connection_pools:
 
 #### Core Graph API
 ```bash
-# Get current configuration
-GET /api/config
+# Get application configuration
+GET /config
 
-# Get graph data (JSON format)
+# Get graph data (JSON format: nodes + relationships)
 GET /api/graph
-
-# Get specific node data
-GET /api/nodes/{type}
-
-# Get relationships
-GET /api/relationships/{type}
 
 # Health check
 GET /api/health
+
+# Deployment/debug info
+GET /api/debug
 ```
 
 #### Performance Benchmarking API
 ```bash
+# List benchmark executions
+GET /api/performance/benchmarks
+
 # Start a new benchmark
-POST /api/performance/benchmark
+POST /api/performance/benchmarks
 {
   "tool": "sysbench",
   "test_type": "oltp_read_write",
-  "duration": "5m",
+  "duration_seconds": 300,
   "threads": 4,
   "database_type": "mysql"
 }
+# For custom query sets: {"tool": "custom", "query_set": "user_relationships", "duration_seconds": 120}
 
-# Get benchmark results
-GET /api/performance/benchmark/{execution_id}
+# Get benchmark status / results
+GET /api/performance/benchmarks/{id}
+GET /api/performance/benchmarks/{id}/results
 
-# List all benchmark executions
-GET /api/performance/benchmarks
+# Stop a running benchmark
+POST /api/performance/benchmarks/{id}/stop
 
-# Get performance analysis
-GET /api/performance/analysis/{execution_id}
+# Current Performance Schema snapshot (optionally with graph data)
+GET /api/performance/data?include_graph=true
 
-# Get bottlenecks
-GET /api/performance/bottlenecks
+# Persisted benchmark history
+GET /api/performance/data/history
 
-# Get optimization suggestions
-GET /api/performance/optimizations
-```
+# Performance data mapped onto the graph
+GET /api/performance/data/graph
 
-#### Database Connection API
-```bash
-# Get connection status
-GET /api/connections/status
+# Metrics summaries
+GET /api/performance/metrics/summary
+GET /api/performance/metrics/tables
+GET /api/performance/metrics/queries
 
-# Test database connection
-POST /api/connections/test
-{
-  "type": "postgresql",
-  "host": "localhost",
-  "port": 5432,
-  "database": "testdb"
-}
+# Summarized report: bottlenecks, hotspots, query patterns, regressions, optimizations
+GET /api/performance/reports/summary
 
-# Get connection pool metrics
-GET /api/connections/metrics
+# Export persisted benchmark history
+GET /api/performance/export?format=json   # or format=csv
+
+# Real-time monitoring
+GET /api/performance/realtime/status
+GET /ws/performance   # WebSocket stream of live graph performance data
 ```
 
 ### GraphQL Schema
 
-The GraphQL endpoint provides a flexible query interface:
+The GraphQL endpoint provides a flexible query interface for graph data:
 
 ```graphql
-# Basic graph queries
 query {
-  nodes(type: "User") {
+  graph {
+    nodes { id label properties }
+    relationships { from to type properties }
+  }
+  nodesByType(type: "User") {
     id
     properties
   }
-  relationships(type: "MEMBER_OF") {
-    source
-    target
+  node(id: "123") {
+    id
+    label
     properties
   }
-}
-
-# Performance analysis queries
-query {
-  performanceAnalysis(executionId: "abc123") {
-    overallScore {
-      score
-      rating
-    }
-    bottlenecks {
-      type
-      severity
-      description
-      recommendations
-    }
-    optimizations {
-      type
-      title
-      impact {
-        latencyImprovement
-        throughputImprovement
-      }
-    }
+  relationshipsByType(type: "MEMBER_OF") {
+    from
+    to
+    properties
+  }
+  searchNodes(query: "alice") {
+    id
+    label
+  }
+  config {
+    neo4j { uri username }
   }
 }
 
-# Database connections status
-query {
-  connectionStatus {
-    database
-    status
-    poolMetrics {
-      activeConnections
-      idleConnections
-      maxConnections
-    }
+mutation {
+  transformData
+}
+
+subscription {
+  graphUpdates {
+    nodes { id label }
   }
 }
 ```
 
 **GraphQL Playground**: http://localhost:8080/graphql
+
+> Performance benchmarking and monitoring are exposed via the [REST API](#performance-benchmarking-api); the GraphQL schema currently covers graph data only.
 
 ## Visualization
 
@@ -772,8 +754,11 @@ Ready to contribute and earn equity? **[Create a Contributor Intent Issue](https
 - [x] Web-based visualization
 - [x] Docker containerization
 - [x] CI/CD pipeline
-- [x] **Performance benchmarking integration** (sysbench, pgbench)
-- [x] **Automated bottleneck detection** and optimization suggestions
+- [x] **Performance benchmarking integration** (sysbench, custom SQL query sets)
+- [x] **MySQL Performance Schema** live monitoring with statement/table/index/connection metrics
+- [x] **Automated bottleneck & hotspot detection** with optimization suggestions
+- [x] **Real-time performance dashboard** with WebSocket updates and graph load overlays
+- [x] **Benchmark result persistence** with historical reporting and JSON/CSV export
 - [x] **Robust connection management** with pooling and failover
 - [x] **Multi-database connection** support
 - [x] **Oracle Database Support** with full schema discovery
@@ -781,9 +766,7 @@ Ready to contribute and earn equity? **[Create a Contributor Intent Issue](https
 - [x] **Unified CLI** with cobra subcommands (`transform`, `serve`, `check`, `analyze`, `config`, `generate`, `version`)
 
 ### In Progress
-- [ ] **Real-time performance monitoring** dashboard
-- [ ] **Advanced visualization features** with performance overlays
-- [ ] **Trend analysis** and predictive performance insights
+- [ ] **Predictive performance insights** exposed via API (trend/anomaly detection engine implemented, REST endpoint pending)
 - [ ] **Enterprise authentication** and authorization
 
 ### Future Plans 
@@ -876,23 +859,18 @@ brew install sysbench
 sysbench --version
 ```
 
-**pgbench Configuration**
+**Custom Query Benchmark Rejected**
 ```bash
-# Initialize pgbench tables
-pgbench -i -s 10 your_database
-
-# Test pgbench connection
-pgbench -c 4 -j 2 -T 60 your_database
+# Only SELECT/INSERT/UPDATE statements are allowed in custom query sets.
+# DDL (CREATE/DROP/ALTER) and DELETE/TRUNCATE statements are rejected.
 ```
 
 **Benchmark Permission Errors**
-```yaml
-# Ensure benchmark user has sufficient permissions
-benchmark:
-  database_permissions:
-    - "SELECT, INSERT, UPDATE, DELETE"
-    - "CREATE TABLE, DROP TABLE"
-    - "REFERENCES, INDEX"
+```bash
+# Ensure the database user configured for benchmarking has sufficient
+# permissions for the statements used:
+# - sysbench OLTP tests need SELECT, INSERT, UPDATE, DELETE, CREATE TABLE, DROP TABLE
+# - custom query benchmarks need SELECT, INSERT, UPDATE only
 ```
 
 ### Connection Pool Issues
