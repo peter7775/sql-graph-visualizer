@@ -9,6 +9,12 @@ class GraphVisualizer {
     constructor() {
         this.viz = null;
         this.network = null;
+        this.currentGraphNodes = [];
+        this.currentGraphEdges = [];
+        this.originalNodeVisuals = new Map();
+        this.originalEdgeVisuals = new Map();
+        this.performanceOverlayActive = false;
+        this.performanceData = null;
         this.initialize();
     }
 
@@ -31,6 +37,11 @@ class GraphVisualizer {
 
             const nodes = new vis.DataSet();
             const edges = new vis.DataSet();
+
+            this.currentGraphNodes = [];
+            this.currentGraphEdges = [];
+            this.originalNodeVisuals = new Map();
+            this.originalEdgeVisuals = new Map();
 
             if (graphData.nodes) {
                 graphData.nodes.forEach(node => {
@@ -71,14 +82,21 @@ class GraphVisualizer {
                         size: nodeSize,
                         properties: node.properties
                     });
+
+                    this.currentGraphNodes.push({
+                        id: node.id,
+                        label: node.label,
+                        properties: node.properties || {}
+                    });
                 });
             }
 
             if (graphData.relationships) {
-                graphData.relationships.forEach(rel => {
+                graphData.relationships.forEach((rel, relIndex) => {
                     let edgeColor = '#848484';
                     let edgeWidth = 2;
                     let edgeLabel = rel.type;
+                    const edgeId = `edge-${relIndex}`;
 
                     switch(rel.type) {
                         case 'LEADS': edgeColor = '#D0021B'; edgeWidth = 3; break;
@@ -102,6 +120,7 @@ class GraphVisualizer {
                     }
 
                     edges.add({
+                        id: edgeId,
                         from: rel.from,
                         to: rel.to,
                         label: edgeLabel,
@@ -113,8 +132,17 @@ class GraphVisualizer {
                         width: edgeWidth,
                         arrows: { to: { enabled: true, scaleFactor: 0.8 } }
                     });
+
+                    this.currentGraphEdges.push({
+                        id: edgeId,
+                        from: rel.from,
+                        to: rel.to,
+                        type: rel.type
+                    });
                 });
             }
+
+            this.captureOriginalVisuals(nodes, edges);
 
             console.log('Processed nodes:', nodes.get().length);
             console.log('Processed edges:', edges.get().length);
@@ -137,10 +165,31 @@ class GraphVisualizer {
 
             this.applyThemeToNetwork();
 
+            const perfToggle = document.getElementById('perfOverlayToggle');
+            if (perfToggle && perfToggle.checked) {
+                this.enablePerformanceOverlay();
+            }
 
         } catch (error) {
             console.error('Error initializing visualization:', error);
         }
+    }
+
+    captureOriginalVisuals(nodes, edges) {
+        nodes.get().forEach(n => {
+            this.originalNodeVisuals.set(n.id, {
+                size: n.size,
+                color: n.color,
+                borderWidth: n.borderWidth,
+                shadow: n.shadow
+            });
+        });
+        edges.get().forEach(e => {
+            this.originalEdgeVisuals.set(e.id, {
+                width: e.width,
+                color: e.color
+            });
+        });
     }
 
     getThemeOptions() {
@@ -189,6 +238,7 @@ class GraphVisualizer {
         this.initializeControlButtons();
         this.initializeSearch();
         this.initializeLayoutSelector();
+        this.initializePerformanceOverlay();
     }
 
     ////////////////
@@ -496,6 +546,360 @@ class GraphVisualizer {
 
         const container = this.network.body.container;
         container.style.backgroundColor = isDark ? '#121212' : '#ffffff';
+    }
+
+    ////////////////
+    // Performance overlay
+    //
+    // The performance overlay fetches /api/performance/data/graph and maps the
+    // returned performance metrics onto the existing vis-network nodes/edges
+    // (size/color/border for nodes, thickness/color for edges), without
+    // rebuilding the graph. Matching between the domain graph (/api/graph,
+    // Neo4j-based ids) and the performance graph (table/label-derived ids) is
+    // best-effort; any node/edge that cannot be confidently matched is simply
+    // left with its original appearance (graceful no-op, no thrown errors).
+
+    initializePerformanceOverlay() {
+        const toggle = document.getElementById('perfOverlayToggle');
+        const select = document.getElementById('perfMetricSelect');
+        if (!toggle) return;
+
+        toggle.addEventListener('change', () => {
+            if (toggle.checked) {
+                if (select) select.disabled = false;
+                this.enablePerformanceOverlay();
+            } else {
+                this.disablePerformanceOverlay();
+                if (select) select.disabled = true;
+            }
+        });
+
+        if (select) {
+            select.addEventListener('change', () => {
+                if (toggle.checked && this.performanceData) {
+                    this.applyPerformanceOverlay(select.value);
+                }
+            });
+        }
+    }
+
+    getSelectedPerformanceMetric() {
+        const select = document.getElementById('perfMetricSelect');
+        return select ? select.value : 'average_latency';
+    }
+
+    setPerformanceStatus(message) {
+        const el = document.getElementById('perfOverlayStatus');
+        if (el) el.textContent = message || '';
+    }
+
+    async enablePerformanceOverlay() {
+        this.setPerformanceStatus('Loading performance data...');
+        try {
+            const perfData = await this.fetchPerformanceGraphData();
+            this.performanceData = perfData;
+            this.performanceOverlayActive = true;
+            this.applyPerformanceOverlay(this.getSelectedPerformanceMetric());
+        } catch (error) {
+            console.warn('Performance overlay unavailable:', error.message);
+            this.performanceOverlayActive = false;
+            this.performanceData = null;
+            this.setPerformanceStatus('Performance data unavailable');
+
+            const toggle = document.getElementById('perfOverlayToggle');
+            if (toggle) toggle.checked = false;
+            const select = document.getElementById('perfMetricSelect');
+            if (select) select.disabled = true;
+        }
+    }
+
+    disablePerformanceOverlay() {
+        if (!this.network) return;
+
+        const nodesDS = this.network.body.data.nodes;
+        const edgesDS = this.network.body.data.edges;
+
+        const nodeUpdates = [];
+        this.originalNodeVisuals.forEach((visual, id) => {
+            if (!nodesDS.get(id)) return;
+            nodeUpdates.push({
+                id,
+                size: visual.size,
+                color: visual.color,
+                borderWidth: visual.borderWidth,
+                shadow: visual.shadow
+            });
+        });
+        if (nodeUpdates.length) nodesDS.update(nodeUpdates);
+
+        const edgeUpdates = [];
+        this.originalEdgeVisuals.forEach((visual, id) => {
+            if (!edgesDS.get(id)) return;
+            edgeUpdates.push({
+                id,
+                width: visual.width,
+                color: visual.color
+            });
+        });
+        if (edgeUpdates.length) edgesDS.update(edgeUpdates);
+
+        this.performanceOverlayActive = false;
+        this.performanceData = null;
+        this.setPerformanceStatus('');
+    }
+
+    // Builds the list of candidate URLs to try for the performance API.
+    // /api/performance/* is registered on the API server, which in local
+    // development runs on a different port (default 8080) than the
+    // visualization server (default 3000) that serves this page. In
+    // single-port deployments (e.g. Railway) the relative path works directly.
+    getPerformanceApiCandidates(path) {
+        const candidates = [];
+
+        if (window.PERFORMANCE_API_BASE_URL) {
+            candidates.push(window.PERFORMANCE_API_BASE_URL.replace(/\/$/, '') + path);
+        }
+
+        candidates.push(path);
+
+        if (window.location.port && window.location.port !== '8080') {
+            candidates.push(`${window.location.protocol}//${window.location.hostname}:8080${path}`);
+        }
+
+        return [...new Set(candidates)];
+    }
+
+    async fetchPerformanceGraphData() {
+        const path = '/api/performance/data/graph';
+        const candidates = this.getPerformanceApiCandidates(path);
+        let lastError = null;
+
+        for (const url of candidates) {
+            try {
+                const response = await fetch(url);
+                if (!response.ok) {
+                    lastError = new Error(`HTTP ${response.status} from ${url}`);
+                    continue;
+                }
+
+                const contentType = response.headers.get('content-type') || '';
+                if (!contentType.includes('application/json')) {
+                    lastError = new Error(`Unexpected content-type from ${url}`);
+                    continue;
+                }
+
+                const payload = await response.json();
+                if (!payload || payload.success !== true || !payload.data) {
+                    lastError = new Error(`Unsuccessful response from ${url}`);
+                    continue;
+                }
+
+                return payload.data;
+            } catch (error) {
+                lastError = error;
+            }
+        }
+
+        throw lastError || new Error('No performance API endpoint reachable');
+    }
+
+    buildPerformanceIndexes(perfData) {
+        const byId = new Map();
+        const byTableName = new Map();
+        const byLabel = new Map();
+
+        (perfData.nodes || []).forEach(node => {
+            if (node.id !== undefined && node.id !== null) {
+                byId.set(String(node.id), node);
+            }
+            if (node.table_name) {
+                if (!byTableName.has(node.table_name)) byTableName.set(node.table_name, []);
+                byTableName.get(node.table_name).push(node);
+            }
+            if (node.label) {
+                if (!byLabel.has(node.label)) byLabel.set(node.label, []);
+                byLabel.get(node.label).push(node);
+            }
+        });
+
+        return { byId, byTableName, byLabel };
+    }
+
+    // Best-effort matching between a domain graph node (/api/graph) and a
+    // performance graph node (/api/performance/data/graph). Priority:
+    // 1) explicit "id" property on the domain node, matched against perf node id
+    // 2) domain node's "table_name" property, matched against perf table_name
+    // 3) domain node label used as table name (mirrors backend default when no
+    //    table_name property is set)
+    // 4) domain node label matched uniquely against a single perf node's label
+    // Returns null (no throw) when no confident match is found.
+    matchPerformanceNode(domainNode, indexes) {
+        const props = domainNode.properties || {};
+
+        if (props.id !== undefined && props.id !== null) {
+            const match = indexes.byId.get(String(props.id));
+            if (match) return match;
+        }
+
+        if (props.table_name && indexes.byTableName.has(props.table_name)) {
+            const candidates = indexes.byTableName.get(props.table_name);
+            if (candidates.length === 1) return candidates[0];
+        }
+
+        if (domainNode.label && indexes.byTableName.has(domainNode.label)) {
+            const candidates = indexes.byTableName.get(domainNode.label);
+            if (candidates.length === 1) return candidates[0];
+        }
+
+        if (domainNode.label && indexes.byLabel.has(domainNode.label)) {
+            const candidates = indexes.byLabel.get(domainNode.label);
+            if (candidates.length === 1) return candidates[0];
+        }
+
+        return null;
+    }
+
+    buildNodeIdTranslationMap(domainNodes, indexes) {
+        const map = new Map();
+        domainNodes.forEach(domainNode => {
+            const perfNode = this.matchPerformanceNode(domainNode, indexes);
+            if (perfNode) map.set(String(domainNode.id), perfNode);
+        });
+        return map;
+    }
+
+    buildPerfEdgeIndex(perfEdges) {
+        const map = new Map();
+        (perfEdges || []).forEach(edge => {
+            if (!edge.source_id || !edge.target_id) return;
+            map.set(`${edge.source_id}|${edge.target_id}`, edge);
+            map.set(`${edge.target_id}|${edge.source_id}`, edge);
+        });
+        return map;
+    }
+
+    matchPerformanceEdge(domainEdge, nodeIdMap, perfEdgeIndex) {
+        const fromPerf = nodeIdMap.get(String(domainEdge.from));
+        const toPerf = nodeIdMap.get(String(domainEdge.to));
+        if (!fromPerf || !toPerf) return null;
+        return perfEdgeIndex.get(`${fromPerf.id}|${toPerf.id}`) || null;
+    }
+
+    getNodeMetricValue(perfNode, metric) {
+        const perf = perfNode.performance || {};
+        switch (metric) {
+            case 'queries_per_second': return perf.queries_per_second || 0;
+            case 'hotspot_score': return perf.hotspot_score || 0;
+            case 'load_score': return perf.load_score || 0;
+            case 'average_latency':
+            default: return perf.average_latency || 0;
+        }
+    }
+
+    normalize(value, min, max) {
+        if (max <= min) return 0;
+        return Math.min(1, Math.max(0, (value - min) / (max - min)));
+    }
+
+    scaleRange(normalized, min, max) {
+        return min + normalized * (max - min);
+    }
+
+    metricToColor(normalized) {
+        if (normalized > 0.75) return '#f44336';
+        if (normalized > 0.5) return '#ff9800';
+        if (normalized > 0.25) return '#ffeb3b';
+        return '#4caf50';
+    }
+
+    edgeMetricToColor(perf) {
+        const rankColors = {
+            critical: '#f44336',
+            poor: '#f44336',
+            fair: '#ff9800',
+            good: '#ffeb3b',
+            excellent: '#4caf50'
+        };
+        const rank = (perf && perf.performance_rank || '').toLowerCase();
+        if (rank && rankColors[rank]) return rankColors[rank];
+
+        const latency = (perf && perf.average_latency) || 0;
+        if (latency > 500) return '#f44336';
+        if (latency > 200) return '#ff9800';
+        if (latency > 100) return '#ffeb3b';
+        return '#4caf50';
+    }
+
+    applyPerformanceOverlay(metric) {
+        if (!this.network || !this.performanceData) return;
+
+        const nodesDS = this.network.body.data.nodes;
+        const edgesDS = this.network.body.data.edges;
+
+        const perfIndexes = this.buildPerformanceIndexes(this.performanceData);
+        const nodeIdMap = this.buildNodeIdTranslationMap(this.currentGraphNodes, perfIndexes);
+        const hotspotIds = new Set((this.performanceData.hotspots || []).map(h => h.node_id));
+
+        const perfNodeValues = (this.performanceData.nodes || [])
+            .map(node => this.getNodeMetricValue(node, metric))
+            .filter(value => typeof value === 'number' && !Number.isNaN(value));
+        const minVal = perfNodeValues.length ? Math.min(...perfNodeValues) : 0;
+        const maxVal = perfNodeValues.length ? Math.max(...perfNodeValues) : 1;
+
+        const nodeUpdates = [];
+        this.currentGraphNodes.forEach(domainNode => {
+            const perfNode = nodeIdMap.get(String(domainNode.id));
+            if (!perfNode || !this.originalNodeVisuals.has(domainNode.id)) return;
+
+            const value = this.getNodeMetricValue(perfNode, metric);
+            const normalized = this.normalize(value, minVal, maxVal);
+            const size = this.scaleRange(normalized, 15, 50);
+            const color = this.metricToColor(normalized);
+            const isHotspot = hotspotIds.has(perfNode.id);
+
+            nodeUpdates.push({
+                id: domainNode.id,
+                size,
+                color: {
+                    background: color,
+                    border: isHotspot ? '#d50000' : color,
+                    highlight: { background: color, border: '#d50000' }
+                },
+                borderWidth: isHotspot ? 4 : 2,
+                shadow: isHotspot
+                    ? { enabled: true, color: 'rgba(213,0,0,0.6)', size: 15 }
+                    : { enabled: false }
+            });
+        });
+        if (nodeUpdates.length) nodesDS.update(nodeUpdates);
+
+        const perfEdgeIndex = this.buildPerfEdgeIndex(this.performanceData.edges);
+        const freqValues = (this.performanceData.edges || [])
+            .map(edge => (edge.performance && edge.performance.query_frequency) || 0);
+        const minFreq = freqValues.length ? Math.min(...freqValues) : 0;
+        const maxFreq = freqValues.length ? Math.max(...freqValues) : 1;
+
+        const edgeUpdates = [];
+        this.currentGraphEdges.forEach(domainEdge => {
+            const perfEdge = this.matchPerformanceEdge(domainEdge, nodeIdMap, perfEdgeIndex);
+            if (!perfEdge || !this.originalEdgeVisuals.has(domainEdge.id)) return;
+
+            const freq = (perfEdge.performance && perfEdge.performance.query_frequency) || 0;
+            const width = this.scaleRange(this.normalize(freq, minFreq, maxFreq), 1, 10);
+            const color = this.edgeMetricToColor(perfEdge.performance);
+
+            edgeUpdates.push({
+                id: domainEdge.id,
+                width,
+                color: { color, highlight: '#FF6B6B' }
+            });
+        });
+        if (edgeUpdates.length) edgesDS.update(edgeUpdates);
+
+        this.setPerformanceStatus(
+            `Overlay active (${nodeUpdates.length}/${this.currentGraphNodes.length} nodes, ` +
+            `${edgeUpdates.length}/${this.currentGraphEdges.length} edges matched)`
+        );
     }
 }
 

@@ -21,6 +21,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
 
+	"sql-graph-visualizer/internal/application/ports"
 	graphqlserver "sql-graph-visualizer/internal/application/services/graphql"
 	"sql-graph-visualizer/internal/application/services/performance"
 	"sql-graph-visualizer/internal/domain/aggregates/graph"
@@ -179,6 +180,7 @@ func (r *Resources) startAPIServer() (*http.Server, error) {
 			r.PerformanceServices.GraphMapper,
 			r.PerformanceServices.RealtimeMonitor,
 			r.PerformanceServices.PSAdapter,
+			r.Neo4jRepo,
 		)
 		performanceHandlers.RegisterRoutes(router)
 		logrus.Info("Performance API routes registered")
@@ -361,10 +363,17 @@ func initPerformanceServices(cfg *models.Config, db *sql.DB) *PerformanceService
 	benchmarkConfig := createBenchmarkConfig(cfg)
 	// The source/graph repositories are intentionally nil here: the current
 	// benchmark execution path runs sysbench, which connects to the database
-	// directly via the configured DatabaseURL. Repositories will be wired in when
-	// benchmark-result persistence is added.
+
+	// directly via the configured DatabaseURL.
 	benchmarkService := performance.NewBenchmarkService(nil, nil, nil, performanceAnalyzer, logger, benchmarkConfig)
-	registerBenchmarkTools(benchmarkService, cfg, logger)
+	registerBenchmarkTools(benchmarkService, cfg, db, logger)
+
+	if store, err := performance.NewFileBenchmarkResultStore(logger, benchmarkResultsDir(cfg)); err != nil {
+		logrus.Warnf("Benchmark result persistence unavailable, falling back to in-memory results only: %v", err)
+	} else {
+		benchmarkService.SetResultStore(store)
+	}
+
 
 	if cfg.Performance.Realtime != nil && cfg.Performance.Realtime.Enabled {
 		ctx := context.Background()
@@ -385,20 +394,28 @@ func initPerformanceServices(cfg *models.Config, db *sql.DB) *PerformanceService
 }
 
 func createGraphMapperConfig(cfg *models.Config) *performance.GraphPerformanceMapperConfig {
-	config := &performance.GraphPerformanceMapperConfig{}
+	// Start from sane defaults so an invalid or empty duration in the user
+	// configuration falls back to a working value instead of silently
+	// zeroing the interval (which would otherwise busy-loop or never update).
+	config := performance.DefaultGraphPerformanceMapperConfig()
 	if cfg.Performance.Visualization != nil {
-		updateInterval, _ := time.ParseDuration(cfg.Performance.Visualization.UpdateInterval)
-		historyRetention, _ := time.ParseDuration(cfg.Performance.Visualization.HistoryRetention)
-		config.UpdateInterval = updateInterval
-		config.HistoryRetention = historyRetention
-		config.MaxConcurrentUpdates = cfg.Performance.Visualization.MaxConcurrentUpdates
-		if cfg.Performance.Visualization.EdgeThickness != nil {
+		v := cfg.Performance.Visualization
+		if d, err := time.ParseDuration(v.UpdateInterval); err == nil && d > 0 {
+			config.UpdateInterval = d
+		}
+		if d, err := time.ParseDuration(v.HistoryRetention); err == nil && d > 0 {
+			config.HistoryRetention = d
+		}
+		if v.MaxConcurrentUpdates > 0 {
+			config.MaxConcurrentUpdates = v.MaxConcurrentUpdates
+		}
+		if v.EdgeThickness != nil {
 			config.EdgeThickness = performance.EdgeThicknessConfig{
-				Metric:       cfg.Performance.Visualization.EdgeThickness.Metric,
-				Scale:        cfg.Performance.Visualization.EdgeThickness.Scale,
-				MinThickness: cfg.Performance.Visualization.EdgeThickness.MinThickness,
-				MaxThickness: cfg.Performance.Visualization.EdgeThickness.MaxThickness,
-				Multiplier:   cfg.Performance.Visualization.EdgeThickness.Multiplier,
+				Metric:       v.EdgeThickness.Metric,
+				Scale:        v.EdgeThickness.Scale,
+				MinThickness: v.EdgeThickness.MinThickness,
+				MaxThickness: v.EdgeThickness.MaxThickness,
+				Multiplier:   v.EdgeThickness.Multiplier,
 			}
 		}
 	}
@@ -406,29 +423,41 @@ func createGraphMapperConfig(cfg *models.Config) *performance.GraphPerformanceMa
 }
 
 func createRealtimeConfig(cfg *models.Config) *performance.RealtimeMonitorConfig {
-	config := &performance.RealtimeMonitorConfig{}
+	// Start from sane defaults; only override fields the user actually set so
+	// an invalid/empty duration doesn't silently zero the interval.
+	config := performance.DefaultRealtimeMonitorConfig()
 	if cfg.Performance.Realtime != nil {
-		updateInterval, _ := time.ParseDuration(cfg.Performance.Realtime.UpdateInterval)
-		heartbeatInterval, _ := time.ParseDuration(cfg.Performance.Realtime.HeartbeatInterval)
-		writeTimeout, _ := time.ParseDuration(cfg.Performance.Realtime.WriteTimeout)
-		readTimeout, _ := time.ParseDuration(cfg.Performance.Realtime.ReadTimeout)
-		pingTimeout, _ := time.ParseDuration(cfg.Performance.Realtime.PingTimeout)
-		config.DataUpdateInterval = updateInterval
-		config.HeartbeatInterval = heartbeatInterval
-		config.MaxConnections = cfg.Performance.Realtime.MaxConnections
-		config.WriteTimeout = writeTimeout
-		config.ReadTimeout = readTimeout
-		config.PingTimeout = pingTimeout
-		config.MaxMessageSize = cfg.Performance.Realtime.MaxMessageSize
-		config.CompressionEnabled = cfg.Performance.Realtime.CompressionEnabled
-		if cfg.Performance.Realtime.Alerts != nil {
+		r := cfg.Performance.Realtime
+		if d, err := time.ParseDuration(r.UpdateInterval); err == nil && d > 0 {
+			config.DataUpdateInterval = d
+		}
+		if d, err := time.ParseDuration(r.HeartbeatInterval); err == nil && d > 0 {
+			config.HeartbeatInterval = d
+		}
+		if d, err := time.ParseDuration(r.WriteTimeout); err == nil && d > 0 {
+			config.WriteTimeout = d
+		}
+		if d, err := time.ParseDuration(r.ReadTimeout); err == nil && d > 0 {
+			config.ReadTimeout = d
+		}
+		if d, err := time.ParseDuration(r.PingTimeout); err == nil && d > 0 {
+			config.PingTimeout = d
+		}
+		if r.MaxConnections > 0 {
+			config.MaxConnections = r.MaxConnections
+		}
+		if r.MaxMessageSize > 0 {
+			config.MaxMessageSize = r.MaxMessageSize
+		}
+		config.CompressionEnabled = r.CompressionEnabled
+		if r.Alerts != nil {
 			config.AlertThresholds = performance.AlertThresholds{
-				HighLatency:        cfg.Performance.Realtime.Alerts.HighLatency,
-				HighErrorRate:      cfg.Performance.Realtime.Alerts.HighErrorRate,
-				HighCPUUsage:       cfg.Performance.Realtime.Alerts.HighCPUUsage,
-				HighMemoryUsage:    cfg.Performance.Realtime.Alerts.HighMemoryUsage,
-				SlowQueryThreshold: cfg.Performance.Realtime.Alerts.SlowQueryThreshold,
-				DeadlockThreshold:  cfg.Performance.Realtime.Alerts.DeadlockThreshold,
+				HighLatency:        r.Alerts.HighLatency,
+				HighErrorRate:      r.Alerts.HighErrorRate,
+				HighCPUUsage:       r.Alerts.HighCPUUsage,
+				HighMemoryUsage:    r.Alerts.HighMemoryUsage,
+				SlowQueryThreshold: r.Alerts.SlowQueryThreshold,
+				DeadlockThreshold:  r.Alerts.DeadlockThreshold,
 			}
 		}
 	}
@@ -489,10 +518,11 @@ func createBenchmarkConfig(cfg *models.Config) *performance.BenchmarkServiceConf
 	return config
 }
 
-// registerBenchmarkTools wires the available benchmark tools (currently
-// sysbench) into the benchmark service. Unavailable tools are logged and
-// skipped so the application keeps running without benchmarking support.
-func registerBenchmarkTools(svc *performance.BenchmarkService, cfg *models.Config, logger *logrus.Logger) {
+// registerBenchmarkTools wires the available benchmark tools (sysbench and,
+// when configured, custom query sets) into the benchmark service.
+// Unavailable tools are logged and skipped so the application keeps running
+// without benchmarking support.
+func registerBenchmarkTools(svc *performance.BenchmarkService, cfg *models.Config, db *sql.DB, logger *logrus.Logger) {
 	if b := cfg.Performance.Benchmarks; b != nil && !b.Enabled {
 		logrus.Info("Benchmarking disabled in configuration; skipping benchmark tool registration")
 		return
@@ -501,9 +531,66 @@ func registerBenchmarkTools(svc *performance.BenchmarkService, cfg *models.Confi
 	sysbenchAdapter := performance.NewSysbenchAdapter(logger, createSysbenchConfig(cfg))
 	if err := svc.RegisterBenchmarkTool("sysbench", sysbenchAdapter); err != nil {
 		logrus.Warnf("Sysbench benchmark tool unavailable; sysbench benchmarks disabled: %v", err)
+	} else {
+		logrus.Info("Registered sysbench benchmark tool")
+	}
+
+	querySets := createCustomQuerySets(cfg)
+	if len(querySets) == 0 {
 		return
 	}
-	logrus.Info("Registered sysbench benchmark tool")
+	customAdapter := performance.NewCustomQueryAdapter(logger, db, querySets)
+	if err := svc.RegisterBenchmarkTool("custom", customAdapter); err != nil {
+		logrus.Warnf("Custom query benchmark tool unavailable: %v", err)
+		return
+	}
+	logrus.Infof("Registered custom query benchmark tool with %d query set(s)", len(querySets))
+}
+
+// createCustomQuerySets converts the user-configured custom query benchmark
+// sets into the ports representation consumed by CustomQueryAdapter.
+func createCustomQuerySets(cfg *models.Config) map[string]ports.CustomBenchmarkConfig {
+	result := make(map[string]ports.CustomBenchmarkConfig)
+	b := cfg.Performance.Benchmarks
+	if b == nil {
+		return result
+	}
+
+	for _, set := range b.CustomQueries {
+		if set.Name == "" || len(set.Queries) == 0 {
+			continue
+		}
+
+		duration, _ := time.ParseDuration(set.Duration)
+
+		queries := make([]ports.CustomQueryDefinition, 0, len(set.Queries))
+		for _, q := range set.Queries {
+			if q.Query == "" {
+				continue
+			}
+			expectedLatency, _ := time.ParseDuration(q.ExpectedLatency)
+			queries = append(queries, ports.CustomQueryDefinition{
+				Query:           q.Query,
+				Weight:          q.Weight,
+				Parameters:      q.Parameters,
+				Description:     q.Description,
+				ExpectedLatency: expectedLatency,
+				TargetQPS:       q.TargetQPS,
+			})
+		}
+		if len(queries) == 0 {
+			continue
+		}
+
+		result[set.Name] = ports.CustomBenchmarkConfig{
+			Name:        set.Name,
+			Description: set.Description,
+			Duration:    duration,
+			Threads:     set.Threads,
+			Queries:     queries,
+		}
+	}
+	return result
 }
 
 // createSysbenchConfig maps user configuration onto the sysbench adapter config,
@@ -521,6 +608,15 @@ func createSysbenchConfig(cfg *models.Config) *performance.SysbenchConfig {
 	}
 
 	return sbConfig
+}
+
+// benchmarkResultsDir returns the configured directory for persisted
+// benchmark results, falling back to a sane default when unset.
+func benchmarkResultsDir(cfg *models.Config) string {
+	if b := cfg.Performance.Benchmarks; b != nil && b.ResultsDir != "" {
+		return b.ResultsDir
+	}
+	return "data/performance/benchmarks"
 }
 
 // benchmarkDatabaseURL builds a sysbench-compatible database URL and driver type

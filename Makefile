@@ -79,7 +79,7 @@ build-legacy:
 # Run the application (new CLI)
 run: docker-up
 	@echo "Waiting for Neo4j to be ready..."
-	@sleep 15
+	@sleep 30
 	@echo "Starting application..."
 	go run cmd/sql-graph-visualizer/main.go serve
 
