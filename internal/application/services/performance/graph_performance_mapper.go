@@ -546,6 +546,13 @@ func (gpm *GraphPerformanceMapper) identifyEdgeIssues(_ EdgePerformanceData) []E
 func (gpm *GraphPerformanceMapper) calculateGlobalMetrics(_ *PerformanceGraphData)         {}
 func (gpm *GraphPerformanceMapper) identifyHotspotsAndBottlenecks(_ *PerformanceGraphData) {}
 
+// DefaultGraphPerformanceMapperConfig returns the default graph performance
+// mapper configuration. Exported so callers (e.g. bootstrap) can start from
+// sane defaults and override individual fields from user configuration.
+func DefaultGraphPerformanceMapperConfig() *GraphPerformanceMapperConfig {
+	return defaultGraphPerformanceMapperConfig()
+}
+
 // Default configuration
 func defaultGraphPerformanceMapperConfig() *GraphPerformanceMapperConfig {
 	return &GraphPerformanceMapperConfig{

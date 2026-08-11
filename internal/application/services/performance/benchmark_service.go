@@ -30,6 +30,11 @@ type BenchmarkService struct {
 	activeRuns map[string]*BenchmarkExecution
 	runsMutex  sync.RWMutex
 
+	// Optional persistent storage for completed results. When nil, results
+	// only live in-memory for the RetainResults window (see activeRuns).
+	resultStore      ports.BenchmarkResultStorePort
+	resultStoreMutex sync.RWMutex
+
 	// Configuration
 	config *BenchmarkServiceConfig
 }
@@ -117,6 +122,31 @@ func NewBenchmarkService(
 	go service.cleanupRoutine()
 
 	return service
+}
+
+// SetResultStore configures persistent storage for completed benchmark
+// results. It is safe to call at any time, including after the service has
+// started executing benchmarks; nil disables persistence.
+func (s *BenchmarkService) SetResultStore(store ports.BenchmarkResultStorePort) {
+	s.resultStoreMutex.Lock()
+	defer s.resultStoreMutex.Unlock()
+	s.resultStore = store
+}
+
+func (s *BenchmarkService) getResultStore() ports.BenchmarkResultStorePort {
+	s.resultStoreMutex.RLock()
+	defer s.resultStoreMutex.RUnlock()
+	return s.resultStore
+}
+
+// GetBenchmarkHistory returns persisted benchmark results matching filter.
+// It returns an error if no result store has been configured.
+func (s *BenchmarkService) GetBenchmarkHistory(ctx context.Context, filter ports.BenchmarkResultFilter) ([]*ports.BenchmarkResult, error) {
+	store := s.getResultStore()
+	if store == nil {
+		return nil, fmt.Errorf("benchmark result persistence is not configured")
+	}
+	return store.List(ctx, filter)
 }
 
 // RegisterBenchmarkTool registers a benchmark tool implementation
@@ -257,6 +287,14 @@ func (s *BenchmarkService) executeAsync(execution *BenchmarkExecution) {
 			return 0
 		}(),
 	}).Info("Benchmark execution completed")
+
+	if store := s.getResultStore(); store != nil {
+		// Persist using a background context: the execution context may
+		// already be cancelled/timed out by the time we get here.
+		if err := store.Save(context.Background(), result); err != nil {
+			s.logger.WithError(err).WithField("execution_id", execution.ID).Warn("Failed to persist benchmark result")
+		}
+	}
 }
 
 // GetBenchmarkResult returns the result of a benchmark execution
@@ -510,6 +548,14 @@ func (s *BenchmarkService) cleanupOldExecutions() {
 
 	if len(toDelete) > 0 {
 		s.logger.WithField("cleaned_count", len(toDelete)).Info("Cleaned up old benchmark executions")
+	}
+
+	if store := s.getResultStore(); store != nil {
+		if deleted, err := store.DeleteOlderThan(context.Background(), cutoff); err != nil {
+			s.logger.WithError(err).Warn("Failed to compact persisted benchmark results")
+		} else if deleted > 0 {
+			s.logger.WithField("deleted_count", deleted).Info("Removed persisted benchmark results past retention")
+		}
 	}
 }
 

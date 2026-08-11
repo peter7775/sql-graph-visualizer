@@ -276,12 +276,41 @@ type AlertConfig struct {
 
 // BenchmarksConfig contains benchmarking settings
 type BenchmarksConfig struct {
-	Enabled          bool            `yaml:"enabled"`
-	DefaultDuration  string          `yaml:"default_duration"`
-	MaxDuration      string          `yaml:"max_duration"`
-	ResultsRetention string          `yaml:"results_retention"`
-	Sysbench         *SysbenchConfig `yaml:"sysbench,omitempty"`
-	Limits           *LimitsConfig   `yaml:"limits,omitempty"`
+	Enabled          bool   `yaml:"enabled"`
+	DefaultDuration  string `yaml:"default_duration"`
+	MaxDuration      string `yaml:"max_duration"`
+	ResultsRetention string `yaml:"results_retention"`
+	// ResultsDir is the directory where benchmark results are persisted
+	// (JSONL file storage). Defaults to "data/performance/benchmarks" when
+	// unset.
+	ResultsDir string          `yaml:"results_dir,omitempty"`
+	Sysbench   *SysbenchConfig `yaml:"sysbench,omitempty"`
+	Limits     *LimitsConfig   `yaml:"limits,omitempty"`
+	// CustomQueries defines named sets of user-provided queries that can be
+	// benchmarked via the "custom" tool, in addition to sysbench.
+	CustomQueries []CustomQueryBenchmarkConfig `yaml:"custom_queries,omitempty"`
+}
+
+// CustomQueryBenchmarkConfig defines a named, user-configurable set of
+// queries to run against the active source database for benchmarking.
+type CustomQueryBenchmarkConfig struct {
+	Name        string                        `yaml:"name"`
+	Description string                        `yaml:"description,omitempty"`
+	Duration    string                        `yaml:"duration,omitempty"`
+	Threads     int                           `yaml:"threads,omitempty"`
+	Queries     []CustomQueryDefinitionConfig `yaml:"queries"`
+}
+
+// CustomQueryDefinitionConfig defines a single query within a custom query
+// benchmark set. Only SELECT/INSERT/UPDATE statements are permitted at
+// execution time regardless of what is configured here.
+type CustomQueryDefinitionConfig struct {
+	Query           string        `yaml:"query"`
+	Weight          int           `yaml:"weight,omitempty"`
+	Description     string        `yaml:"description,omitempty"`
+	Parameters      []interface{} `yaml:"parameters,omitempty"`
+	ExpectedLatency string        `yaml:"expected_latency,omitempty"`
+	TargetQPS       float64       `yaml:"target_qps,omitempty"`
 }
 
 // SysbenchConfig contains Sysbench-specific settings

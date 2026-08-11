@@ -2,14 +2,17 @@
 package api //nolint:revive // api is a clear and conventional package name
 
 import (
+	"encoding/csv"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"sql-graph-visualizer/internal/application/ports"
 	"sql-graph-visualizer/internal/application/services/performance"
+	"sql-graph-visualizer/internal/domain/aggregates/graph"
 	"sql-graph-visualizer/internal/domain/models"
 
 	"github.com/gorilla/mux"
@@ -24,6 +27,7 @@ type PerformanceHandlers struct {
 	graphMapper         *performance.GraphPerformanceMapper
 	realtimeMonitor     *performance.RealtimePerformanceMonitor
 	psAdapter           *performance.PerformanceSchemaAdapter
+	neo4jRepo           ports.Neo4jPort
 }
 
 // Response represents an API response structure.
@@ -56,6 +60,8 @@ type BenchmarkRequest struct {
 	WarmupSeconds int    `json:"warmup_seconds,omitempty"`
 	DatabaseURL   string `json:"database_url,omitempty"`
 	DatabaseType  string `json:"database_type,omitempty"`
+	// QuerySet selects a named custom query set when Tool is "custom".
+	QuerySet string `json:"query_set,omitempty"`
 
 	Config      map[string]interface{} `json:"config"`
 	Duration    int                    `json:"duration_seconds"`
@@ -107,6 +113,7 @@ func NewPerformanceHandlers(
 	graphMapper *performance.GraphPerformanceMapper,
 	realtimeMonitor *performance.RealtimePerformanceMonitor,
 	psAdapter *performance.PerformanceSchemaAdapter,
+	neo4jRepo ports.Neo4jPort,
 ) *PerformanceHandlers {
 	return &PerformanceHandlers{
 		logger:              logger,
@@ -115,7 +122,46 @@ func NewPerformanceHandlers(
 		graphMapper:         graphMapper,
 		realtimeMonitor:     realtimeMonitor,
 		psAdapter:           psAdapter,
+		neo4jRepo:           neo4jRepo,
 	}
+}
+
+// fetchBaseGraph loads the current domain graph from Neo4j (the same data
+// source used by the main visualization's /api/graph endpoint) and converts
+// it into the simplified models.Graph shape expected by GraphPerformanceMapper.
+func (ph *PerformanceHandlers) fetchBaseGraph() (*models.Graph, error) {
+	if ph.neo4jRepo == nil {
+		return nil, fmt.Errorf("neo4j repository is not configured")
+	}
+
+	graphInterface, err := ph.neo4jRepo.ExportGraph("MATCH (n)-[r]->(m) RETURN n, r, m")
+	if err != nil {
+		return nil, fmt.Errorf("failed to export graph from Neo4j: %w", err)
+	}
+	g, ok := graphInterface.(*graph.GraphAggregate)
+	if !ok {
+		return nil, fmt.Errorf("unexpected graph type returned from Neo4j export")
+	}
+
+	baseGraph := &models.Graph{
+		Nodes:     make([]*models.Node, 0, len(g.GetNodes())),
+		Relations: make([]*models.Relation, 0, len(g.GetRelationships())),
+	}
+	for _, node := range g.GetNodes() {
+		baseGraph.Nodes = append(baseGraph.Nodes, &models.Node{
+			Label:      node.Type,
+			Properties: node.Properties,
+		})
+	}
+	for _, rel := range g.GetRelationships() {
+		baseGraph.Relations = append(baseGraph.Relations, &models.Relation{
+			Type:       rel.Type,
+			From:       fmt.Sprintf("%v", rel.SourceNode.ID),
+			To:         fmt.Sprintf("%v", rel.TargetNode.ID),
+			Properties: rel.Properties,
+		})
+	}
+	return baseGraph, nil
 }
 
 // RegisterRoutes registers all performance-related routes
@@ -147,6 +193,10 @@ func (ph *PerformanceHandlers) RegisterRoutes(router *mux.Router) {
 	// Configuration endpoints
 	router.HandleFunc("/api/performance/config", ph.GetPerformanceConfig).Methods("GET")
 	router.HandleFunc("/api/performance/config", ph.UpdatePerformanceConfig).Methods("PUT")
+
+	// Reporting and export endpoints
+	router.HandleFunc("/api/performance/reports/summary", ph.GetPerformanceReport).Methods("GET")
+	router.HandleFunc("/api/performance/export", ph.ExportPerformanceData).Methods("GET")
 }
 
 // Benchmark control handlers
@@ -176,6 +226,14 @@ func (ph *PerformanceHandlers) StartBenchmark(w http.ResponseWriter, r *http.Req
 	// configured default.
 	tool, testType := resolveBenchmarkRequest(req)
 
+	customParams := req.Config
+	if req.QuerySet != "" {
+		if customParams == nil {
+			customParams = make(map[string]interface{})
+		}
+		customParams["query_set"] = req.QuerySet
+	}
+
 	config := ports.BenchmarkConfig{
 		TestType:     testType,
 		Duration:     time.Duration(req.Duration) * time.Second,
@@ -185,7 +243,7 @@ func (ph *PerformanceHandlers) StartBenchmark(w http.ResponseWriter, r *http.Req
 		WarmupTime:   time.Duration(req.WarmupSeconds) * time.Second,
 		DatabaseType: req.DatabaseType,
 		DatabaseURL:  req.DatabaseURL,
-		CustomParams: req.Config,
+		CustomParams: customParams,
 	}
 
 	executionID, err := ph.benchmarkService.ExecuteBenchmark(r.Context(), config, tool)
@@ -360,11 +418,14 @@ func (ph *PerformanceHandlers) GetCurrentPerformanceData(w http.ResponseWriter, 
 
 	// Include graph data if requested
 	if includeGraph {
-		var baseGraph *models.Graph
-		if baseGraph != nil {
-			graphData, err := ph.graphMapper.MapPerformanceToGraph(r.Context(), baseGraph, perfData)
-			if err == nil {
+		if baseGraph, graphErr := ph.fetchBaseGraph(); graphErr != nil {
+			ph.logger.WithError(graphErr).Warn("Failed to load base graph for performance data response")
+		} else {
+			graphData, mapErr := ph.graphMapper.MapPerformanceToGraph(r.Context(), baseGraph, perfData)
+			if mapErr == nil {
 				response.GraphData = graphData
+			} else {
+				ph.logger.WithError(mapErr).Warn("Failed to map performance data to graph")
 			}
 		}
 	}
@@ -421,20 +482,37 @@ func (ph *PerformanceHandlers) GetPerformanceHistory(w http.ResponseWriter, r *h
 		}
 	}
 
-	historyData := []interface{}{
-		map[string]interface{}{
-			"message": "Historical data collection not yet implemented",
-			"params": map[string]interface{}{
-				"start_time": startTime,
-				"end_time":   endTime,
-				"limit":      limit,
+	// Historical performance data currently comes from persisted benchmark
+	// results (see BenchmarkResultStorePort); live Performance Schema
+	// snapshots are not persisted. Optional tool/test_type filters narrow the
+	// result set.
+	filter := ports.BenchmarkResultFilter{
+		ToolName: r.URL.Query().Get("tool"),
+		TestType: r.URL.Query().Get("test_type"),
+		Since:    startTime,
+		Until:    endTime,
+		Limit:    limit,
+	}
+
+	results, err := ph.benchmarkService.GetBenchmarkHistory(r.Context(), filter)
+	if err != nil {
+		ph.sendJSONResponse(w, http.StatusOK, Response{
+			Success: true,
+			Data: map[string]interface{}{
+				"results": []interface{}{},
+				"message": err.Error(),
 			},
-		},
+			Timestamp: time.Now(),
+		})
+		return
 	}
 
 	ph.sendJSONResponse(w, http.StatusOK, Response{
-		Success:   true,
-		Data:      historyData,
+		Success: true,
+		Data: map[string]interface{}{
+			"results": results,
+			"count":   len(results),
+		},
 		Timestamp: time.Now(),
 	})
 }
@@ -470,9 +548,9 @@ func (ph *PerformanceHandlers) GetPerformanceGraph(w http.ResponseWriter, r *htt
 		return
 	}
 
-	var baseGraph *models.Graph
-	if baseGraph == nil {
-		ph.sendErrorResponse(w, http.StatusServiceUnavailable, "graph_unavailable", "Base graph is not available", "")
+	baseGraph, err := ph.fetchBaseGraph()
+	if err != nil {
+		ph.sendErrorResponse(w, http.StatusServiceUnavailable, "graph_unavailable", "Base graph is not available", err.Error())
 		return
 	}
 
@@ -487,6 +565,227 @@ func (ph *PerformanceHandlers) GetPerformanceGraph(w http.ResponseWriter, r *htt
 		Data:      graphData,
 		Timestamp: time.Now(),
 	})
+}
+
+// PerformanceReport is the response body for GET /api/performance/reports/summary.
+type PerformanceReport struct {
+	GeneratedAt      time.Time                      `json:"generated_at"`
+	TimeRange        PerformanceReportRange         `json:"time_range"`
+	RunsAnalyzed     int                            `json:"runs_analyzed"`
+	LatestRun        *ports.BenchmarkResult         `json:"latest_run,omitempty"`
+	OverallScore     *ports.PerformanceScore        `json:"overall_score,omitempty"`
+	Bottlenecks      []ports.PerformanceBottleneck  `json:"bottlenecks"`
+	Hotspots         []ports.HotspotNode            `json:"hotspots"`
+	QueryPatterns    *ports.QueryPatternAnalysis    `json:"query_patterns,omitempty"`
+	Issues           []ports.PerformanceIssue       `json:"issues"`
+	Regressions      []ports.PerformanceRegression  `json:"regressions"`
+	OptimizationTips []ports.OptimizationSuggestion `json:"optimization_suggestions"`
+	Message          string                         `json:"message,omitempty"`
+}
+
+// PerformanceReportRange describes the time window a report covers.
+type PerformanceReportRange struct {
+	StartTime time.Time `json:"start_time"`
+	EndTime   time.Time `json:"end_time"`
+}
+
+// GetPerformanceReport handles requests for a summarized performance report
+// (executive summary, bottlenecks, hotspots, query patterns, optimization
+// suggestions, and regression detection) built from persisted benchmark
+// history. Requires benchmark result persistence to be configured.
+func (ph *PerformanceHandlers) GetPerformanceReport(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	limit := 20
+	if limitStr := r.URL.Query().Get("limit"); limitStr != "" {
+		if parsed, parseErr := strconv.Atoi(limitStr); parseErr == nil && parsed > 0 {
+			limit = parsed
+		}
+	}
+
+	filter := ports.BenchmarkResultFilter{
+		ToolName: r.URL.Query().Get("tool"),
+		TestType: r.URL.Query().Get("test_type"),
+		Limit:    limit,
+	}
+
+	history, err := ph.benchmarkService.GetBenchmarkHistory(ctx, filter)
+	if err != nil {
+		ph.sendJSONResponse(w, http.StatusOK, Response{
+			Success: true,
+			Data: PerformanceReport{
+				GeneratedAt: time.Now(),
+				Message:     err.Error(),
+			},
+			Timestamp: time.Now(),
+		})
+		return
+	}
+	if len(history) == 0 {
+		ph.sendJSONResponse(w, http.StatusOK, Response{
+			Success: true,
+			Data: PerformanceReport{
+				GeneratedAt: time.Now(),
+				Message:     "no benchmark runs recorded yet",
+			},
+			Timestamp: time.Now(),
+		})
+		return
+	}
+
+	latest := history[len(history)-1]
+	report := PerformanceReport{
+		GeneratedAt: time.Now(),
+		TimeRange: PerformanceReportRange{
+			StartTime: history[0].StartTime,
+			EndTime:   latest.EndTime,
+		},
+		RunsAnalyzed: len(history),
+		LatestRun:    latest,
+	}
+
+	if bottlenecks, bErr := ph.performanceAnalyzer.IdentifyBottlenecks(ctx, latest); bErr == nil {
+		report.Bottlenecks = bottlenecks
+	} else {
+		ph.logger.WithError(bErr).Warn("Failed to identify bottlenecks for performance report")
+	}
+
+	if queryPatterns, qErr := ph.performanceAnalyzer.AnalyzeQueryPatterns(ctx, latest.QueryResults); qErr == nil {
+		report.QueryPatterns = queryPatterns
+	} else {
+		ph.logger.WithError(qErr).Warn("Failed to analyze query patterns for performance report")
+	}
+
+	if issues, iErr := ph.performanceAnalyzer.IdentifyInefficiencies(ctx, latest.QueryResults); iErr == nil {
+		report.Issues = issues
+	}
+
+	if latest.Metrics != nil {
+		if score, sErr := ph.performanceAnalyzer.CalculatePerformanceScore(ctx, latest.Metrics); sErr == nil {
+			report.OverallScore = score
+		}
+	}
+
+	metricsHistory := make([]*ports.PerformanceMetrics, 0, len(history))
+	for _, run := range history {
+		if run.Metrics != nil {
+			metricsHistory = append(metricsHistory, run.Metrics)
+		}
+	}
+	if hotspots, hErr := ph.performanceAnalyzer.DetectHotspots(ctx, metricsHistory); hErr == nil {
+		report.Hotspots = hotspots
+	}
+
+	if len(history) >= 2 && latest.Metrics != nil {
+		previous := history[len(history)-2]
+		if previous.Metrics != nil {
+			if regressions, rErr := ph.performanceAnalyzer.DetectRegressions(ctx, latest.Metrics, previous.Metrics); rErr == nil {
+				report.Regressions = regressions
+			}
+		}
+	}
+
+	analysis := &ports.PerformanceAnalysis{
+		OverallScore:  report.OverallScore,
+		Bottlenecks:   report.Bottlenecks,
+		Hotspots:      report.Hotspots,
+		QueryPatterns: report.QueryPatterns,
+		Issues:        report.Issues,
+		AnalyzedAt:    time.Now(),
+	}
+	if suggestions, oErr := ph.performanceAnalyzer.GenerateOptimizationSuggestions(ctx, analysis); oErr == nil {
+		report.OptimizationTips = suggestions
+	}
+
+	ph.sendJSONResponse(w, http.StatusOK, Response{
+		Success:   true,
+		Data:      report,
+		Timestamp: time.Now(),
+	})
+}
+
+// ExportPerformanceData handles requests to export persisted benchmark
+// history as JSON or CSV, via ?format=json|csv (default json).
+func (ph *PerformanceHandlers) ExportPerformanceData(w http.ResponseWriter, r *http.Request) {
+	format := strings.ToLower(r.URL.Query().Get("format"))
+	if format == "" {
+		format = "json"
+	}
+
+	limit := 1000
+	if limitStr := r.URL.Query().Get("limit"); limitStr != "" {
+		if parsed, parseErr := strconv.Atoi(limitStr); parseErr == nil && parsed > 0 {
+			limit = parsed
+		}
+	}
+
+	filter := ports.BenchmarkResultFilter{
+		ToolName: r.URL.Query().Get("tool"),
+		TestType: r.URL.Query().Get("test_type"),
+		Limit:    limit,
+	}
+
+	results, err := ph.benchmarkService.GetBenchmarkHistory(r.Context(), filter)
+	if err != nil {
+		ph.sendErrorResponse(w, http.StatusServiceUnavailable, "persistence_unavailable", "Benchmark result persistence is not configured", err.Error())
+		return
+	}
+
+	switch format {
+	case "csv":
+		ph.exportPerformanceCSV(w, results)
+	case "json":
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Content-Disposition", `attachment; filename="benchmark_results.json"`)
+		if encErr := json.NewEncoder(w).Encode(results); encErr != nil {
+			ph.logger.WithError(encErr).Error("Failed to encode performance export as JSON")
+		}
+	default:
+		ph.sendErrorResponse(w, http.StatusBadRequest, "invalid_format", "Unsupported export format", fmt.Sprintf("format %q is not supported; use json or csv", format))
+	}
+}
+
+func (ph *PerformanceHandlers) exportPerformanceCSV(w http.ResponseWriter, results []*ports.BenchmarkResult) {
+	w.Header().Set("Content-Type", "text/csv")
+	w.Header().Set("Content-Disposition", `attachment; filename="benchmark_results.csv"`)
+
+	csvWriter := csv.NewWriter(w)
+	defer csvWriter.Flush()
+
+	header := []string{
+		"id", "tool_name", "test_type", "status", "start_time", "end_time", "duration_seconds",
+		"queries_per_second", "average_latency_ms", "error_rate_percent", "total_errors",
+	}
+	if err := csvWriter.Write(header); err != nil {
+		ph.logger.WithError(err).Error("Failed to write CSV header for performance export")
+		return
+	}
+
+	for _, result := range results {
+		row := []string{
+			result.ID,
+			result.ToolName,
+			result.TestType,
+			string(result.Status),
+			result.StartTime.Format(time.RFC3339),
+			result.EndTime.Format(time.RFC3339),
+			strconv.FormatFloat(result.Duration.Seconds(), 'f', 3, 64),
+		}
+		if result.Metrics != nil {
+			row = append(row,
+				strconv.FormatFloat(result.Metrics.QueriesPerSecond, 'f', 3, 64),
+				strconv.FormatFloat(result.Metrics.AverageLatency, 'f', 3, 64),
+				strconv.FormatFloat(result.Metrics.ErrorRate, 'f', 3, 64),
+				strconv.Itoa(result.Metrics.TotalErrors),
+			)
+		} else {
+			row = append(row, "", "", "", "")
+		}
+		if err := csvWriter.Write(row); err != nil {
+			ph.logger.WithError(err).Error("Failed to write CSV row for performance export")
+			return
+		}
+	}
 }
 
 // Real-time .monitoring handlers

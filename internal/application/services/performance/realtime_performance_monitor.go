@@ -628,6 +628,13 @@ func (rpm *RealtimePerformanceMonitor) GetLastGraphData() *PerformanceGraphData 
 	return rpm.lastGraphData
 }
 
+// DefaultRealtimeMonitorConfig returns the default real-time monitor
+// configuration. Exported so callers (e.g. bootstrap) can start from sane
+// defaults and override individual fields from user configuration.
+func DefaultRealtimeMonitorConfig() *RealtimeMonitorConfig {
+	return defaultRealtimeMonitorConfig()
+}
+
 // Default configuration
 func defaultRealtimeMonitorConfig() *RealtimeMonitorConfig {
 	return &RealtimeMonitorConfig{
