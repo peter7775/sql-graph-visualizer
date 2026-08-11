@@ -19,6 +19,10 @@
         .controls .row.g-3 {
             flex-wrap: wrap;
         }
+
+        #perfOverlayStatus {
+            white-space: nowrap;
+        }
     </style>
 
     <!-- Vis.js for network visualization -->
@@ -47,6 +51,19 @@
                     <button id="fit" class="btn btn-outline-secondary">Fit</button>
                     <button id="reload" class="btn btn-outline-secondary">Reload</button>
                 </div>
+                <div class="col-auto d-flex align-items-center">
+                    <div class="form-check form-switch mb-0 me-2">
+                        <input class="form-check-input" type="checkbox" id="perfOverlayToggle">
+                        <label class="form-check-label" for="perfOverlayToggle">Performance overlay</label>
+                    </div>
+                    <select id="perfMetricSelect" class="form-select form-select-sm" style="width: auto;" disabled>
+                        <option value="average_latency">Latency</option>
+                        <option value="queries_per_second">Queries/sec</option>
+                        <option value="hotspot_score">Hotspot score</option>
+                        <option value="load_score">Load score</option>
+                    </select>
+                    <span id="perfOverlayStatus" class="text-muted small ms-2"></span>
+                </div>
             </div>
             <div class="col-auto">
                 <button id="themeToggle" class="btn btn-outline-primary">🌙 Dark</button>
@@ -55,7 +72,7 @@
         <div id="viz"></div>
     </div>
 
-    <script src="/static/js/visualization.js?v=3"></script>
+    <script src="/static/js/visualization.js?v=4"></script>
     <script src="/static/js/theme-toggle.js"></script>
 </body>
 </html>
