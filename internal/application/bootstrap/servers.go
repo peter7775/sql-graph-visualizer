@@ -363,6 +363,7 @@ func initPerformanceServices(cfg *models.Config, db *sql.DB) *PerformanceService
 	benchmarkConfig := createBenchmarkConfig(cfg)
 	// The source/graph repositories are intentionally nil here: the current
 	// benchmark execution path runs sysbench, which connects to the database
+
 	// directly via the configured DatabaseURL.
 	benchmarkService := performance.NewBenchmarkService(nil, nil, nil, performanceAnalyzer, logger, benchmarkConfig)
 	registerBenchmarkTools(benchmarkService, cfg, db, logger)
@@ -372,6 +373,7 @@ func initPerformanceServices(cfg *models.Config, db *sql.DB) *PerformanceService
 	} else {
 		benchmarkService.SetResultStore(store)
 	}
+
 
 	if cfg.Performance.Realtime != nil && cfg.Performance.Realtime.Enabled {
 		ctx := context.Background()
