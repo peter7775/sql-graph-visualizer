@@ -207,6 +207,9 @@ func (s *FileBenchmarkResultStore) DeleteOlderThan(_ context.Context, cutoff tim
 // Callers must hold s.mu.
 func (s *FileBenchmarkResultStore) rewriteLocked() error {
 	tmpPath := s.filePath + ".tmp"
+	// #nosec G304 - tmpPath is derived from s.filePath, which is built once at
+	// construction time from an operator-configured directory, not from
+	// per-request or user-supplied input.
 	f, err := os.OpenFile(tmpPath, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0o600)
 	if err != nil {
 		return fmt.Errorf("failed to create temporary benchmark results file: %w", err)
