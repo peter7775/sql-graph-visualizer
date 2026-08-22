@@ -95,6 +95,13 @@ A powerful Go application that transforms SQL database structures (MySQL, Postgr
 - **Benchmark result persistence** with JSON/CSV export and summary reporting
 - **Real-time performance monitoring** via WebSocket with visual graph load mapping
 
+### **AI & Semantic Search** *(Planned — see [Roadmap](#roadmap))*
+- **Semantic schema search** using vector embeddings of tables/columns
+- **AI-assisted transformation rule suggestions** based on column similarity, even without declared foreign keys
+- **Semantic clustering** of Performance Schema query patterns for more accurate hotspot detection
+- **Text-to-Cypher** natural language querying via LLM + retrieval-augmented generation over the schema
+- Built on a native **Neo4j 5.13+ vector index** and a pluggable `EmbeddingProvider` (OpenAI, Ollama for on-prem use)
+
 ### **Enterprise Architecture**
 - **Domain Driven Design (DDD)** - clean, maintainable codebase
 - **Layered architecture** - domain, application, infrastructure, and interface layers
@@ -143,7 +150,7 @@ sql-graph-visualizer/
 ### **Tech Stack**
 - **Language**: Go 1.24+
 - **Source Databases**: MySQL 8.0+, PostgreSQL 13+, Oracle 19c+, SQL Server 2017+
-- **Graph Database**: Neo4j 4.4+
+- **Graph Database**: Neo4j 4.4+ *(upgrade to 5.13+ planned, to enable native vector index support — see [Roadmap](#roadmap))*
 - **CLI Framework**: Cobra with shell completion
 - **API Layer**: GraphQL (gqlgen), REST (Gorilla Mux)
 - **Frontend**: HTML5, JavaScript, Neovis.js
@@ -768,12 +775,20 @@ Ready to contribute and earn equity? **[Create a Contributor Intent Issue](https
 ### In Progress
 - [ ] **Predictive performance insights** exposed via API (trend/anomaly detection engine implemented, REST endpoint pending)
 - [ ] **Enterprise authentication** and authorization
+- [ ] **Neo4j upgrade to 5.13+** ([#28](https://github.com/peter7775/sql-graph-visualizer/issues/28)) and **neo4j-go-driver v4 → v5 migration** ([#29](https://github.com/peter7775/sql-graph-visualizer/issues/29)) — required foundation for native vector index support
+
+### AI & Vector Search (Planned)
+- [ ] **Native Neo4j 5.x vector index** for schema embeddings ([#30](https://github.com/peter7775/sql-graph-visualizer/issues/30))
+- [ ] **EmbeddingProvider port** with OpenAI and Ollama (on-prem) adapters ([#31](https://github.com/peter7775/sql-graph-visualizer/issues/31))
+- [ ] **Semantic schema search** over table/column embeddings ([#32](https://github.com/peter7775/sql-graph-visualizer/issues/32))
+- [ ] **AI-assisted transformation rule suggestions** via column similarity ([#33](https://github.com/peter7775/sql-graph-visualizer/issues/33))
+- [ ] **Semantic clustering** of Performance Schema query patterns ([#34](https://github.com/peter7775/sql-graph-visualizer/issues/34))
+- [ ] **Text-to-Cypher** via LLM + RAG over the schema ([#35](https://github.com/peter7775/sql-graph-visualizer/issues/35))
 
 ### Future Plans 
 - [ ] **Reverse Transformation**: Neo4j to SQL conversion
 - [ ] **Advanced Analytics**: Graph algorithms integration (PageRank, Community Detection)
 - [ ] **Cloud Deployment**: Kubernetes manifests and Helm charts
-- [ ] **Machine Learning**: Automated optimization recommendations
 - [ ] **Monitoring Integration**: Prometheus, Grafana, DataDog
 - [ ] **Plugin System**: Custom transformation and analysis plugins
 - [ ] **Multi-tenant SaaS**: Cloud-hosted solution
