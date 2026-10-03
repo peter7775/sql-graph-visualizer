@@ -1,0 +1,19 @@
+# SQL Graph Visualizer — Dual License Notice
+
+SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Commercial
+
+This project is dual-licensed. You may choose to use it under one of the following:
+1) GNU Affero General Public License v3.0 only (AGPL-3.0-only) — open source option.
+2) Commercial License — proprietary option without copyleft obligations.
+
+Open Source Option (AGPL-3.0-only)
+- If you choose the open source option, the software is licensed under the GNU Affero General Public License v3.0 only.
+- Full license text: see the LICENSE (or LICENSE-AGPL) file in this repository or visit https://www.gnu.org/licenses/agpl-3.0.txt.
+
+Commercial Option
+- If you require proprietary/closed-source usage, distribution in commercial products, OEM/white-label, or enterprise terms, use the Commercial License.
+- Commercial license terms: see the COMMERCIAL-LICENSE file in this repository.
+- Contact: petrstepanek99@gmail.com (Subject: SQL Graph Visualizer - Commercial License Inquiry)
+
+By using this software, you agree to the terms of either the AGPL-3.0-only license or the Commercial License, at your option.
+If you are unsure which option applies, please contact the author for guidance.
