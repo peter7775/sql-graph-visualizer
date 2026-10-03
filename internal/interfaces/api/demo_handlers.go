@@ -244,7 +244,7 @@ type demoOptimizationInfo struct {
 // GetOptimization returns the optimization description and whether its
 // indexes currently exist.
 func (d *DemoHandlers) GetOptimization(w http.ResponseWriter, r *http.Request) {
-	info, ok := d.optimizationInfo(w, r.Context())
+	info, ok := d.optimizationInfo(r.Context(), w)
 	if !ok {
 		return
 	}
@@ -305,14 +305,14 @@ func (d *DemoHandlers) changeOptimization(w http.ResponseWriter, r *http.Request
 		d.logger.WithFields(logrus.Fields{"statement": stmt, "took": time.Since(started)}).Info("Demo optimization statement executed")
 	}
 
-	info, ok := d.optimizationInfo(w, r.Context())
+	info, ok := d.optimizationInfo(r.Context(), w)
 	if !ok {
 		return
 	}
 	d.respond(w, http.StatusOK, info)
 }
 
-func (d *DemoHandlers) optimizationInfo(w http.ResponseWriter, ctx context.Context) (*demoOptimizationInfo, bool) {
+func (d *DemoHandlers) optimizationInfo(ctx context.Context, w http.ResponseWriter) (*demoOptimizationInfo, bool) {
 	opt := d.demo.Optimization
 	if opt == nil {
 		d.fail(w, http.StatusNotFound, "not_configured", "No optimization is configured", "")

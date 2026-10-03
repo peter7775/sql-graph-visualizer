@@ -410,7 +410,8 @@ func TestBenchmarkService_StoppedRunStaysCancelled(t *testing.T) {
 	case <-func() chan struct{} {
 		done := make(chan struct{})
 		go func() {
-			for range ch {
+			for s := range ch {
+				_ = s
 			}
 			close(done)
 		}()

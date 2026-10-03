@@ -287,16 +287,16 @@ func TestValidateOptimization(t *testing.T) {
 	}
 
 	bad := map[string]*models.LiveDemoOptimization{
-		"empty":            {},
-		"no revert":        {Apply: good.Apply},
-		"drop table":       {Apply: []string{"DROP TABLE orders"}, Revert: good.Revert},
-		"stacked":          {Apply: []string{"CREATE INDEX i ON t (c); DROP TABLE t"}, Revert: good.Revert},
-		"unique idx":       {Apply: []string{"CREATE UNIQUE INDEX i ON t (c)"}, Revert: good.Revert},
-		"expression":       {Apply: []string{"CREATE INDEX i ON t ((a+1))"}, Revert: good.Revert},
-		"comment trick":    {Apply: []string{"CREATE INDEX i ON t (c) -- x"}, Revert: good.Revert},
-		"revert not drop":  {Apply: good.Apply, Revert: []string{"DELETE FROM orders"}},
-		"schema qualified": {Apply: []string{"CREATE INDEX i ON mysql.user (c)"}, Revert: good.Revert},
-		"quoted identifer": {Apply: []string{"CREATE INDEX `i` ON t (c)"}, Revert: good.Revert},
+		"empty":             {},
+		"no revert":         {Apply: good.Apply},
+		"drop table":        {Apply: []string{"DROP TABLE orders"}, Revert: good.Revert},
+		"stacked":           {Apply: []string{"CREATE INDEX i ON t (c); DROP TABLE t"}, Revert: good.Revert},
+		"unique idx":        {Apply: []string{"CREATE UNIQUE INDEX i ON t (c)"}, Revert: good.Revert},
+		"expression":        {Apply: []string{"CREATE INDEX i ON t ((a+1))"}, Revert: good.Revert},
+		"comment trick":     {Apply: []string{"CREATE INDEX i ON t (c) -- x"}, Revert: good.Revert},
+		"revert not drop":   {Apply: good.Apply, Revert: []string{"DELETE FROM orders"}},
+		"schema qualified":  {Apply: []string{"CREATE INDEX i ON mysql.user (c)"}, Revert: good.Revert},
+		"quoted identifier": {Apply: []string{"CREATE INDEX `i` ON t (c)"}, Revert: good.Revert},
 	}
 	for name, opt := range bad {
 		if err := validateOptimization(opt); err == nil {

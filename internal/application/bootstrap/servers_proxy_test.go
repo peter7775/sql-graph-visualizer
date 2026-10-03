@@ -44,7 +44,7 @@ func TestAPIProxy_StreamsSSEPastWriteTimeout(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	reader := bufio.NewReader(resp.Body)
 
 	// First event arrives immediately, i.e. the proxy flushes instead of buffering.
@@ -72,7 +72,7 @@ func TestAPIProxy_BackendDown(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode != http.StatusBadGateway {
 		t.Errorf("status = %d, want 502", resp.StatusCode)
 	}
