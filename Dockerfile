@@ -1,6 +1,10 @@
 # Multi-stage build to reduce final image size
 # Build date: 2025-10-01-14:32 - Cloud build approach
-FROM golang:1.24-alpine AS builder
+
+# Must satisfy go.mod (go 1.26.2, toolchain go1.26.4). The official golang images set
+# GOTOOLCHAIN=local, so the image version has to be >= the toolchain line in go.mod.
+ARG GO_VERSION=1.26.4
+FROM golang:${GO_VERSION}-alpine AS builder
 
 # Install build dependencies
 RUN apk add --no-cache git ca-certificates tzdata
@@ -15,8 +19,11 @@ RUN go mod download
 # Copy source code
 COPY . .
 
-# Build the application with optimizations
-RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o sql-graph-visualizer cmd/main.go
+# Build the application with optimizations.
+# - sql-graph-visualizer:      legacy entry point (cmd/main.go), used by start.sh / Railway
+# - sql-graph-visualizer-cli:  unified CLI (`serve`, `transform`, ...), used by the live demo
+RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o sql-graph-visualizer cmd/main.go && \
+    CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o sql-graph-visualizer-cli ./cmd/sql-graph-visualizer
 
 # Final stage
 FROM alpine:3.20
@@ -38,7 +45,8 @@ WORKDIR /app
 
 # Copy binary from builder stage
 COPY --from=builder /app/sql-graph-visualizer ./sql-graph-visualizer
-RUN chmod +x ./sql-graph-visualizer
+COPY --from=builder /app/sql-graph-visualizer-cli ./sql-graph-visualizer-cli
+RUN chmod +x ./sql-graph-visualizer ./sql-graph-visualizer-cli
 
 # Copy go.mod so findProjectRoot() can locate project root
 COPY go.mod ./go.mod

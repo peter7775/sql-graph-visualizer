@@ -2,16 +2,32 @@
 
 > **Status: Active Development** - This project is under active development. APIs may change.
 
+<div align="center">
+
+### See your database workload heat up the table graph - live
+
+<img src="docs/images/live-benchmark.gif" alt="Live graph benchmarking: a workload without an index turns the table graph red, one click on Apply suggested index turns it green" width="100%">
+
+**Run a workload. Watch every table and JOIN light up in real time. Add an index. Watch the graph cool down.**
+
+`make demo` &nbsp;&rarr;&nbsp; open **http://localhost:3000/benchmark-live** &nbsp;&rarr;&nbsp; click **Run**
+
+[**Try the live benchmark demo**](#live-graph-benchmarking) &nbsp;|&nbsp; [How it works](#how-it-works)
+
+</div>
+
 <table style="border-collapse: collapse; width: 100%; margin-top: 20px; border-style: hidden">
 <tr>
 <td width="60%">
 
-A powerful Go application that transforms SQL database structures (MySQL, PostgreSQL, Oracle, SQL Server) into Neo4j graph databases with interactive visualization and comprehensive performance analysis capabilities. Built with Domain Driven Design architecture and featuring a unified CLI, flexible transformation rules, advanced performance benchmarking, and robust database connection management.
+**Live graph benchmarking** is the flagship feature: a benchmark that shows *where* in your schema the time goes, while the workload is still running. Nodes are tables, edges are JOINs, and colour and thickness follow the measured latency and load, next to live QPS and p50/p95/p99 charts.
+
+On top of that, SQL Graph Visualizer is a Go application that transforms SQL database structures (MySQL, PostgreSQL, Oracle, SQL Server) into Neo4j graph databases with interactive visualization and comprehensive performance analysis. Built with Domain Driven Design architecture and featuring a unified CLI, flexible transformation rules, advanced performance benchmarking, and robust database connection management.
 
 </td>
 <td width="40%">
 
-<img src="SGV - screenshot.png" alt="SQL Graph Visualizer Screenshot" width="100%" style="border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
+<img src="SGV - screenshot.png" alt="Interactive Neo4j graph view of a transformed SQL database" width="100%" style="border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
 
 </td>
 </tr>
@@ -33,6 +49,7 @@ A powerful Go application that transforms SQL database structures (MySQL, Postgr
 [![Neo4j](https://img.shields.io/badge/Neo4j-4.4+-008CC1?logo=neo4j&logoColor=white)](https://neo4j.com/)
 [![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?logo=docker&logoColor=white)](https://hub.docker.com/)
 
+[![Live Graph Benchmarking](https://img.shields.io/badge/Live%20Graph-Benchmarking-e11d48?logo=speedtest&logoColor=white)](#live-graph-benchmarking)
 [![Performance](https://img.shields.io/badge/Performance-Benchmarking-orange?logo=speedtest&logoColor=white)](#performance-benchmarking)
 [![Enterprise](https://img.shields.io/badge/Enterprise-Ready-success?logo=enterprise&logoColor=white)](#enterprise-architecture)
 [![API](https://img.shields.io/badge/API-GraphQL%20%7C%20REST-purple?logo=graphql&logoColor=white)](#api-documentation)
@@ -43,6 +60,7 @@ A powerful Go application that transforms SQL database structures (MySQL, Postgr
 <div align="center">
 
 **[Quick Start](#quick-start)** • 
+**[Live Benchmarking](#live-graph-benchmarking)** • 
 **<a href="https://sql-graph-visualizer-production.up.railway.app" target="_blank">Live Demo</a>** • 
 **[Documentation](https://github.com/peter7775/sql-graph-visualizer/wiki)** • 
 **[Discussions](https://github.com/peter7775/sql-graph-visualizer/discussions)** • 
@@ -57,6 +75,7 @@ A powerful Go application that transforms SQL database structures (MySQL, Postgr
 - [Features](#features)
 - [Architecture](#architecture)
 - [Quick Start](#quick-start)
+- [Live Graph Benchmarking](#live-graph-benchmarking)
 - [Installation](#installation)
 - [Configuration](#configuration)
 - [Transformation Rules](#transformation-rules)
@@ -70,6 +89,14 @@ A powerful Go application that transforms SQL database structures (MySQL, Postgr
 - [License](#license)
 
 ## Features
+
+### **Live Graph Benchmarking** *(flagship)*
+- **Watch a workload hit your schema in real time** - tables are nodes, JOINs are edges; colour = latency, size = QPS, thickness = share of database busy time
+- **Live QPS and p50/p95/p99 charts** updated every second, plus a ranked list of the slowest queries
+- **One-click optimization** - apply a suggested index, re-run the same workload and see the graph turn from red to green
+- **Before/after comparison** with delta badges (for example `p95 -99 %`, `QPS +8000 %`) and a ghost line of the previous run in every chart
+- **Streams over Server-Sent Events** with replay and resume, plus a polling fallback; a built-in Go load generator, so no sysbench is needed
+- **One command to try it:** `make demo` starts a seeded e-shop database and the whole stack in Docker - see [Live Graph Benchmarking](#live-graph-benchmarking)
 
 ### **Database Transformation**
 - **Complete SQL to Neo4j conversion** with support for MySQL, PostgreSQL, Oracle, and SQL Server
@@ -87,6 +114,7 @@ A powerful Go application that transforms SQL database structures (MySQL, Postgr
 - **Filter and search** capabilities within the graph
 
 ### **Performance Analysis & Benchmarking**
+- **[Live graph benchmarking](#live-graph-benchmarking)** with streaming metrics and a before/after comparison
 - **Database performance benchmarking** with sysbench and custom SQL query sets
 - **Live MySQL Performance Schema** metrics collection (statements, table I/O, indexes, connections)
 - **Automated bottleneck detection** and hotspot analysis
@@ -153,7 +181,8 @@ sql-graph-visualizer/
 - **Graph Database**: Neo4j 4.4+ *(upgrade to 5.13+ planned, to enable native vector index support — see [Roadmap](#roadmap))*
 - **CLI Framework**: Cobra with shell completion
 - **API Layer**: GraphQL (gqlgen), REST (Gorilla Mux)
-- **Frontend**: HTML5, JavaScript, Neovis.js
+- **Frontend**: HTML5, JavaScript, Neovis.js, D3.js and Chart.js (vendored, the live benchmark page works offline)
+- **Live streaming**: Server-Sent Events (benchmark samples), WebSocket (Performance Schema monitoring)
 - **Configuration**: Viper + YAML
 - **Logging**: Logrus with structured logging
 - **Testing**: Testify framework
@@ -204,9 +233,174 @@ make build
 
 ### 5. Access the Application
 - **Visualization Interface**: http://localhost:3000
+- **Live Benchmark** (demo mode, see [below](#live-graph-benchmarking)): http://localhost:3000/benchmark-live
 - **GraphQL Playground**: http://localhost:8080/graphql
 - **REST API**: http://localhost:8080/api/*
 - **Neo4j Browser**: http://localhost:7474
+
+<a id="live-benchmark-demo"></a>
+## Live Graph Benchmarking
+
+> **The flagship feature.** Most benchmarking tools end with a table of numbers. SQL Graph Visualizer shows you *where* in your schema the time goes - while the workload is still running.
+
+Nodes are tables, edges are the JOINs between them. Every second the colour, size and thickness of the graph update from the running workload, next to live QPS and p50/p95/p99 charts. A slow join is not a number in a report - it is a thick red line you can point at.
+
+<table>
+<tr>
+<td width="50%" align="center">
+
+**Run A - no index on the JOIN columns**
+
+<img src="docs/images/live-benchmark-run-a-no-index.png" alt="Table graph with red nodes and a thick red edge: every lookup scans a whole table, p95 is about 3 seconds" width="100%">
+
+</td>
+<td width="50%" align="center">
+
+**Run B - same workload after one click**
+
+<img src="docs/images/live-benchmark-run-b-index.png" alt="The same table graph, now green: index lookups, p95 is about 20 milliseconds" width="100%">
+
+</td>
+</tr>
+</table>
+
+### Try it in one command
+
+```bash
+make demo
+```
+
+This builds the app image, starts MySQL (seeded e-shop dataset), Neo4j and the app via
+`docker-compose.demo.yml`, waits until all three are healthy and opens
+**http://localhost:3000/benchmark-live** (if `xdg-open` is available). Other targets:
+`make demo-logs`, `make demo-down` (stop and delete all demo data), `make demo-reseed` (start again from a fresh dataset).
+
+### The story (30-60 seconds)
+
+1. Pick the **Checkout peak** scenario and click **Run**. `orders.customer_id` and `order_items.product_id`
+   have no index, so lookups scan whole tables: the edges around `orders` and `order_items` turn red,
+   latency is in the hundreds of milliseconds to seconds and QPS is low.
+2. Click **Apply suggested index**. The demo runs two `CREATE INDEX` statements
+   (`orders(customer_id, total_amount)` and `order_items(product_id, quantity)`).
+3. **Run** again. The same workload now runs with index lookups: the graph turns green, latency drops to
+   a few milliseconds and QPS goes up by orders of magnitude. The before/after comparison shows the delta.
+4. **Revert** drops the indexes again, so the demo can be repeated.
+
+<p align="center">
+<img src="docs/images/live-benchmark-compare.png" alt="Before/after comparison: p95 -99 %, QPS +8000 %, with the slowest queries ranked below the graph" width="85%">
+</p>
+
+> Typical result on a 4-core laptop (numbers vary with the load of the machine): p95 about 2.5 s -> about 30 ms, throughput about 15 QPS -> about 1,000 QPS. It is the same workload and the same data - only the index differs.
+
+### What you see
+
+- **Table graph** - node colour = heat (average latency of the queries that touch the table, log scale from about 5 ms green to about 500 ms red), node size = QPS, edge colour = latency of the JOIN, edge width = share of the total database busy time, particles flow along edges in proportion to QPS. The layout is computed once, so the graph never jumps.
+- **KPI cards** - QPS, p95, p99 and error rate, with delta badges after a second run.
+- **Charts** - throughput and p50/p95/p99 latency over the last 60 s, with the previous run as a dashed ghost line.
+- **Slowest queries** - ranked by average latency, with the tables each query touches.
+- **Before/after table** - Run A versus Run B with the percentage change per metric.
+- **Presentation mode** (`P`) for talks and demos, light theme (`T`), `Space` to start/stop, `I` to apply/revert the index.
+
+### How it works
+
+```mermaid
+flowchart LR
+  Q["Custom query set<br/>(YAML)"] --> G["Go load generator<br/>N worker threads"]
+  G --> S["1 s sampler<br/>lock-free latency histograms"]
+  S --> H["Per-run sample buffer<br/>(replay + fan-out)"]
+  H -->|"SSE /stream"| U["Browser<br/>D3 graph + Chart.js"]
+  H -->|"GET /samples"| U
+  U -->|"POST /api/demo/optimization/apply"| D[("MySQL")]
+  G --> D
+```
+
+- **Load generator** - the `custom` benchmark tool runs a weighted set of `SELECT`/`INSERT`/`UPDATE` queries on N threads against the source database. No external tool such as sysbench is needed.
+- **Sampler** - every second the collector turns constant-memory log-scale latency histograms (about 5 % bucket width) into a *live sample*: interval QPS, avg/p50/p95/p99/max latency, errors, per-query statistics and the table graph (node heat, edge latency and load).
+- **Streaming** - samples are pushed over **Server-Sent Events** (`GET /api/performance/benchmarks/{id}/stream`). A new connection first replays the buffered samples, `Last-Event-ID` resumes after a dropped connection, and `GET .../samples?since=N` is a polling fallback. The UI switches to polling by itself if the stream keeps failing.
+- **Graph mapping** - each query lists the `tables` it touches, ordered along its JOIN path; every adjacent pair becomes a graph edge. If `tables` is omitted they are derived from the `FROM`/`JOIN` clauses.
+- **Comparison** - `GET /api/performance/benchmarks/compare?a=<id>&b=<id>` returns both summaries and the percentage change.
+- **Safe by design** - benchmark queries are limited to `SELECT`/`INSERT`/`UPDATE`. The demo endpoints that create or drop indexes exist **only when `DEMO_MODE=true`** and accept nothing but plain `CREATE INDEX` / `DROP INDEX` statements from the configuration.
+
+### Use it with your own queries
+
+Benchmark streaming works for any custom query set. Define the queries (with the `tables` they use) and start a run through the API:
+
+```yaml
+performance:
+  monitoring:
+    enabled: true              # initialises the performance services
+  benchmarks:
+    enabled: true
+    custom_queries:
+      - name: checkout-peak
+        threads: 12
+        duration: 30s
+        queries:
+          - description: Recent orders of a customer
+            query: "SELECT o.id, o.total_amount, c.email FROM orders o JOIN customers c ON c.id = o.customer_id WHERE o.customer_id = ? ORDER BY o.id DESC LIMIT 10"
+            parameters: [4242]
+            weight: 35
+            tables: [orders, customers]      # adjacent pairs become graph edges
+```
+
+```bash
+curl -s -X POST localhost:8080/api/performance/benchmarks \
+  -d '{"tool":"custom","query_set":"checkout-peak","duration_seconds":30,"threads":12}'
+curl -N localhost:8080/api/performance/benchmarks/<id>/stream     # live samples as SSE
+```
+
+The `/benchmark-live` page is driven by the `live_demo` section of the configuration (scenarios, the index to apply and the graph topology). It is only served when `DEMO_MODE=true`, because it can create and drop indexes. See `config/demo-config.yml` for a complete example.
+
+<details>
+<summary>Demo API reference (<code>DEMO_MODE=true</code>)</summary>
+
+```bash
+GET  /api/demo/scenarios                       # scenario presets
+POST /api/demo/scenarios/{name}/run            # optional body: {"threads": 8, "duration_seconds": 20}
+GET  /api/demo/topology                        # tables (nodes) and JOINs (edges)
+GET  /api/demo/optimization                    # the suggested index and whether it exists
+POST /api/demo/optimization/apply              # CREATE INDEX (idempotent)
+POST /api/demo/optimization/revert             # DROP INDEX (idempotent)
+```
+
+</details>
+
+### Scenarios
+
+| Scenario | Threads | Workload |
+| --- | --- | --- |
+| `checkout-peak` | 12 | OLTP: recent orders of a customer, order lines, product pages, small idempotent updates. Biggest effect of the index. |
+| `reporting-heavy` | 4 | Analytics: top products per category, top customers per city, daily revenue, category sales summary. |
+| `mixed-oltp` | 8 | Mix of the above plus light reporting and writes. |
+
+Scenarios, query sets, the index to apply and the graph topology are defined in `config/demo-config.yml`
+(`live_demo.*` and `performance.benchmarks.custom_queries`). Writes are idempotent `UPDATE`s of single rows, so the
+dataset does not grow while benchmarking.
+
+### Dataset
+
+Generated deterministically by `demo/mysql/02-seed.sql` on the first start: 20 categories, 20,000 customers,
+2,500 products, 200,000 orders and about 600,000 order items (about 55 MB). The relations are logical only
+(no foreign keys): InnoDB creates an index for every foreign key, which would remove the "slow without index" part
+of the story. `scripts/demo-query-timing.sh [apply|revert|explain]` times the key queries directly in MySQL.
+
+### Requirements
+
+- Docker with Compose v2 (`docker compose`), about 2 GB of free RAM (MySQL ~0.4 GB, Neo4j ~0.6 GB) and 4 CPU cores recommended.
+- First start: image download + build takes a few minutes; MySQL seeding takes about a minute. Later starts reuse the volume.
+- Free host ports: 3000 (UI), 8080 (API), 3306 (MySQL), 7474/7687 (Neo4j). Ports are published on `127.0.0.1` only.
+  Override with `DEMO_APP_PORT`, `DEMO_API_PORT`, `DEMO_MYSQL_PORT`, `DEMO_NEO4J_HTTP_PORT`, `DEMO_NEO4J_BOLT_PORT`,
+  e.g. `DEMO_APP_PORT=3100 make demo`. Set `DEMO_BIND_ADDR=0.0.0.0` to expose the demo on your network
+  (the demo API can create/drop indexes without authentication, so only do this on a trusted network).
+
+### Troubleshooting
+
+- **Port already in use**: use the `DEMO_*_PORT` variables above, or stop the process that owns the port (`ss -ltnp`).
+- **`make demo` times out**: the first MySQL start is the slow part. Follow it with `docker logs -f mysql-demo`; raise the limit with `DEMO_WAIT_TIMEOUT=900 make demo`.
+- **Results look the same before and after the index**: the indexes may already exist from a previous run. Use **Revert** in the UI or `make demo-reseed`.
+- **Latencies are lower than described**: the dataset is sized for a laptop; on a fast machine, increase the row counts in `demo/mysql/02-seed.sql` and run `make demo-reseed`.
+- **Changing credentials**: the demo credentials are fixed (`demopass123`) in `docker-compose.demo.yml` and `config/demo-config.yml`; keep both in sync.
+- **Inspect the app**: `make demo-logs`, `curl http://localhost:8080/api/health`.
 
 ## Installation
 
@@ -505,6 +699,14 @@ GET /api/performance/benchmarks/{id}/results
 # Stop a running benchmark
 POST /api/performance/benchmarks/{id}/stop
 
+# Live benchmarking: stream samples (Server-Sent Events, replay + Last-Event-ID resume)
+GET /api/performance/benchmarks/{id}/stream
+# ...or poll them
+GET /api/performance/benchmarks/{id}/samples?since=<seq>
+
+# Compare two finished runs (percentage change of b versus a)
+GET /api/performance/benchmarks/compare?a=<id>&b=<id>
+
 # Current Performance Schema snapshot (optionally with graph data)
 GET /api/performance/data?include_graph=true
 
@@ -580,7 +782,7 @@ subscription {
 
 ## Visualization
 
-The web interface provides an interactive graph visualization:
+The web interface provides an interactive graph visualization. For the live, streaming view of a running workload see [Live Graph Benchmarking](#live-graph-benchmarking) (`/benchmark-live`); the performance dashboard is at `/performance`.
 
 ### Features
 - **Interactive Navigation**: Pan, zoom, and drag nodes
@@ -764,6 +966,7 @@ Ready to contribute and earn equity? **[Create a Contributor Intent Issue](https
 - [x] **Performance benchmarking integration** (sysbench, custom SQL query sets)
 - [x] **MySQL Performance Schema** live monitoring with statement/table/index/connection metrics
 - [x] **Automated bottleneck & hotspot detection** with optimization suggestions
+- [x] **Live graph benchmarking** - streaming per-second metrics (SSE), table graph heat map, one-click index optimization and before/after comparison, one-command Docker demo
 - [x] **Real-time performance dashboard** with WebSocket updates and graph load overlays
 - [x] **Benchmark result persistence** with historical reporting and JSON/CSV export
 - [x] **Robust connection management** with pooling and failover

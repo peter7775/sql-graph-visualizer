@@ -30,16 +30,26 @@ type CustomQueryAdapter struct {
 	logger    *logrus.Logger
 	db        *sql.DB
 	querySets map[string]ports.CustomBenchmarkConfig
+
+	// sampleInterval is how often live samples are emitted while streaming.
+	sampleInterval time.Duration
 }
+
+// defaultLiveSampleInterval is the live sampling period used by ExecuteStream.
+const defaultLiveSampleInterval = time.Second
+
+// Compile-time check that the adapter can stream live samples.
+var _ ports.StreamingBenchmarkTool = (*CustomQueryAdapter)(nil)
 
 // NewCustomQueryAdapter creates a new custom query benchmark adapter. Query
 // sets with no queries, or whose queries are all disallowed statement types,
 // are skipped with a warning.
 func NewCustomQueryAdapter(logger *logrus.Logger, db *sql.DB, querySets map[string]ports.CustomBenchmarkConfig) *CustomQueryAdapter {
 	return &CustomQueryAdapter{
-		logger:    logger,
-		db:        db,
-		querySets: querySets,
+		logger:         logger,
+		db:             db,
+		querySets:      querySets,
+		sampleInterval: defaultLiveSampleInterval,
 	}
 }
 
@@ -48,6 +58,13 @@ func NewCustomQueryAdapter(logger *logrus.Logger, db *sql.DB, querySets map[stri
 // using config.Threads concurrent workers, cycling through the set's queries
 // weighted by their configured Weight.
 func (c *CustomQueryAdapter) Execute(ctx context.Context, config ports.BenchmarkConfig) (*ports.BenchmarkResult, error) {
+	return c.ExecuteStream(ctx, config, nil)
+}
+
+// ExecuteStream is Execute plus periodic LiveSample emission. emit may be nil.
+// Samples are emitted from a dedicated goroutine once per sample interval;
+// a final sample covering the tail of the run is emitted before returning.
+func (c *CustomQueryAdapter) ExecuteStream(ctx context.Context, config ports.BenchmarkConfig, emit func(ports.LiveSample)) (*ports.BenchmarkResult, error) {
 	set, setName, err := c.resolveQuerySet(config)
 	if err != nil {
 		return nil, err
@@ -89,6 +106,8 @@ func (c *CustomQueryAdapter) Execute(ctx context.Context, config ports.Benchmark
 	startTime := time.Now()
 	deadline := startTime.Add(duration)
 
+	collector := newLiveCollector(queryDefs(set.Queries), threads, startTime)
+
 	var wg sync.WaitGroup
 	for w := 0; w < threads; w++ {
 		wg.Add(1)
@@ -109,16 +128,59 @@ func (c *CustomQueryAdapter) Execute(ctx context.Context, config ports.Benchmark
 				rowsExamined, rowsReturned, execErr := c.runQuery(ctx, q)
 				elapsed := time.Since(queryStart)
 
+				// A query aborted because the run was stopped is not a
+				// failure and must not skew the latency distribution.
+				if execErr != nil && ctx.Err() != nil {
+					return
+				}
+
+				collector.record(idx, elapsed, execErr != nil)
 				statsMu.Lock()
 				stats[idx].record(elapsed, rowsExamined, rowsReturned, execErr)
 				statsMu.Unlock()
 			}
 		}(time.Now().UnixNano() + int64(w))
 	}
-	wg.Wait()
 
+	// Live sampler: ticks until the workers are done.
+	done := make(chan struct{})
+	samplerDone := make(chan struct{})
+	go func() {
+		defer close(samplerDone)
+		interval := c.sampleInterval
+		if interval <= 0 {
+			interval = defaultLiveSampleInterval
+		}
+		ticker := time.NewTicker(interval)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ticker.C:
+				if emit != nil {
+					emit(collector.sample(time.Now()))
+				}
+			case <-done:
+				return
+			}
+		}
+	}()
+
+	wg.Wait()
+	close(done)
+	<-samplerDone
 	endTime := time.Now()
+	if emit != nil && endTime.Sub(collector.last) >= 200*time.Millisecond {
+		emit(collector.sample(endTime))
+	}
+
 	metrics, queryResults := aggregateCustomQueryStats(stats, endTime.Sub(startTime))
+	finalMetrics, _ := collector.finalStats(endTime.Sub(startTime))
+	metrics.MinLatency = finalMetrics.MinLatency
+	metrics.MaxLatency = finalMetrics.MaxLatency
+	metrics.Percentile50 = finalMetrics.Percentile50
+	metrics.Percentile95 = finalMetrics.Percentile95
+	metrics.Percentile99 = finalMetrics.Percentile99
+	metrics.TransactionsPerSec = metrics.QueriesPerSecond
 
 	c.logger.WithFields(logrus.Fields{
 		"query_set":       setName,
@@ -332,12 +394,13 @@ func aggregateCustomQueryStats(stats []*customQueryStat, wallClock time.Duration
 		totalExec += s.execCount
 		totalErrors += s.errorCount
 		avgTime := s.totalTime / time.Duration(s.execCount)
-		totalLatencyMs += float64(avgTime.Milliseconds()) * float64(s.execCount)
+		// Accumulate the exact total (not a millisecond-truncated average) so
+		// sub-millisecond queries do not collapse to a 0 ms average.
+		totalLatencyMs += float64(s.totalTime) / float64(time.Millisecond)
 
-		statementType := "SELECT"
-		if fields := strings.Fields(strings.TrimSpace(s.def.Query)); len(fields) > 0 {
-			statementType = strings.ToUpper(fields[0])
-		}
+		statementType := statementTypeOf(s.def.Query)
+		tables := queryTables(s.def)
+		split := min(1, len(tables))
 
 		queryResults = append(queryResults, ports.QueryPerformance{
 			QueryPattern:      s.def.Query,
@@ -349,6 +412,8 @@ func aggregateCustomQueryStats(stats []*customQueryStat, wallClock time.Duration
 			MaxTime:           s.maxTime,
 			RowsExamined:      s.rowsExamined,
 			RowsReturned:      s.rowsReturned,
+			SourceTables:      tables[:split],
+			JoinedTables:      tables[split:],
 			RelationshipType:  "CUSTOM_QUERY",
 			PerformanceImpact: classifyCustomQueryImpact(avgTime),
 		})
@@ -364,6 +429,14 @@ func aggregateCustomQueryStats(stats []*customQueryStat, wallClock time.Duration
 	metrics.TotalErrors = int(totalErrors)
 
 	return metrics, queryResults
+}
+
+// queryDefs returns a copy of the query definitions so the collector does not
+// alias the adapter's configuration.
+func queryDefs(defs []ports.CustomQueryDefinition) []ports.CustomQueryDefinition {
+	out := make([]ports.CustomQueryDefinition, len(defs))
+	copy(out, defs)
+	return out
 }
 
 func classifyCustomQueryImpact(avgLatency time.Duration) string {

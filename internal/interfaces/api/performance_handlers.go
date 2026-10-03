@@ -166,6 +166,9 @@ func (ph *PerformanceHandlers) fetchBaseGraph() (*models.Graph, error) {
 
 // RegisterRoutes registers all performance-related routes
 func (ph *PerformanceHandlers) RegisterRoutes(router *mux.Router) {
+	// Live benchmarking (compare must precede the generic {id} route below)
+	ph.registerLiveRoutes(router)
+
 	// Benchmark control endpoints
 	router.HandleFunc("/api/performance/benchmarks", ph.ListBenchmarks).Methods("GET")
 	router.HandleFunc("/api/performance/benchmarks", ph.StartBenchmark).Methods("POST")
