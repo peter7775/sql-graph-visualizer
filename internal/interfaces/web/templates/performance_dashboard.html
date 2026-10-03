@@ -10,11 +10,11 @@
     <!-- Font Awesome for icons -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     
-    <!-- D3.js for advanced visualizations -->
-    <script src="https://d3js.org/d7.min.js"></script>
+    <!-- D3.js for advanced visualizations (vendored, works offline) -->
+    <script src="/static/js/vendor/d3.min.js"></script>
     
-    <!-- Chart.js for performance charts -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Chart.js for performance charts (vendored, works offline) -->
+    <script src="/static/js/vendor/chart.umd.min.js"></script>
     
     <style>
         :root {
@@ -503,6 +503,7 @@
                 <div class="col-md-8">
                     <h1><i class="fas fa-chart-line me-3"></i>Performance Dashboard</h1>
                     <p class="lead mb-0">Real-time database performance monitoring and analysis</p>
+                    <p class="mb-0 mt-2"><a href="/benchmark-live" class="text-white small"><i class="fas fa-bolt me-1"></i>Live benchmark demo &rarr;</a></p>
                 </div>
                 <div class="col-md-4 text-md-end mt-3 mt-md-0">
                     <div class="status-indicator">
@@ -675,6 +676,9 @@
 
     <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+
+    <!-- Performance graph visualizer (needs D3) -->
+    <script src="/static/js/performance-visualization.js"></script>
     
     <!-- Shared theme toggle functionality -->
     <script>
@@ -784,6 +788,9 @@
             
             // Initialize benchmark chart
             initializeBenchmarkChart();
+
+            // Initialize the performance graph (tolerates a missing backend)
+            initializePerformanceGraph();
             
             // Set up event handlers
             setupEventHandlers();
@@ -792,6 +799,55 @@
             startDashboardUpdates();
             
             console.log('Performance Dashboard initialized successfully');
+        }
+
+        function showGraphPlaceholder(message) {
+            const container = document.getElementById('performanceGraph');
+            if (!container) return;
+            container.innerHTML = '<div class="d-flex h-100 align-items-center justify-content-center text-muted text-center p-3">' +
+                message + '</div>';
+        }
+
+        function initializePerformanceGraph() {
+            const container = document.getElementById('performanceGraph');
+            if (!container) return;
+            if (typeof d3 === 'undefined' || typeof PerformanceGraphVisualizer === 'undefined') {
+                showGraphPlaceholder('Performance graph is unavailable (visualization scripts failed to load).');
+                return;
+            }
+
+            try {
+                performanceVisualizer = new PerformanceGraphVisualizer('performanceGraph', {
+                    width: container.clientWidth || 800,
+                    height: container.clientHeight || 480,
+                    enableAnimations: document.getElementById('enableAnimations').checked,
+                    enableHeatmap: document.getElementById('enableHeatmap').checked,
+                    updateInterval: parseInt(document.getElementById('updateFrequency').value, 10) || 5000
+                });
+            } catch (error) {
+                console.error('Failed to initialize performance graph:', error);
+                performanceVisualizer = null;
+                showGraphPlaceholder('Performance graph could not be initialized.');
+                return;
+            }
+
+            // Seed the graph once; live updates arrive over the WebSocket.
+            loadPerformanceGraph();
+        }
+
+        async function loadPerformanceGraph() {
+            if (!performanceVisualizer) return;
+            try {
+                const response = await fetch('/api/performance/data/graph');
+                if (!response.ok) throw new Error('HTTP ' + response.status);
+                const body = await response.json();
+                const graph = body && body.success ? body.data : null;
+                if (graph && Array.isArray(graph.nodes) && graph.nodes.length > 0) {
+                    performanceVisualizer.updatePerformanceData(graph);
+                }
+            } catch (error) {
+                console.warn('Performance graph data unavailable:', error.message);
+            }
         }
 
         function initializeTrendsChart() {
@@ -1096,6 +1152,127 @@
             }
         }
 
+        // ---- Benchmark control ----
+        let currentBenchmarkId = null;
+        let benchmarkStream = null;
+        let benchmarkPollTimer = null;
+        let benchmarkLastSeq = 0;
+
+        function escapeHtml(value) {
+            return String(value == null ? '' : value).replace(/[&<>"']/g, function(c) {
+                return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+            });
+        }
+
+        function showBenchmarkMessage(kind, html) {
+            const style = kind === 'error' ? ' style="border-color:#dc3545"' : '';
+            document.getElementById('benchmarkStatus').innerHTML =
+                '<div class="alert alert-info"' + style + '>' + html + '</div>';
+        }
+
+        function setBenchmarkRunning(running) {
+            document.getElementById('startBenchmark').disabled = running;
+            document.getElementById('stopBenchmark').disabled = !running;
+        }
+
+        function closeBenchmarkFeeds() {
+            if (benchmarkStream) {
+                benchmarkStream.close();
+                benchmarkStream = null;
+            }
+            if (benchmarkPollTimer) {
+                clearTimeout(benchmarkPollTimer);
+                benchmarkPollTimer = null;
+            }
+        }
+
+        function addBenchmarkSample(sample) {
+            if (!sample || sample.seq <= benchmarkLastSeq) return;
+            benchmarkLastSeq = sample.seq;
+            const interval = sample.interval || {};
+            const maxPoints = 120;
+            if (benchmarkChart.data.labels.length >= maxPoints) {
+                benchmarkChart.data.labels.shift();
+                benchmarkChart.data.datasets[0].data.shift();
+            }
+            benchmarkChart.data.labels.push(Math.round(sample.elapsed_seconds) + 's');
+            benchmarkChart.data.datasets[0].data.push(interval.qps || 0);
+            benchmarkChart.update('none');
+        }
+
+        function finishBenchmarkUi(status, summary, error) {
+            closeBenchmarkFeeds();
+            setBenchmarkRunning(false);
+            const label = status === 'failed' ? 'Benchmark failed' : status === 'cancelled' ? 'Benchmark stopped' : 'Benchmark completed';
+            showBenchmarkMessage(status === 'failed' ? 'error' : 'info',
+                '<strong>' + label + '</strong>' + (error ? '<br>' + escapeHtml(error) : ''));
+            if (summary) {
+                document.getElementById('benchmarkResults').style.display = 'block';
+                document.getElementById('resultsList').innerHTML =
+                    '<div class="small">QPS: <strong>' + Number(summary.qps || 0).toFixed(1) + '</strong></div>' +
+                    '<div class="small">Avg latency: <strong>' + Number(summary.avg_latency_ms || 0).toFixed(2) + ' ms</strong></div>' +
+                    '<div class="small">p95 / p99: <strong>' + Number(summary.p95_latency_ms || 0).toFixed(2) + ' / ' +
+                    Number(summary.p99_latency_ms || 0).toFixed(2) + ' ms</strong></div>' +
+                    '<div class="small">Total queries: <strong>' + (summary.total_queries || 0) + '</strong></div>';
+            }
+        }
+
+        function connectBenchmarkStream(id) {
+            if (typeof EventSource === 'undefined') {
+                pollBenchmarkSamples(id);
+                return;
+            }
+            const source = new EventSource('/api/performance/benchmarks/' + encodeURIComponent(id) + '/stream');
+            benchmarkStream = source;
+            let errors = 0;
+
+            source.addEventListener('sample', function(event) {
+                errors = 0;
+                try { addBenchmarkSample(JSON.parse(event.data)); } catch (e) { console.error('Bad sample event', e); }
+            });
+            source.addEventListener('done', function(event) {
+                let done = {};
+                try { done = JSON.parse(event.data); } catch (e) { /* ignore */ }
+                finishBenchmarkUi(done.status || 'completed', done.summary, done.error);
+            });
+            source.onerror = function() {
+                errors += 1;
+                if (source.readyState === EventSource.CLOSED || errors >= 3) {
+                    source.close();
+                    benchmarkStream = null;
+                    pollBenchmarkSamples(id);
+                }
+            };
+        }
+
+        function pollBenchmarkSamples(id) {
+            let failures = 0;
+            const tick = async function() {
+                if (currentBenchmarkId !== id) return;
+                try {
+                    const response = await fetch('/api/performance/benchmarks/' + encodeURIComponent(id) +
+                        '/samples?since=' + benchmarkLastSeq);
+                    if (!response.ok) throw new Error('HTTP ' + response.status);
+                    const body = await response.json();
+                    if (!body.success) throw new Error('request rejected');
+                    failures = 0;
+                    (body.data.samples || []).forEach(addBenchmarkSample);
+                    if (body.data.status && body.data.status !== 'running') {
+                        finishBenchmarkUi(body.data.status, null, '');
+                        return;
+                    }
+                } catch (error) {
+                    failures += 1;
+                    if (failures >= 5) {
+                        finishBenchmarkUi('failed', null, 'Lost connection to the benchmark: ' + error.message);
+                        return;
+                    }
+                }
+                benchmarkPollTimer = setTimeout(tick, 1000);
+            };
+            tick();
+        }
+
         async function startBenchmark() {
             try {
                 const response = await fetch('/api/performance/benchmarks', {
@@ -1110,31 +1287,56 @@
                     })
                 });
 
-                if (!response.ok) throw new Error('Failed to start benchmark');
+                if (!response.ok) throw new Error('Failed to start benchmark (HTTP ' + response.status + ')');
 
                 const data = await response.json();
-                if (data.success) {
-                    document.getElementById('startBenchmark').disabled = true;
-                    document.getElementById('stopBenchmark').disabled = false;
-                    
-                    document.getElementById('benchmarkStatus').innerHTML = `
-                        <div class="alert alert-info">
-                            <strong>Benchmark Running</strong><br>
-                            ID: ${data.data.id}<br>
-                            Started: ${new Date(data.data.start_time).toLocaleTimeString()}
-                        </div>
-                    `;
+                if (!data.success) {
+                    throw new Error((data.error && data.error.message) || 'Failed to start benchmark');
                 }
+
+                closeBenchmarkFeeds();
+                currentBenchmarkId = data.data.id;
+                benchmarkLastSeq = 0;
+                benchmarkChart.data.labels = [];
+                benchmarkChart.data.datasets[0].data = [];
+                benchmarkChart.update('none');
+                document.getElementById('benchmarkResults').style.display = 'none';
+                setBenchmarkRunning(true);
+
+                showBenchmarkMessage('info',
+                    '<strong>Benchmark Running</strong><br>' +
+                    'ID: ' + escapeHtml(data.data.id) + '<br>' +
+                    'Started: ' + new Date(data.data.start_time).toLocaleTimeString());
+                connectBenchmarkStream(currentBenchmarkId);
             } catch (error) {
                 console.error('Error starting benchmark:', error);
-                alert('Failed to start benchmark: ' + error.message);
+                showBenchmarkMessage('error', '<strong>Failed to start benchmark</strong><br>' + escapeHtml(error.message));
             }
         }
 
         async function stopBenchmark() {
-            // Implementation for stopping benchmark
-            document.getElementById('startBenchmark').disabled = false;
-            document.getElementById('stopBenchmark').disabled = true;
+            if (!currentBenchmarkId) return;
+            const stopButton = document.getElementById('stopBenchmark');
+            stopButton.disabled = true;
+            try {
+                const response = await fetch('/api/performance/benchmarks/' + encodeURIComponent(currentBenchmarkId) + '/stop', {
+                    method: 'POST'
+                });
+                const body = await response.json().catch(function() { return null; });
+                if (!response.ok || !body || !body.success) {
+                    throw new Error((body && body.error && body.error.message) || 'Failed to stop benchmark (HTTP ' + response.status + ')');
+                }
+                // The stream/polling feed reports the final state; make sure the UI unlocks even without one.
+                setTimeout(function() {
+                    if (document.getElementById('startBenchmark').disabled) {
+                        finishBenchmarkUi('cancelled', null, '');
+                    }
+                }, 3000);
+            } catch (error) {
+                console.error('Error stopping benchmark:', error);
+                stopButton.disabled = false;
+                showBenchmarkMessage('error', '<strong>Failed to stop benchmark</strong><br>' + escapeHtml(error.message));
+            }
         }
 
         function toggleFullscreen() {

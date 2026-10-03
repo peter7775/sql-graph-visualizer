@@ -80,6 +80,7 @@ type BenchmarkExecution struct {
 	CancelFunc context.CancelFunc
 	Result     *ports.BenchmarkResult
 	Progress   *BenchmarkProgress
+	live       *liveHub
 	mutex      sync.RWMutex
 }
 
@@ -219,6 +220,7 @@ func (s *BenchmarkService) ExecuteBenchmark(ctx context.Context, config ports.Be
 		Tool:       tool,
 		Context:    executionCtx,
 		CancelFunc: cancel,
+		live:       newLiveHub(executionID),
 		Progress: &BenchmarkProgress{
 			CurrentPhase: "initializing",
 			TotalSteps:   4, // prepare, warmup, execute, analyze
@@ -248,10 +250,21 @@ func (s *BenchmarkService) ExecuteBenchmark(ctx context.Context, config ports.Be
 func (s *BenchmarkService) executeAsync(execution *BenchmarkExecution) {
 	defer s.cleanupExecution(execution.ID)
 	defer execution.CancelFunc()
+	// Close the live stream only after the final status and result are
+	// visible, so subscribers can read them when their channel ends.
+	defer execution.live.close()
 
 	s.updateExecutionStatus(execution.ID, ports.BenchmarkStatusRunning, "executing benchmark")
 
-	result, err := execution.Tool.Execute(execution.Context, execution.Config)
+	var (
+		result *ports.BenchmarkResult
+		err    error
+	)
+	if streamer, ok := execution.Tool.(ports.StreamingBenchmarkTool); ok {
+		result, err = streamer.ExecuteStream(execution.Context, execution.Config, execution.live.publish)
+	} else {
+		result, err = execution.Tool.Execute(execution.Context, execution.Config)
+	}
 	if err != nil {
 		s.logger.WithFields(logrus.Fields{
 			"execution_id": execution.ID,
@@ -273,9 +286,22 @@ func (s *BenchmarkService) executeAsync(execution *BenchmarkExecution) {
 		result.Status = ports.BenchmarkStatusCompleted
 	}
 
+	if scenario, ok := execution.Config.CustomParams["scenario"].(string); ok && scenario != "" {
+		if result.Labels == nil {
+			result.Labels = make(map[string]string)
+		}
+		result.Labels["scenario"] = scenario
+	}
+
 	execution.mutex.Lock()
 	execution.Result = result
-	execution.Status = result.Status
+	// A run that was stopped by the user must stay "cancelled" even though the
+	// tool returns a (partial) result without error.
+	if execution.Status == ports.BenchmarkStatusCancelled {
+		result.Status = ports.BenchmarkStatusCancelled
+	} else {
+		execution.Status = result.Status
+	}
 	execution.mutex.Unlock()
 
 	s.logger.WithFields(logrus.Fields{

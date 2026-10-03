@@ -36,3 +36,6 @@ coverage.out
 
 # IDE files
 .idea/
+
+# Vendored front-end libraries are committed on purpose (offline demo)
+!internal/interfaces/web/static/js/vendor/

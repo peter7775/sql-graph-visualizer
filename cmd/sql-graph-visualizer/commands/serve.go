@@ -13,6 +13,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/sirupsen/logrus"
@@ -69,7 +70,8 @@ func runServe() error {
 
 	// Wait for interrupt
 	quit := make(chan os.Signal, 1)
-	signal.Notify(quit, os.Interrupt)
+	// SIGTERM is what `docker stop` and process supervisors send.
+	signal.Notify(quit, os.Interrupt, syscall.SIGTERM)
 
 	logrus.Info("Application is running. Press Ctrl+C to stop.")
 	<-quit

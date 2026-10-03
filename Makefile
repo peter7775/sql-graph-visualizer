@@ -1,7 +1,7 @@
 # Makefile for SQL Graph Visualizer
 # Requires Go 1.24+
 
-.PHONY: help install generate format test build run clean docker-up docker-down sec-scan ci-check dev quick lint
+.PHONY: help install generate format test build run clean docker-up docker-down sec-scan ci-check dev quick lint demo demo-down demo-logs demo-reseed
 
 # Default target
 help:
@@ -20,6 +20,10 @@ help:
 	@echo "  docker-down- Stop Docker services"
 	@echo "  sec-scan   - Run security scans (govulncheck, gosec)"
 	@echo "  ci-check   - Run CI checks locally"
+	@echo "  demo       - Start the live benchmark demo (Docker Compose)"
+	@echo "  demo-down  - Stop the demo and delete its data volumes"
+	@echo "  demo-logs  - Follow the demo logs"
+	@echo "  demo-reseed- Recreate the demo from scratch (fresh dataset, no indexes)"
 	@echo ""
 
 # Install dependencies and tools
@@ -162,3 +166,34 @@ sec-scan:
 # Quick rebuild and test
 quick: generate format test
 	@echo "✅ Quick rebuild completed"
+
+# ---------------------------------------------------------------------------
+# Live benchmark demo (Docker Compose, MySQL + Neo4j + app with DEMO_MODE=true)
+# ---------------------------------------------------------------------------
+DEMO_COMPOSE ?= docker compose -f docker-compose.demo.yml
+DEMO_APP_PORT ?= 3000
+DEMO_URL = http://localhost:$(DEMO_APP_PORT)/benchmark-live
+
+# Build and start the demo, wait until MySQL (seeded), Neo4j and the app are healthy,
+# print the URL and open it in the browser when xdg-open is available.
+demo:
+	$(DEMO_COMPOSE) up -d --build
+	@DEMO_WAIT_TIMEOUT=$${DEMO_WAIT_TIMEOUT:-600} ./scripts/demo-wait.sh
+	@echo ""
+	@echo "Live benchmark demo is ready:"
+	@echo "  $(DEMO_URL)"
+	@echo "  (graph visualization: http://localhost:$(DEMO_APP_PORT)/  |  API health: http://localhost:$${DEMO_API_PORT:-8080}/api/health)"
+	@if command -v xdg-open >/dev/null 2>&1; then xdg-open "$(DEMO_URL)" >/dev/null 2>&1 || true; fi
+
+# Stop the demo and remove its containers and volumes (dataset, Neo4j data, benchmark results).
+demo-down:
+	$(DEMO_COMPOSE) down -v --remove-orphans
+
+# Follow the logs of all demo services.
+demo-logs:
+	$(DEMO_COMPOSE) logs -f --tail=100
+
+# Throw away all demo data (including applied indexes and benchmark history) and start again.
+demo-reseed:
+	$(DEMO_COMPOSE) down -v --remove-orphans
+	$(MAKE) demo

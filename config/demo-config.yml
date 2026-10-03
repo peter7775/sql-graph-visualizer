@@ -1,103 +1,351 @@
+# SQL Graph Visualizer - live benchmark demo configuration.
+#
+# Used by docker-compose.demo.yml (CONFIG_PATH=/app/config/demo-config.yml, DEMO_MODE=true).
+# Only keys that the application actually reads are present here: database, neo4j,
+# performance (monitoring / realtime / benchmarks / visualization), live_demo and
+# transform_rules. Unknown keys are silently ignored by the YAML loader, so keep
+# this file free of dead sections.
+#
+# Host names / credentials below match docker-compose.demo.yml. The loader does not
+# expand ${ENV} placeholders, so if you change them in the compose file, change them here too.
 
-server:
-  port: 3000
-  api_port: 8080
-  host: "0.0.0.0"
-  read_timeout: 30s
-  write_timeout: 30s
-  idle_timeout: 120s
-
-mysql:
-  host: mysql-demo
-  port: 3306
-  user: demo_user
-  password: demopass123
-  database: ecommerce_demo
-  max_open_conns: 20
-  max_idle_conns: 5
-  conn_max_lifetime: 5m
-  conn_max_idle_time: 10m
-  timeout: 10s
-  charset: utf8mb4
-
-postgresql:
-  host: postgres-demo
-  port: 5432
-  user: demo_user
-  password: demopass123
-  database: analytics_demo
-  sslmode: disable
-  max_open_conns: 15
-  max_idle_conns: 3
-  conn_max_lifetime: 5m
-  conn_max_idle_time: 10m
-  timeout: 10s
+database:
+  type: "mysql"
+  mysql:
+    host: "mysql-demo"
+    port: 3306
+    user: "demo_user"
+    password: "demopass123"
+    database: "ecommerce_demo"
 
 neo4j:
-  uri: bolt://neo4j-demo:7687
-  user: neo4j
-  password: demopass123
-  max_connection_pool_size: 50
-  connection_timeout: 10s
-  max_transaction_retry_time: 15s
+  uri: "bolt://neo4j-demo:7687"
+  user: "neo4j"
+  password: "demopass123"
 
-demo:
-  enabled: true
-  auto_transform_on_start: true
-  sample_data_loaded: true
-  reset_on_restart: false
-  show_demo_banner: true
-  demo_scenario: "ecommerce_analytics"
-
-benchmark:
-  enabled: true
-  sysbench:
+performance:
+  monitoring:
     enabled: true
-    executable_path: "/usr/bin/sysbench"
-    default_duration: "2m"
-    default_threads: 4
-    test_types:
-      - "oltp_read_write"
-      - "oltp_read_only"
-      - "select_random_points"
-  
-  pgbench:
+    update_interval: "5s"
+    data_retention: "1h"
+    max_concurrent_queries: 10
+    performance_schema:
+      enabled: true
+      statement_limit: 100
+      table_io_limit: 50
+      index_limit: 50
+      connection_limit: 25
+      cache_duration: "30s"
+    analysis:
+      bottleneck_threshold: 70.0
+      slow_query_threshold: 50.0
+      high_load_threshold: 80.0
+      hotspot_threshold: 75.0
+
+  realtime:
     enabled: true
-    executable_path: "/usr/bin/pgbench"
-    default_scale: 5
-    default_duration: "2m"
-    default_clients: 4
+    update_interval: "5s"
+    heartbeat_interval: "30s"
+    max_connections: 100
+    write_timeout: "10s"
+    read_timeout: "60s"
+    ping_timeout: "90s"
+    max_message_size: 512
+    compression_enabled: true
+    alerts:
+      high_latency: 1000.0
+      high_error_rate: 5.0
+      high_cpu_usage: 80.0
+      high_memory_usage: 85.0
+      slow_query_threshold: 50.0
+      deadlock_threshold: 5
 
-  custom_benchmarks:
-    - name: "ecommerce_user_orders"
-      description: "Test user-order relationship queries"
-      duration: "1m"
-      threads: 2
-      queries:
-        - query: "SELECT u.*, COUNT(o.id) as order_count FROM users u LEFT JOIN orders o ON u.id = o.user_id GROUP BY u.id"
-          weight: 50
-          description: "User order counts"
-        - query: "SELECT p.*, SUM(oi.quantity) as total_sold FROM products p JOIN order_items oi ON p.id = oi.product_id GROUP BY p.id ORDER BY total_sold DESC LIMIT 20"
-          weight: 30
-          description: "Best selling products"
-        - query: "SELECT c.name, COUNT(DISTINCT u.id) as user_count FROM categories c JOIN products p ON c.id = p.category_id JOIN order_items oi ON p.id = oi.product_id JOIN orders o ON oi.order_id = o.id JOIN users u ON o.user_id = u.id GROUP BY c.id, c.name"
-          weight: 20
-          description: "Category popularity"
+  benchmarks:
+    enabled: true
+    default_duration: "30s"
+    max_duration: "10m"
+    results_retention: "24h"
+    results_dir: "/app/data/performance/benchmarks"
+    limits:
+      max_concurrent_benchmarks: 2
+      memory_limit_mb: 100
+      cpu_threshold: 80.0
 
+    # Named query sets used by the live demo scenarios (live_demo.scenarios[].query_set).
+    #
+    # `tables` is ordered along the JOIN path (first table = source, the rest are joined);
+    # graph edges are derived from consecutive pairs, which must exist in live_demo.topology.
+    # All parameters are fixed values that exist in the seeded data (demo/mysql/02-seed.sql).
+    # Only SELECT/UPDATE are used; UPDATEs are idempotent (they set constants on a single
+    # existing row), so the dataset does not grow or drift while benchmarking.
+    #
+    # Queries marked [index-sensitive] are slow without the demo indexes
+    # (orders(customer_id, ...), order_items(product_id, ...)) and fast with them.
+    custom_queries:
+      - name: "checkout-peak"
+        description: "OLTP checkout traffic: order history, order lines, product pages"
+        duration: "30s"
+        threads: 12
+        queries:
+          - query: "SELECT o.id, o.status, o.total_amount, o.created_at, c.email FROM orders o JOIN customers c ON c.id = o.customer_id WHERE o.customer_id = ? ORDER BY o.id DESC LIMIT 10"
+            parameters: [4242]
+            weight: 35
+            description: "Recent orders of a customer [index-sensitive]"
+            expected_latency: "5ms"
+            tables: ["orders", "customers"]
+          - query: "SELECT oi.id, oi.quantity, oi.unit_price, p.name FROM order_items oi JOIN products p ON p.id = oi.product_id WHERE oi.order_id = ?"
+            parameters: [100000]
+            weight: 20
+            description: "Order lines with product names"
+            expected_latency: "5ms"
+            tables: ["order_items", "products"]
+          - query: "SELECT SUM(oi.quantity) AS units_sold FROM order_items oi JOIN products p ON p.id = oi.product_id WHERE oi.product_id = ?"
+            parameters: [1234]
+            weight: 15
+            description: "Units sold of a product [index-sensitive]"
+            expected_latency: "5ms"
+            tables: ["order_items", "products"]
+          - query: "SELECT o.id, o.status, o.total_amount, c.email, c.first_name FROM orders o JOIN customers c ON c.id = o.customer_id WHERE o.id = ?"
+            parameters: [100000]
+            weight: 10
+            description: "Order header with customer"
+            expected_latency: "2ms"
+            tables: ["orders", "customers"]
+          - query: "SELECT p.id, p.name, p.price, p.stock_quantity, c.name AS category FROM products p JOIN categories c ON c.id = p.category_id WHERE p.id = ?"
+            parameters: [1234]
+            weight: 12
+            description: "Product detail page"
+            expected_latency: "2ms"
+            tables: ["products", "categories"]
+          - query: "UPDATE products SET stock_quantity = 500 WHERE id = ?"
+            parameters: [1234]
+            weight: 4
+            description: "Stock adjustment (idempotent)"
+            tables: ["products"]
+          - query: "UPDATE customers SET last_login_at = NOW() WHERE id = ?"
+            parameters: [4242]
+            weight: 4
+            description: "Customer login touch"
+            tables: ["customers"]
+
+      - name: "reporting-heavy"
+        description: "Analytics: top products per category, top customers per city, sales per category"
+        duration: "30s"
+        threads: 4
+        queries:
+          - query: "SELECT /*+ JOIN_ORDER(p, oi) */ p.id, p.name, SUM(oi.quantity) AS units FROM products p JOIN order_items oi ON oi.product_id = p.id WHERE p.category_id = ? GROUP BY p.id, p.name ORDER BY units DESC LIMIT 10"
+            parameters: [7]
+            weight: 40
+            description: "Top products in a category [index-sensitive]"
+            expected_latency: "50ms"
+            tables: ["products", "order_items"]
+          - query: "SELECT /*+ JOIN_ORDER(c, o) */ c.id, c.email, COUNT(o.id) AS orders_count, SUM(o.total_amount) AS spent FROM customers c JOIN orders o ON o.customer_id = c.id WHERE c.country = ? AND c.city = ? GROUP BY c.id, c.email ORDER BY spent DESC LIMIT 10"
+            parameters: ["CZ", "Prague"]
+            weight: 35
+            description: "Top customers in a city [index-sensitive]"
+            expected_latency: "50ms"
+            tables: ["customers", "orders"]
+          - query: "SELECT DATE(created_at) AS day, COUNT(*) AS orders_count, SUM(total_amount) AS revenue FROM orders WHERE created_at >= ? AND created_at < ? GROUP BY day ORDER BY day"
+            parameters: ["2024-03-01", "2024-03-08"]
+            weight: 15
+            description: "Daily revenue for one week"
+            expected_latency: "20ms"
+            tables: ["orders"]
+          - query: "SELECT /*+ JOIN_ORDER(c, p, oi) */ c.name, COUNT(*) AS line_items, SUM(oi.quantity) AS units FROM categories c JOIN products p ON p.category_id = c.id JOIN order_items oi ON oi.product_id = p.id WHERE c.id = ? GROUP BY c.id, c.name"
+            parameters: [7]
+            weight: 10
+            description: "Sales summary of a category [index-sensitive]"
+            expected_latency: "50ms"
+            tables: ["categories", "products", "order_items"]
+
+      - name: "mixed-oltp"
+        description: "Mixed workload: customer lookups, order lines, product pages, light reporting and writes"
+        duration: "30s"
+        threads: 8
+        queries:
+          - query: "SELECT o.id, o.status, o.total_amount, o.created_at, c.email FROM orders o JOIN customers c ON c.id = o.customer_id WHERE o.customer_id = ? ORDER BY o.id DESC LIMIT 10"
+            parameters: [4242]
+            weight: 25
+            description: "Recent orders of a customer [index-sensitive]"
+            expected_latency: "5ms"
+            tables: ["orders", "customers"]
+          - query: "SELECT c.id, c.email, c.country, COUNT(o.id) AS orders_count FROM customers c LEFT JOIN orders o ON o.customer_id = c.id WHERE c.id = ? GROUP BY c.id, c.email, c.country"
+            parameters: [4242]
+            weight: 15
+            description: "Customer profile with order count [index-sensitive]"
+            expected_latency: "5ms"
+            tables: ["customers", "orders"]
+          - query: "SELECT SUM(oi.quantity) AS units_sold FROM order_items oi JOIN products p ON p.id = oi.product_id WHERE oi.product_id = ?"
+            parameters: [1234]
+            weight: 15
+            description: "Units sold of a product [index-sensitive]"
+            expected_latency: "5ms"
+            tables: ["order_items", "products"]
+          - query: "SELECT oi.id, oi.quantity, oi.unit_price, p.name FROM order_items oi JOIN products p ON p.id = oi.product_id WHERE oi.order_id = ?"
+            parameters: [100000]
+            weight: 15
+            description: "Order lines with product names"
+            expected_latency: "5ms"
+            tables: ["order_items", "products"]
+          - query: "SELECT p.id, p.name, p.price, p.stock_quantity, c.name AS category FROM products p JOIN categories c ON c.id = p.category_id WHERE p.id = ?"
+            parameters: [1234]
+            weight: 15
+            description: "Product detail page"
+            expected_latency: "2ms"
+            tables: ["products", "categories"]
+          - query: "SELECT /*+ JOIN_ORDER(p, oi) */ p.id, p.name, SUM(oi.quantity) AS units FROM products p JOIN order_items oi ON oi.product_id = p.id WHERE p.category_id = ? GROUP BY p.id, p.name ORDER BY units DESC LIMIT 10"
+            parameters: [7]
+            weight: 5
+            description: "Top products in a category [index-sensitive]"
+            expected_latency: "50ms"
+            tables: ["products", "order_items"]
+          - query: "UPDATE orders SET status = 'processing' WHERE id = ?"
+            parameters: [100000]
+            weight: 4
+            description: "Order status update (idempotent)"
+            tables: ["orders"]
+          - query: "UPDATE customers SET last_login_at = NOW() WHERE id = ?"
+            parameters: [4242]
+            weight: 3
+            description: "Customer login touch"
+            tables: ["customers"]
+
+  visualization:
+    edge_thickness:
+      metric: "query_frequency"
+      scale: "linear"
+      min_thickness: 1.0
+      max_thickness: 10.0
+      multiplier: 1.0
+    edge_color:
+      metric: "avg_execution_time"
+      color_scale: "green_yellow_red"
+      thresholds:
+        fast: "< 50ms"
+        medium: "50ms - 200ms"
+        slow: "> 200ms"
+    node_size:
+      metric: "total_queries_involved"
+      min_size: 20.0
+      max_size: 100.0
+      scale: "sqrt"
+    node_color:
+      metric: "avg_response_time"
+      color_scale: "green_yellow_red"
+      thresholds:
+        good: "< 50ms"
+        ok: "50ms - 200ms"
+        slow: "> 200ms"
+    animation:
+      show_data_flow: true
+      speed_based_on: "query_frequency"
+      animation_speed: 1.0
+      particle_count: 10
+    update_interval: "5s"
+    history_retention: "1h"
+    max_concurrent_updates: 3
+
+# Live benchmark demo (read only when DEMO_MODE=true).
+live_demo:
+  enabled: true
+
+  scenarios:
+    - name: "checkout-peak"
+      title: "Checkout peak"
+      description: "OLTP traffic of a busy shop: order history, order lines and product pages"
+      query_set: "checkout-peak"
+      threads: 12
+      duration: "30s"
+    - name: "reporting-heavy"
+      title: "Reporting heavy"
+      description: "Analytical queries: top products per category, top customers per city, sales per category"
+      query_set: "reporting-heavy"
+      threads: 4
+      duration: "30s"
+    - name: "mixed-oltp"
+      title: "Mixed OLTP"
+      description: "Mixed read/write workload with a little reporting on top"
+      query_set: "mixed-oltp"
+      threads: 8
+      duration: "30s"
+
+  # The "Apply suggested index" story. orders.customer_id and order_items.product_id are
+  # intentionally unindexed (see demo/mysql/01-schema.sql).
+  optimization:
+    name: "idx_orders_customer"
+    title: "Index orders.customer_id and order_items.product_id"
+    description: "Two JOIN columns have no index, so every lookup scans the whole orders / order_items table. Two composite indexes that start with those columns (and also cover the summed columns) turn the scans into index lookups."
+    apply:
+      - "CREATE INDEX idx_orders_customer_total ON orders (customer_id, total_amount)"
+      - "CREATE INDEX idx_order_items_product_qty ON order_items (product_id, quantity)"
+    revert:
+      - "DROP INDEX idx_orders_customer_total ON orders"
+      - "DROP INDEX idx_order_items_product_qty ON order_items"
+
+  # Graph shown during a benchmark: nodes = tables, edges = logical JOIN relations.
+  topology:
+    nodes:
+      - id: "customers"
+        table: "customers"
+        label: "Customers"
+      - id: "orders"
+        table: "orders"
+        label: "Orders"
+      - id: "order_items"
+        table: "order_items"
+        label: "Order items"
+      - id: "products"
+        table: "products"
+        label: "Products"
+      - id: "categories"
+        table: "categories"
+        label: "Categories"
+    edges:
+      - source: "orders"
+        target: "customers"
+        relation: "orders.customer_id -> customers.id"
+      - source: "order_items"
+        target: "orders"
+        relation: "order_items.order_id -> orders.id"
+      - source: "order_items"
+        target: "products"
+        relation: "order_items.product_id -> products.id"
+      - source: "products"
+        target: "categories"
+        relation: "products.category_id -> categories.id"
+
+# Neo4j graph for the main visualization (http://localhost:3000/). A small, connected sample
+# of the shop (the first 40 orders and everything they reference) - not the full dataset.
+# Notes on how the rules are written:
+#  - all rules use `type: query` because the MySQL port does not preload table data;
+#  - the node `id` is a prefixed string ('order-1', 'customer-7920', ...) because relationships
+#    are stored in Neo4j as MATCH (a {id: ..}), (b {id: ..}) without labels, so ids must be
+#    unique across node types (plain numeric ids would create duplicated relationships).
 transform_rules:
-  - name: "users_to_graph"
+  - name: "orders_to_graph"
     rule_type: "node"
     source:
       type: "query"
-      value: "SELECT id, username, email, first_name, last_name, created_at, country, city FROM users WHERE is_active = 1"
-    target_type: "User"
+      value: "SELECT CONCAT('order-', id) AS id, CONCAT('Order #', id) AS name, customer_id, status, total_amount, created_at FROM orders WHERE id <= 40"
+    target_type: "Order"
     field_mappings:
-      id: "user_id"
-      username: "username"
+      id: "id"
+      name: "name"
+      customer_id: "customer_id"
+      status: "status"
+      total_amount: "total_amount"
+      created_at: "created_at"
+
+  - name: "customers_to_graph"
+    rule_type: "node"
+    source:
+      type: "query"
+      value: "SELECT CONCAT('customer-', id) AS id, CONCAT(first_name, ' ', last_name) AS name, email, country, city FROM customers WHERE id IN (SELECT customer_id FROM orders WHERE id <= 40)"
+    target_type: "Customer"
+    field_mappings:
+      id: "id"
+      name: "name"
       email: "email"
-      first_name: "first_name"
-      last_name: "last_name"
-      created_at: "registration_date"
       country: "country"
       city: "city"
 
@@ -105,47 +353,44 @@ transform_rules:
     rule_type: "node"
     source:
       type: "query"
-      value: "SELECT p.id, p.name, p.description, p.price, p.stock_quantity, c.name as category_name, p.created_at FROM products p JOIN categories c ON p.category_id = c.id WHERE p.is_active = 1"
+      value: "SELECT CONCAT('product-', id) AS id, name, price, stock_quantity, category_id FROM products WHERE id IN (SELECT product_id FROM order_items WHERE order_id <= 40)"
     target_type: "Product"
     field_mappings:
-      id: "product_id"
-      name: "product_name"
-      description: "description"
+      id: "id"
+      name: "name"
       price: "price"
       stock_quantity: "stock"
-      category_name: "category"
-      created_at: "created_date"
+      category_id: "category_id"
 
   - name: "categories_to_graph"
     rule_type: "node"
     source:
-      type: "table"
-      value: "categories"
+      type: "query"
+      value: "SELECT CONCAT('category-', id) AS id, name, description FROM categories"
     target_type: "Category"
     field_mappings:
-      id: "category_id"
-      name: "category_name"
+      id: "id"
+      name: "name"
       description: "description"
 
-  - name: "user_orders"
+  - name: "customer_orders"
     rule_type: "relationship"
     relationship_type: "PLACED_ORDER"
     direction: "outgoing"
     source:
       type: "query"
-      value: "SELECT user_id, id as order_id, order_date, total_amount, status FROM orders"
+      value: "SELECT CONCAT('customer-', customer_id) AS customer_key, CONCAT('order-', id) AS order_key, status, total_amount FROM orders WHERE id <= 40"
     source_node:
-      type: "User"
-      key: "user_id"
-      target_field: "user_id"
+      type: "Customer"
+      key: "customer_key"
+      target_field: "id"
     target_node:
       type: "Order"
-      key: "order_id"
-      target_field: "order_id"
+      key: "order_key"
+      target_field: "id"
     properties:
-      order_date: "order_date"
-      total_amount: "total_amount"
       status: "order_status"
+      total_amount: "total_amount"
 
   - name: "order_products"
     rule_type: "relationship"
@@ -153,15 +398,15 @@ transform_rules:
     direction: "outgoing"
     source:
       type: "query"
-      value: "SELECT oi.order_id, oi.product_id, oi.quantity, oi.unit_price FROM order_items oi"
+      value: "SELECT CONCAT('order-', order_id) AS order_key, CONCAT('product-', product_id) AS product_key, quantity, unit_price FROM order_items WHERE order_id <= 40"
     source_node:
       type: "Order"
-      key: "order_id"
-      target_field: "order_id"
+      key: "order_key"
+      target_field: "id"
     target_node:
       type: "Product"
-      key: "product_id"
-      target_field: "product_id"
+      key: "product_key"
+      target_field: "id"
     properties:
       quantity: "quantity"
       unit_price: "unit_price"
@@ -172,109 +417,12 @@ transform_rules:
     direction: "outgoing"
     source:
       type: "query"
-      value: "SELECT id as product_id, category_id FROM products"
+      value: "SELECT CONCAT('product-', id) AS product_key, CONCAT('category-', category_id) AS category_key FROM products WHERE id IN (SELECT product_id FROM order_items WHERE order_id <= 40)"
     source_node:
       type: "Product"
-      key: "product_id"
-      target_field: "product_id"
+      key: "product_key"
+      target_field: "id"
     target_node:
       type: "Category"
-      key: "category_id"
-      target_field: "category_id"
-
-processing:
-  batch_size: 1000
-  max_memory_mb: 1024
-  parallel_workers: 4
-  transaction_size: 500
-
-logging:
-  level: info
-  format: json
-  output: stdout
-  enable_performance_logs: true
-  log_slow_queries: true
-  slow_query_threshold: 1s
-
-api:
-  cors:
-    allowed_origins: ["*"]
-    allowed_methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
-    allowed_headers: ["*"]
-    max_age: 3600
-  
-  rate_limit:
-    enabled: true
-    requests_per_minute: 100
-    burst: 20
-
-  graphql:
-    playground_enabled: true
-    introspection_enabled: true
-    complexity_limit: 1000
-
-visualization:
-  node_colors:
-    User: "#3498db"
-    Product: "#e74c3c"
-    Category: "#f39c12"
-    Order: "#2ecc71"
-  
-  relationship_colors:
-    PLACED_ORDER: "#9b59b6"
-    CONTAINS_PRODUCT: "#34495e"
-    BELONGS_TO_CATEGORY: "#e67e22"
-  
-  layout:
-    algorithm: "force"
-    node_size_property: "degree"
-    enable_clustering: true
-
-monitoring:
-  health_check:
-    enabled: true
-    endpoint: "/api/health"
-    include_database_status: true
-  
-  metrics:
-    enabled: true
-    endpoint: "/api/metrics"
-    include_performance_metrics: true
-
-security:
-  enable_auth: false
-  cors_enabled: true
-  rate_limiting_enabled: true
-  input_validation_enabled: true
-
-demo_info:
-  description: "E-commerce platform with users, products, orders, and categories"
-  datasets:
-    mysql_ecommerce:
-      tables: ["users", "products", "categories", "orders", "order_items"]
-      records: 
-        users: 1000
-        products: 500
-        categories: 20
-        orders: 2500
-        order_items: 5000
-    
-    postgresql_analytics:
-      tables: ["user_sessions", "page_views", "events"]
-      records:
-        user_sessions: 5000
-        page_views: 25000
-        events: 10000
-  
-  transformation_examples:
-    - "Users → User nodes with profile information"
-    - "Products → Product nodes with pricing and inventory"
-    - "Orders → Relationships connecting Users to Products"
-    - "Categories → Product classification nodes"
-  
-  use_cases:
-    - "Customer behavior analysis"
-    - "Product recommendation systems"
-    - "Supply chain optimization"
-    - "Marketing campaign targeting"
-    - "Fraud detection patterns"
+      key: "category_key"
+      target_field: "id"

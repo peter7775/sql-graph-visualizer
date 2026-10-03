@@ -58,6 +58,9 @@ type BenchmarkResult struct {
 
 	RawOutput string `json:"raw_output,omitempty"`
 
+	// Labels carries optional run metadata (e.g. the demo scenario name).
+	Labels map[string]string `json:"labels,omitempty"`
+
 	// Status and errors
 	Status BenchmarkStatus `json:"status"`
 	Error  string          `json:"error,omitempty"`
@@ -75,6 +78,7 @@ type PerformanceMetrics struct {
 	AverageLatency float64 `json:"average_latency"`
 	MinLatency     float64 `json:"min_latency"`
 	MaxLatency     float64 `json:"max_latency"`
+	Percentile50   float64 `json:"percentile_50,omitempty"`
 	Percentile95   float64 `json:"percentile_95"`
 	Percentile99   float64 `json:"percentile_99"`
 
@@ -157,6 +161,11 @@ type CustomQueryDefinition struct {
 	Weight      int           `json:"weight" yaml:"weight"` // Relative frequency
 	Parameters  []interface{} `json:"parameters,omitempty" yaml:"parameters,omitempty"`
 	Description string        `json:"description,omitempty" yaml:"description,omitempty"`
+
+	// Tables lists the tables the query touches, ordered along the join path:
+	// each adjacent pair is one relationship. When empty the adapter derives
+	// them from FROM/JOIN clauses.
+	Tables []string `json:"tables,omitempty" yaml:"tables,omitempty"`
 
 	// Performance expectations (optional)
 	ExpectedLatency time.Duration `json:"expected_latency,omitempty" yaml:"expected_latency,omitempty"`

@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Live Benchmark - SQL Graph Visualizer</title>
+    <link rel="stylesheet" href="/static/css/benchmark-live.css">
+</head>
+<body data-theme="dark">
+    <header class="bl-header">
+        <div class="bl-brand">
+            <h1>Live Benchmark</h1>
+            <span class="bl-sub">SQL Graph Visualizer</span>
+        </div>
+
+        <ol class="bl-steps" id="steps" aria-label="Demo steps">
+            <li data-step="1"><span class="bl-step-num">1</span>Run without index</li>
+            <li data-step="2"><span class="bl-step-num">2</span>Apply suggested index</li>
+            <li data-step="3"><span class="bl-step-num">3</span>Run again</li>
+            <li data-step="4"><span class="bl-step-num">4</span>Compare</li>
+        </ol>
+
+        <div class="bl-header-right">
+            <span class="bl-pill" id="connPill" data-state="idle">Idle</span>
+            <nav class="bl-nav">
+                <a href="/">Graph</a>
+                <a href="/performance">Performance</a>
+            </nav>
+            <button type="button" class="bl-btn bl-btn-ghost" id="themeToggle" title="Toggle theme (T)">Theme</button>
+            <button type="button" class="bl-btn bl-btn-ghost" id="presentBtn" title="Presentation mode (P)">Presentation</button>
+        </div>
+    </header>
+
+    <div class="bl-banner" id="errorBanner" role="alert" hidden>
+        <span id="errorText"></span>
+        <button type="button" id="errorClose" aria-label="Dismiss">&times;</button>
+    </div>
+
+    <section class="bl-controls">
+        <div class="bl-run-controls">
+            <label class="bl-field bl-field-grow">
+                <span>Scenario</span>
+                <select id="scenarioSelect" disabled></select>
+            </label>
+            <label class="bl-field">
+                <span>Threads</span>
+                <input type="number" id="threadsInput" min="1" max="256" value="16">
+            </label>
+            <label class="bl-field">
+                <span>Duration (s)</span>
+                <input type="number" id="durationInput" min="2" max="600" value="30">
+            </label>
+            <button type="button" class="bl-btn bl-btn-primary" id="startBtn" disabled>Run</button>
+            <button type="button" class="bl-btn bl-btn-danger" id="stopBtn" disabled>Stop</button>
+        </div>
+
+        <div class="bl-index" id="indexPanel">
+            <div class="bl-index-info">
+                <span class="bl-label">Suggested index</span>
+                <div class="bl-index-title">
+                    <strong id="idxTitle">-</strong>
+                    <span class="bl-badge" id="idxState" data-state="unknown">unknown</span>
+                </div>
+                <code class="bl-index-stmt" id="idxStmt"></code>
+            </div>
+            <div class="bl-index-actions">
+                <button type="button" class="bl-btn bl-btn-accent" id="applyBtn" disabled>Apply suggested index</button>
+                <button type="button" class="bl-btn" id="revertBtn" disabled>Revert</button>
+            </div>
+        </div>
+
+        <div class="bl-progress" id="progress" aria-hidden="true"><div class="bl-progress-bar" id="progressBar"></div></div>
+    </section>
+
+    <main class="bl-main">
+        <section class="bl-kpis" id="kpis">
+            <article class="bl-kpi" data-kpi="qps">
+                <div class="bl-kpi-head"><span class="bl-label">QPS</span><span class="bl-delta" id="dQps" hidden></span></div>
+                <div class="bl-kpi-value" id="kQps">-</div>
+                <div class="bl-kpi-sub" id="kQpsSub">&nbsp;</div>
+            </article>
+            <article class="bl-kpi" data-kpi="p95">
+                <div class="bl-kpi-head"><span class="bl-label">p95 latency</span><span class="bl-delta" id="dP95" hidden></span></div>
+                <div class="bl-kpi-value" id="kP95">-</div>
+                <div class="bl-kpi-sub" id="kP95Sub">&nbsp;</div>
+            </article>
+            <article class="bl-kpi" data-kpi="p99">
+                <div class="bl-kpi-head"><span class="bl-label">p99 latency</span><span class="bl-delta" id="dP99" hidden></span></div>
+                <div class="bl-kpi-value" id="kP99">-</div>
+                <div class="bl-kpi-sub" id="kP99Sub">&nbsp;</div>
+            </article>
+            <article class="bl-kpi" data-kpi="errors">
+                <div class="bl-kpi-head"><span class="bl-label">Errors</span></div>
+                <div class="bl-kpi-value" id="kErr">-</div>
+                <div class="bl-kpi-sub" id="kErrSub">&nbsp;</div>
+            </article>
+        </section>
+
+        <section class="bl-card bl-graph-card">
+            <div class="bl-card-head">
+                <h2>Table graph</h2>
+                <span class="bl-hint">node colour = heat, node size = QPS, edge width = join load, edge colour = latency</span>
+            </div>
+            <div class="bl-graph-wrap" id="graphWrap">
+                <svg id="graphSvg" role="img" aria-label="Table relationship graph with live load"></svg>
+                <div class="bl-graph-empty" id="graphEmpty" hidden></div>
+                <div class="bl-legend" aria-hidden="true">
+                    <span>cool</span><div class="bl-legend-bar"></div><span>hot</span>
+                </div>
+                <div class="bl-tooltip" id="tooltip" hidden></div>
+            </div>
+        </section>
+
+        <section class="bl-charts">
+            <div class="bl-card">
+                <div class="bl-card-head"><h2>Throughput</h2><span class="bl-hint">queries / second</span></div>
+                <div class="bl-chart-box"><canvas id="qpsChart"></canvas></div>
+            </div>
+            <div class="bl-card">
+                <div class="bl-card-head"><h2>Latency</h2><span class="bl-hint">ms, last 60 s</span></div>
+                <div class="bl-chart-box"><canvas id="latChart"></canvas></div>
+            </div>
+        </section>
+
+        <section class="bl-card bl-queries">
+            <div class="bl-card-head"><h2>Slowest queries</h2><span class="bl-hint">by average latency</span></div>
+            <div id="queryList" class="bl-query-list"><p class="bl-muted">Waiting for the first sample.</p></div>
+        </section>
+
+        <section class="bl-card bl-compare">
+            <div class="bl-card-head"><h2>Before / after</h2><span class="bl-hint" id="compareHint"></span></div>
+            <div id="compareBody"><p class="bl-muted">Run the scenario to record Run A.</p></div>
+        </section>
+    </main>
+
+    <footer class="bl-footer">
+        <kbd>Space</kbd> start / stop &nbsp; <kbd>I</kbd> apply / revert index &nbsp; <kbd>P</kbd> presentation &nbsp; <kbd>T</kbd> theme
+    </footer>
+
+    <script src="/static/js/vendor/d3.min.js"></script>
+    <script src="/static/js/vendor/chart.umd.min.js"></script>
+    <script src="/static/js/benchmark-live.js"></script>
+</body>
+</html>

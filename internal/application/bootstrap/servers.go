@@ -14,8 +14,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/http/httputil"
+	"net/url"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/gorilla/mux"
@@ -141,6 +144,17 @@ func (r *Resources) startVisualizationServer() *http.Server {
 	vizMux.HandleFunc("/performance", func(w http.ResponseWriter, r *http.Request) {
 		http.ServeFile(w, r, filepath.Join(webRoot, "templates", "performance_dashboard.html"))
 	})
+	vizMux.HandleFunc("/benchmark-live", func(w http.ResponseWriter, r *http.Request) {
+		http.ServeFile(w, r, filepath.Join(webRoot, "templates", "benchmark_live.html"))
+	})
+
+	// The pages live on this server but the performance/demo API and the
+	// WebSocket live on the API server. Proxy them so the UI can use plain
+	// same-origin URLs (no CORS, no hard-coded ports). The more specific
+	// /api/graph handler above still wins over the /api/ prefix.
+	apiProxy := newAPIProxy(r.DeploymentAdapter.GetAPIPort())
+	vizMux.Handle("/api/", apiProxy)
+	vizMux.Handle("/ws/", apiProxy)
 	vizMux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		http.ServeFile(w, r, filepath.Join(webRoot, "templates", "visualization.html"))
 	})
@@ -184,6 +198,14 @@ func (r *Resources) startAPIServer() (*http.Server, error) {
 		)
 		performanceHandlers.RegisterRoutes(router)
 		logrus.Info("Performance API routes registered")
+
+		// Live benchmarking demo API: opt-in, and never outside DEMO_MODE
+		// because it can create/drop indexes on the source database.
+		if demoModeEnabled(r.Config) && r.DB != nil {
+			api.NewDemoHandlers(logrus.StandardLogger(), r.PerformanceServices.BenchmarkService, r.DB, r.Config.LiveDemo).
+				RegisterRoutes(router)
+			logrus.Info("Live benchmark demo API routes registered (DEMO_MODE)")
+		}
 	}
 
 	// Debug endpoint
@@ -271,6 +293,34 @@ func (r *Resources) startAPIServer() (*http.Server, error) {
 	}()
 
 	return server, nil
+}
+
+// demoModeEnabled reports whether the live demo API may be served: the
+// configuration must enable it and DEMO_MODE=true must be set explicitly.
+func demoModeEnabled(cfg *models.Config) bool {
+	return cfg != nil && cfg.LiveDemo != nil && cfg.LiveDemo.Enabled &&
+		strings.EqualFold(os.Getenv("DEMO_MODE"), "true")
+}
+
+// newAPIProxy returns a reverse proxy to the local API server. Streaming
+// responses (SSE) are flushed immediately and exempted from the viz server's
+// write timeout.
+func newAPIProxy(apiPort string) http.Handler {
+	target := &url.URL{Scheme: "http", Host: "127.0.0.1:" + apiPort}
+	proxy := httputil.NewSingleHostReverseProxy(target)
+	proxy.FlushInterval = -1
+	proxy.ErrorHandler = func(w http.ResponseWriter, _ *http.Request, err error) {
+		logrus.Warnf("API proxy error: %v", err)
+		http.Error(w, "API server unavailable", http.StatusBadGateway)
+	}
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.HasSuffix(r.URL.Path, "/stream") {
+			// Long-lived SSE: lift the server-wide write deadline. The API
+			// side re-arms its own deadline per write.
+			_ = http.NewResponseController(w).SetWriteDeadline(time.Time{})
+		}
+		proxy.ServeHTTP(w, r)
+	})
 }
 
 // FindProjectRoot locates the project root by looking for go.mod.
@@ -573,6 +623,7 @@ func createCustomQuerySets(cfg *models.Config) map[string]ports.CustomBenchmarkC
 				Weight:          q.Weight,
 				Parameters:      q.Parameters,
 				Description:     q.Description,
+				Tables:          q.Tables,
 				ExpectedLatency: expectedLatency,
 				TargetQPS:       q.TargetQPS,
 			})
