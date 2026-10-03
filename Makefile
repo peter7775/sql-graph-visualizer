@@ -1,6 +1,12 @@
 # Makefile for SQL Graph Visualizer
 # Requires Go 1.24+
 
+# Go toolchain used for linting. golangci-lint is built with a specific Go release and
+# cannot type-check the standard library of a newer one (typecheck errors such as
+# "export data version ... is greater than maximum supported"), so lint with the
+# toolchain pinned in go.mod. Override with e.g. `make lint LINT_TOOLCHAIN=local`.
+LINT_TOOLCHAIN ?= $(shell awk '/^toolchain/ {print $$2}' go.mod)
+
 .PHONY: help install generate format test build run clean docker-up docker-down sec-scan ci-check dev quick lint demo demo-down demo-logs demo-reseed
 
 # Default target
@@ -117,7 +123,7 @@ docker-down:
 # Run golangci-lint
 lint:
 	@echo "Running golangci-lint..."
-	$(HOME)/go/bin/golangci-lint run --timeout=10m
+	GOTOOLCHAIN=$(LINT_TOOLCHAIN) $(HOME)/go/bin/golangci-lint run --config=.golangci.yml --timeout=10m
 	@echo "Lint completed"
 
 # Run CI checks locally
@@ -139,7 +145,7 @@ ci-check: install generate format
 	@echo "Running go vet..."
 	go vet ./...
 	@echo "Running golangci-lint..."
-	$(HOME)/go/bin/golangci-lint run --config=.golangci.yml --timeout=10m
+	GOTOOLCHAIN=$(LINT_TOOLCHAIN) $(HOME)/go/bin/golangci-lint run --config=.golangci.yml --timeout=10m
 	@echo "Building..."
 	go build -v ./...
 	@echo "Running tests..."
