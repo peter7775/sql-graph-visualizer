@@ -225,6 +225,7 @@ type PerformanceConfig struct {
 	Realtime      *RealtimeConfig      `yaml:"realtime,omitempty"`
 	Benchmarks    *BenchmarksConfig    `yaml:"benchmarks,omitempty"`
 	Visualization *VisualizationConfig `yaml:"visualization,omitempty"`
+	Live          *LiveBenchmarkConfig `yaml:"live,omitempty"`
 }
 
 // MonitoringConfig contains performance .monitoring settings
@@ -344,11 +345,38 @@ type LiveDemoScenario struct {
 // LiveDemoOptimization is a reversible set of index changes applied from the
 // demo UI. Only CREATE INDEX / DROP INDEX statements are accepted.
 type LiveDemoOptimization struct {
-	Name        string   `yaml:"name"`
-	Title       string   `yaml:"title,omitempty"`
-	Description string   `yaml:"description,omitempty"`
-	Apply       []string `yaml:"apply"`
-	Revert      []string `yaml:"revert"`
+	Name        string `yaml:"name"`
+	Title       string `yaml:"title,omitempty"`
+	Description string `yaml:"description,omitempty"`
+	// Indexes is the dialect-neutral definition of the optimization. When set,
+	// the DDL for the active database type is generated from it. Apply/Revert
+	// remain supported for backward compatibility (MySQL syntax).
+	Indexes []LiveDemoIndex `yaml:"indexes,omitempty"`
+	Apply   []string        `yaml:"apply,omitempty"`
+	Revert  []string        `yaml:"revert,omitempty"`
+}
+
+// LiveDemoIndex is one index of a dialect-neutral optimization.
+type LiveDemoIndex struct {
+	Name    string   `yaml:"name"`
+	Table   string   `yaml:"table"`
+	Columns []string `yaml:"columns"`
+}
+
+// LiveBenchmarkConfig contains settings of live benchmarking outside the demo.
+type LiveBenchmarkConfig struct {
+	// PersistSamples stores the live samples of every run next to the results
+	// so runs can be replayed after a restart. Defaults to true when unset.
+	PersistSamples *bool `yaml:"persist_samples,omitempty"`
+}
+
+// PersistSamplesEnabled reports whether live samples are persisted (default
+// true). It is safe to call on a nil receiver.
+func (c *LiveBenchmarkConfig) PersistSamplesEnabled() bool {
+	if c == nil || c.PersistSamples == nil {
+		return true
+	}
+	return *c.PersistSamples
 }
 
 // LiveDemoTopology describes the table graph shown before and during a run.

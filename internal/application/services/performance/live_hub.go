@@ -33,12 +33,13 @@ func newLiveHub(benchmarkID string) *liveHub {
 }
 
 // publish assigns the sequence number and benchmark ID, stores the sample and
-// delivers it to all subscribers without blocking.
-func (h *liveHub) publish(s ports.LiveSample) {
+// delivers it to all subscribers without blocking. It returns the stamped
+// sample and false when the hub is already closed (the sample is dropped).
+func (h *liveHub) publish(s ports.LiveSample) (ports.LiveSample, bool) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	if h.closed {
-		return
+		return s, false
 	}
 	s.BenchmarkID = h.id
 	s.Seq = h.nextSeq
@@ -53,6 +54,7 @@ func (h *liveHub) publish(s ports.LiveSample) {
 		default: // slow consumer: drop, it can resync from the backlog
 		}
 	}
+	return s, true
 }
 
 // since returns the stored samples with Seq > afterSeq.
@@ -161,7 +163,15 @@ func SummarizeResult(r *ports.BenchmarkResult) *BenchmarkSummary {
 func (s *BenchmarkService) SubscribeLive(executionID string, afterSeq int) ([]ports.LiveSample, <-chan ports.LiveSample, func(), error) {
 	hub, err := s.liveHubFor(executionID)
 	if err != nil {
-		return nil, nil, nil, err
+		// Not in memory (finished long ago or the process restarted): replay
+		// the persisted samples and end the stream immediately.
+		stored, ok := s.storedSamples(executionID, afterSeq)
+		if !ok {
+			return nil, nil, nil, err
+		}
+		closed := make(chan ports.LiveSample)
+		close(closed)
+		return stored, closed, func() {}, nil
 	}
 	backlog, ch, cancel := hub.subscribe(afterSeq)
 	return backlog, ch, cancel, nil
@@ -172,7 +182,15 @@ func (s *BenchmarkService) SubscribeLive(executionID string, afterSeq int) ([]po
 func (s *BenchmarkService) GetLiveSamples(executionID string, afterSeq int) ([]ports.LiveSample, ports.BenchmarkStatus, error) {
 	hub, err := s.liveHubFor(executionID)
 	if err != nil {
-		return nil, "", err
+		stored, ok := s.storedSamples(executionID, afterSeq)
+		if !ok {
+			return nil, "", err
+		}
+		status, _ := s.ExecutionStatus(executionID)
+		if status == "" {
+			status = ports.BenchmarkStatusCompleted
+		}
+		return stored, status, nil
 	}
 	status, _ := s.executionStatus(executionID)
 	return hub.since(afterSeq), status, nil
@@ -202,9 +220,41 @@ func (s *BenchmarkService) GetBenchmarkSummary(ctx context.Context, executionID 
 	return nil, fmt.Errorf("benchmark %s not found", executionID)
 }
 
-// ExecutionStatus returns the current status of a run held in memory.
+// FindResult returns the final result of a finished run, from memory or from
+// the persistent result store. It fails while the run is still in progress.
+func (s *BenchmarkService) FindResult(ctx context.Context, executionID string) (*ports.BenchmarkResult, error) {
+	s.runsMutex.RLock()
+	execution, ok := s.activeRuns[executionID]
+	s.runsMutex.RUnlock()
+	if ok {
+		execution.mutex.RLock()
+		result := execution.Result
+		execution.mutex.RUnlock()
+		if result != nil {
+			return result, nil
+		}
+		return nil, fmt.Errorf("benchmark %s has not finished yet", executionID)
+	}
+	if store := s.getResultStore(); store != nil {
+		if result, err := store.Get(ctx, executionID); err == nil && result != nil {
+			return result, nil
+		}
+	}
+	return nil, fmt.Errorf("benchmark %s not found", executionID)
+}
+
+// ExecutionStatus returns the status of a run: from memory while it is known
+// there, otherwise from the persistent result store.
 func (s *BenchmarkService) ExecutionStatus(executionID string) (ports.BenchmarkStatus, bool) {
-	return s.executionStatus(executionID)
+	if status, ok := s.executionStatus(executionID); ok {
+		return status, true
+	}
+	if store := s.getResultStore(); store != nil {
+		if result, err := store.Get(context.Background(), executionID); err == nil && result != nil {
+			return result.Status, true
+		}
+	}
+	return "", false
 }
 
 func (s *BenchmarkService) executionStatus(executionID string) (ports.BenchmarkStatus, bool) {

@@ -27,6 +27,7 @@ const (
 // route must be registered before the generic {id} route.
 func (ph *PerformanceHandlers) registerLiveRoutes(router *mux.Router) {
 	router.HandleFunc("/api/performance/benchmarks/compare", ph.CompareBenchmarks).Methods("GET")
+	router.HandleFunc("/api/performance/benchmarks/history", ph.GetBenchmarkHistory).Methods("GET")
 	router.HandleFunc("/api/performance/benchmarks/{id}/stream", ph.StreamBenchmark).Methods("GET")
 	router.HandleFunc("/api/performance/benchmarks/{id}/samples", ph.GetBenchmarkSamples).Methods("GET")
 }
@@ -160,6 +161,31 @@ func (ph *PerformanceHandlers) GetBenchmarkSamples(w http.ResponseWriter, r *htt
 			"status":  string(status),
 			"samples": samples,
 		},
+		Timestamp: time.Now(),
+	})
+}
+
+// GetBenchmarkHistory returns finished runs, newest first, from memory and from
+// the persistent store: GET ...?limit=20&query_set=NAME.
+func (ph *PerformanceHandlers) GetBenchmarkHistory(w http.ResponseWriter, r *http.Request) {
+	limit := 0
+	if raw := r.URL.Query().Get("limit"); raw != "" {
+		n, err := strconv.Atoi(raw)
+		if err != nil || n < 0 {
+			ph.sendErrorResponse(w, http.StatusBadRequest, "invalid_request", "limit must be a non-negative integer", raw)
+			return
+		}
+		limit = n
+	}
+
+	runs, err := ph.benchmarkService.History(r.Context(), limit, r.URL.Query().Get("query_set"))
+	if err != nil {
+		ph.sendErrorResponse(w, http.StatusInternalServerError, "history_error", "Failed to read the benchmark history", err.Error())
+		return
+	}
+	ph.sendJSONResponse(w, http.StatusOK, Response{
+		Success:   true,
+		Data:      map[string]any{"runs": runs},
 		Timestamp: time.Now(),
 	})
 }
