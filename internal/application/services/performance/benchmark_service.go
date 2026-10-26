@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"sql-graph-visualizer/internal/application/ports"
@@ -34,6 +35,14 @@ type BenchmarkService struct {
 	// only live in-memory for the RetainResults window (see activeRuns).
 	resultStore      ports.BenchmarkResultStorePort
 	resultStoreMutex sync.RWMutex
+
+	// Optional persistent storage for live samples (replay after restart) and
+	// an optional observer called for every sample (used to publish samples
+	// on the realtime WebSocket).
+	sampleStore    ports.BenchmarkSampleStorePort
+	sampleObserver func(ports.LiveSample)
+	sampleMutex    sync.RWMutex
+	lastSample     atomic.Pointer[ports.LiveSample]
 
 	// Configuration
 	config *BenchmarkServiceConfig
@@ -261,7 +270,11 @@ func (s *BenchmarkService) executeAsync(execution *BenchmarkExecution) {
 		err    error
 	)
 	if streamer, ok := execution.Tool.(ports.StreamingBenchmarkTool); ok {
-		result, err = streamer.ExecuteStream(execution.Context, execution.Config, execution.live.publish)
+		result, err = streamer.ExecuteStream(execution.Context, execution.Config, func(sample ports.LiveSample) {
+			if stamped, ok := execution.live.publish(sample); ok {
+				s.afterSample(execution.ID, stamped)
+			}
+		})
 	} else {
 		result, err = execution.Tool.Execute(execution.Context, execution.Config)
 	}
@@ -284,14 +297,13 @@ func (s *BenchmarkService) executeAsync(execution *BenchmarkExecution) {
 	} else {
 		result.ID = execution.ID
 		result.Status = ports.BenchmarkStatusCompleted
+		// Not every tool reports timestamps; the history is ordered by them.
+		if result.StartTime.IsZero() {
+			result.StartTime = execution.StartTime
+		}
 	}
 
-	if scenario, ok := execution.Config.CustomParams["scenario"].(string); ok && scenario != "" {
-		if result.Labels == nil {
-			result.Labels = make(map[string]string)
-		}
-		result.Labels["scenario"] = scenario
-	}
+	applyResultLabels(result, execution.Config.CustomParams)
 
 	execution.mutex.Lock()
 	execution.Result = result
@@ -583,6 +595,19 @@ func (s *BenchmarkService) cleanupOldExecutions() {
 			s.logger.WithError(err).Warn("Failed to compact persisted benchmark results")
 		} else if deleted > 0 {
 			s.logger.WithField("deleted_count", deleted).Info("Removed persisted benchmark results past retention")
+		}
+	}
+
+	// Stored samples follow the same retention as the results.
+	if sampleStore := s.getSampleStore(); sampleStore != nil {
+		if pruner, ok := sampleStore.(interface {
+			DeleteSamplesOlderThan(context.Context, time.Time) (int, error)
+		}); ok {
+			if deleted, err := pruner.DeleteSamplesOlderThan(context.Background(), cutoff); err != nil {
+				s.logger.WithError(err).Warn("Failed to compact persisted live samples")
+			} else if deleted > 0 {
+				s.logger.WithField("deleted_count", deleted).Info("Removed persisted live samples past retention")
+			}
 		}
 	}
 }

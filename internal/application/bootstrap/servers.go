@@ -196,8 +196,27 @@ func (r *Resources) startAPIServer() (*http.Server, error) {
 			r.PerformanceServices.PSAdapter,
 			r.Neo4jRepo,
 		)
+		labelMapping := performance.BuildLabelTableMapping(r.Config.TransformRules)
+		performanceHandlers.SetLabelMapping(&labelMapping)
 		performanceHandlers.RegisterRoutes(router)
 		logrus.Info("Performance API routes registered")
+
+		// Live benchmark capabilities, topology and Neo4j label mapping.
+		querySets := createCustomQuerySets(r.Config)
+		dbType := databaseTypeName(r.Config)
+		var topologyOverride *models.LiveDemoTopology
+		if r.Config.LiveDemo != nil {
+			topologyOverride = r.Config.LiveDemo.Topology
+		}
+		api.NewLiveConfigHandlers(api.LiveConfigDeps{
+			Logger:       logrus.StandardLogger(),
+			Topology:     performance.NewTopologyService(logrus.StandardLogger(), r.DB, dbType, querySets, topologyOverride),
+			Mapping:      labelMapping,
+			QuerySets:    querySets,
+			LiveDemo:     r.Config.LiveDemo,
+			DemoMode:     demoModeEnabled(r.Config),
+			DatabaseType: dbType,
+		}).RegisterRoutes(router)
 
 		// Live benchmarking demo API: opt-in, and never outside DEMO_MODE
 		// because it can create/drop indexes on the source database.
@@ -293,6 +312,19 @@ func (r *Resources) startAPIServer() (*http.Server, error) {
 	}()
 
 	return server, nil
+}
+
+// databaseTypeName returns the active source database type as "mysql",
+// "postgresql" or the configured name for other types.
+func databaseTypeName(cfg *models.Config) string {
+	switch t := cfg.GetDatabaseType(); t {
+	case models.DatabaseTypeMySQL:
+		return "mysql"
+	case models.DatabaseTypePostgreSQL:
+		return "postgresql"
+	default:
+		return string(t)
+	}
 }
 
 // demoModeEnabled reports whether the live demo API may be served: the
@@ -423,6 +455,17 @@ func initPerformanceServices(cfg *models.Config, db *sql.DB) *PerformanceService
 	} else {
 		benchmarkService.SetResultStore(store)
 	}
+
+	// Live samples are persisted next to the results (so a run can be replayed
+	// after a restart) and published on the realtime WebSocket topic.
+	if cfg.Performance.Live.PersistSamplesEnabled() {
+		if sampleStore, err := performance.NewFileBenchmarkSampleStore(logger, benchmarkResultsDir(cfg)); err != nil {
+			logrus.Warnf("Live sample persistence unavailable, runs cannot be replayed after a restart: %v", err)
+		} else {
+			benchmarkService.SetSampleStore(sampleStore)
+		}
+	}
+	benchmarkService.SetSampleObserver(realtimeMonitor.BroadcastBenchmarkSample)
 
 	if cfg.Performance.Realtime != nil && cfg.Performance.Realtime.Enabled {
 		ctx := context.Background()

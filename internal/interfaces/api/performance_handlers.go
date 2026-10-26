@@ -28,6 +28,20 @@ type PerformanceHandlers struct {
 	realtimeMonitor     *performance.RealtimePerformanceMonitor
 	psAdapter           *performance.PerformanceSchemaAdapter
 	neo4jRepo           ports.Neo4jPort
+
+	// labelMapping maps Neo4j labels/relationship types to the table graph so
+	// live benchmark samples can be mapped onto the Neo4j graph (optional).
+	labelMapping *ports.LabelTableMapping
+}
+
+// liveSampleMaxAge is how old the latest live sample may be to still serve as
+// the data source of GET /api/performance/data/graph.
+const liveSampleMaxAge = 15 * time.Minute
+
+// SetLabelMapping configures the Neo4j label to table mapping used when the
+// performance graph is built from live benchmark samples.
+func (ph *PerformanceHandlers) SetLabelMapping(mapping *ports.LabelTableMapping) {
+	ph.labelMapping = mapping
 }
 
 // Response represents an API response structure.
@@ -544,6 +558,20 @@ func (ph *PerformanceHandlers) GetPerformanceAnalysis(w http.ResponseWriter, r *
 
 // GetPerformanceGraph handles requests to get performance graph visualization.
 func (ph *PerformanceHandlers) GetPerformanceGraph(w http.ResponseWriter, r *http.Request) {
+	// ?source=live forces live benchmark data, ?source=performance_schema forces
+	// the Performance Schema path; the default prefers a recent live sample.
+	source := r.URL.Query().Get("source")
+	if source != "performance_schema" {
+		if sample, ok := ph.benchmarkService.LatestLiveSample(); ok && time.Since(sample.Timestamp) < liveSampleMaxAge {
+			ph.sendLivePerformanceGraph(w, r, &sample)
+			return
+		}
+		if source == "live" {
+			ph.sendErrorResponse(w, http.StatusNotFound, "no_live_data", "No recent live benchmark data", "run a benchmark first")
+			return
+		}
+	}
+
 	// Collect performance data
 	perfData, err := ph.psAdapter.CollectPerformanceData(r.Context())
 	if err != nil {
@@ -568,6 +596,21 @@ func (ph *PerformanceHandlers) GetPerformanceGraph(w http.ResponseWriter, r *htt
 		Data:      graphData,
 		Timestamp: time.Now(),
 	})
+}
+
+// sendLivePerformanceGraph maps a live benchmark sample onto the Neo4j graph.
+func (ph *PerformanceHandlers) sendLivePerformanceGraph(w http.ResponseWriter, r *http.Request, sample *ports.LiveSample) {
+	baseGraph, err := ph.fetchBaseGraph()
+	if err != nil {
+		ph.sendErrorResponse(w, http.StatusServiceUnavailable, "graph_unavailable", "Base graph is not available", err.Error())
+		return
+	}
+	graphData, err := ph.graphMapper.MapLiveToGraph(r.Context(), baseGraph, sample, ph.labelMapping)
+	if err != nil {
+		ph.sendErrorResponse(w, http.StatusInternalServerError, "mapping_error", "Failed to map live performance to graph", err.Error())
+		return
+	}
+	ph.sendJSONResponse(w, http.StatusOK, Response{Success: true, Data: graphData, Timestamp: time.Now()})
 }
 
 // PerformanceReport is the response body for GET /api/performance/reports/summary.
