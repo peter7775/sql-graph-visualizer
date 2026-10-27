@@ -24,7 +24,7 @@ on:
         type: boolean
 
 env:
-  GO_VERSION: '1.26.3'
+  GO_VERSION: '1.27.0'
 
 jobs:
   # Dependency vulnerability scanning
