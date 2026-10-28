@@ -23,6 +23,10 @@ import (
 	"os/exec"
 	"os/signal"
 	"path/filepath"
+	"sql-graph-visualizer/internal/config"
+	"sql-graph-visualizer/internal/domain/models"
+	"sql-graph-visualizer/internal/domain/repositories/neo4j"
+	"sql-graph-visualizer/internal/infrastructure/middleware"
 	"testing"
 	"time"
 
@@ -33,13 +37,8 @@ import (
 
 	transformService "sql-graph-visualizer/internal/application/services/transform"
 	transformAggregates "sql-graph-visualizer/internal/domain/aggregates/transform"
-	"sql-graph-visualizer/internal/domain/models"
+
 	transformObjects "sql-graph-visualizer/internal/domain/valueobjects/transform"
-	"sql-graph-visualizer/internal/infrastructure/middleware"
-
-	"sql-graph-visualizer/internal/config"
-
-	"sql-graph-visualizer/internal/domain/repositories/neo4j"
 
 	_ "github.com/go-sql-driver/mysql"
 
@@ -179,12 +178,15 @@ func (m *realMySQLRepo) Close() error {
 }
 
 func TestIntegrationTransformRulesAndVisualization(t *testing.T) {
+	t.Chdir("../..")
+
 	ctx := context.Background()
 
 	cfg, err := config.Load()
 	if err != nil {
 		t.Fatalf("Error loading configuration: %v", err)
 	}
+
 	neo4jConfig := neo4j.Neo4jConfig{
 		URI:      cfg.Neo4j.URI,
 		User:     cfg.Neo4j.User,
