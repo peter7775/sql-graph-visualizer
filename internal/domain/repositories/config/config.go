@@ -98,8 +98,8 @@ func safeConfigPath(filePath string) (string, error) {
 
 	cleanPath := filepath.Clean(filePath)
 
-	// IsLocal rejects absolute paths, empty paths, traversal outside the
-	// current directory, and Windows reserved device names.
+	// IsLocal rejects absolute paths, traversal outside the current directory,
+	// and Windows reserved device names.
 	if !filepath.IsLocal(cleanPath) {
 		return "", fmt.Errorf("invalid config path: %s", filePath)
 	}
@@ -121,7 +121,7 @@ func readConfigFile(relativePath string) ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("open config root %q: %w", configRoot, err)
 	}
-	defer root.Close()
+	defer closeRoot(root)
 
 	if _, err := root.Stat(relativePath); err != nil {
 		return nil, err
@@ -130,44 +130,10 @@ func readConfigFile(relativePath string) ([]byte, error) {
 	return root.ReadFile(relativePath)
 }
 
-func findProjectRoot() string {
-	// In Railway/production environment, assume we're in /app.
-	if os.Getenv("RAILWAY_ENVIRONMENT") != "" {
-		// Check if we're in Docker container with /app directory.
-		if _, err := os.Stat("/app"); err == nil {
-			logrus.Info("Railway deployment detected, using /app as project root")
-			return "/app"
-		}
-
-		if wd, err := os.Getwd(); err == nil {
-			logrus.Infof("Using current working directory as project root: %s", wd)
-			return wd
-		}
-	}
-
-	wd, err := os.Getwd()
-	if err != nil {
-		logrus.Fatalf("Cannot get working directory: %v", err)
-	}
-
-	for {
-		if _, err := os.Stat(filepath.Join(wd, "go.mod")); err == nil {
-			return wd
-		}
-
-		parent := filepath.Dir(wd)
-		if parent == wd {
-			// Last resort for Railway: try /app.
-			if os.Getenv("RAILWAY_ENVIRONMENT") != "" {
-				logrus.Warn("Cannot find go.mod, using /app as fallback in Railway")
-				return "/app"
-			}
-
-			// Do NOT fatal in production containers; fall back to current dir.
-			logrus.Error("Cannot find project root directory; falling back to current working directory")
-			return wd
-		}
-
-		wd = parent
+// closeRoot closes an os.Root and logs a close failure instead of silently
+// discarding its returned error.
+func closeRoot(root *os.Root) {
+	if err := root.Close(); err != nil {
+		logrus.Errorf("Error closing config root: %v", err)
 	}
 }

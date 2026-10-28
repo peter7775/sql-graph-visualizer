@@ -86,7 +86,7 @@ func safeConfigPath(filePath string) (string, error) {
 
 	cleanPath := filepath.Clean(filePath)
 
-	// Reject absolute paths, paths escaping the configuration root, and
+	// Reject absolute paths, traversal outside the configuration root, and
 	// Windows drive/root-style paths.
 	if filepath.IsAbs(cleanPath) || !filepath.IsLocal(cleanPath) {
 		return "", fmt.Errorf("invalid config path: %s", filePath)
@@ -109,13 +109,21 @@ func readConfigFile(relativePath string) ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("open config root %q: %w", configRoot, err)
 	}
-	defer root.Close()
+	defer closeRoot(root)
 
 	if _, err := root.Stat(relativePath); err != nil {
 		return nil, err
 	}
 
 	return root.ReadFile(relativePath)
+}
+
+// closeRoot closes an os.Root and logs a close failure instead of silently
+// discarding its returned error.
+func closeRoot(root *os.Root) {
+	if err := root.Close(); err != nil {
+		logrus.Errorf("Error closing config root: %v", err)
+	}
 }
 
 // Load loads configuration using default logic and environment variables.
