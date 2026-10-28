@@ -39,16 +39,10 @@ jobs:
           echo "Installing Go dependencies..."
           go mod download
 
-      - name: Install gqlgen
-        run: |
-          echo "Installing gqlgen..."
-          go install github.com/99designs/gqlgen@v0.17.78
-          echo "$(go env GOPATH)/bin" >> $GITHUB_PATH
-
       - name: Generate GraphQL code
         run: |
-          echo "Generating GraphQL code..."
-          $(go env GOPATH)/bin/gqlgen generate
+          set -euxo pipefail
+          go tool gqlgen generate
 
       - name: Format generated code
         run: |
