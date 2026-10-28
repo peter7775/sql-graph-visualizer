@@ -13,16 +13,20 @@
 package config
 
 import (
+	"errors"
 	"fmt"
-	"sql-graph-visualizer/internal/domain/models"
-
 	"os"
 	"path/filepath"
+	"sql-graph-visualizer/internal/domain/models"
 	"strings"
 
 	"github.com/sirupsen/logrus"
 	yaml "gopkg.in/yaml.v2"
 )
+
+// configRoot is the only directory from which application configuration files
+// may be loaded. All configuration paths are resolved relative to this root.
+const configRoot = "config"
 
 // Config represents the main application configuration structure.
 type Config struct {
@@ -44,63 +48,109 @@ type Config struct {
 	TransformRules []models.TransformationConfig `yaml:"transform_rules"`
 }
 
-// LoadConfig loads configuration from a specified file path.
+// LoadConfig loads configuration from a file located inside the project's
+// config directory. The filePath must be relative to the config directory.
 func LoadConfig(filePath string) (*Config, error) {
 	logrus.Debugf("Attempting to load config from: %s", filePath)
 
-	cleanPath := filepath.Clean(filePath)
-	if strings.Contains(cleanPath, "..") {
-		return nil, fmt.Errorf("invalid config path: %s", filePath)
-	}
-
-	// Check if file exists
-	if _, err := os.Stat(cleanPath); os.IsNotExist(err) {
-		logrus.Errorf("Config file does not exist: %s", cleanPath)
+	relativePath, err := safeConfigPath(filePath)
+	if err != nil {
 		return nil, err
 	}
 
-	data, err := os.ReadFile(cleanPath)
+	data, err := readConfigFile(relativePath)
 	if err != nil {
-		logrus.Errorf("Error reading config file %s: %v", filePath, err)
+		if errors.Is(err, os.ErrNotExist) {
+			logrus.Errorf("Config file does not exist: %s", relativePath)
+		} else {
+			logrus.Errorf("Error reading config file %s: %v", relativePath, err)
+		}
 		return nil, err
 	}
 
 	var config Config
 	// #nosec G709
 	if err := yaml.Unmarshal(data, &config); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("invalid configuration file %s: %w", relativePath, err)
 	}
 
 	return &config, nil
 }
 
+// safeConfigPath validates an externally supplied configuration path and
+// converts it into a path relative to configRoot.
+func safeConfigPath(filePath string) (string, error) {
+	if filePath == "" {
+		return "", errors.New("config path must not be empty")
+	}
+
+	cleanPath := filepath.Clean(filePath)
+
+	// Reject absolute paths, paths escaping the configuration root, and
+	// Windows drive/root-style paths.
+	if filepath.IsAbs(cleanPath) || !filepath.IsLocal(cleanPath) {
+		return "", fmt.Errorf("invalid config path: %s", filePath)
+	}
+
+	// Normalize separators for os.Root and reject any remaining traversal
+	// component defensively.
+	relativePath := filepath.ToSlash(cleanPath)
+	if strings.Contains(relativePath, "..") {
+		return "", fmt.Errorf("invalid config path: %s", filePath)
+	}
+
+	return relativePath, nil
+}
+
+// readConfigFile reads a file only from configRoot. os.Root prevents access
+// outside that directory, including traversal through ".." or symlinks.
+func readConfigFile(relativePath string) ([]byte, error) {
+	root, err := os.OpenRoot(configRoot)
+	if err != nil {
+		return nil, fmt.Errorf("open config root %q: %w", configRoot, err)
+	}
+	defer root.Close()
+
+	if _, err := root.Stat(relativePath); err != nil {
+		return nil, err
+	}
+
+	return root.ReadFile(relativePath)
+}
+
 // Load loads configuration using default logic and environment variables.
 func Load() (*Config, error) {
 	// Debug info
-	logrus.Debugf("Config loading - GO_ENV: %s, CONFIG_PATH: %s", os.Getenv("GO_ENV"), os.Getenv("CONFIG_PATH"))
+	logrus.Debugf(
+		"Config loading - GO_ENV: %s, CONFIG_PATH: %s",
+		os.Getenv("GO_ENV"),
+		os.Getenv("CONFIG_PATH"),
+	)
 	logrus.Debugf("Current working directory: %s", getWorkingDir())
 	logrus.Debugf("Project root: %s", findProjectRoot())
 
-	// Check for environment-specific config
+	// Check for environment-specific config.
 	if configPath := os.Getenv("CONFIG_PATH"); configPath != "" {
 		logrus.Debugf("Using CONFIG_PATH: %s", configPath)
-		if !filepath.IsAbs(configPath) {
-			configPath = filepath.Join(findProjectRoot(), configPath)
-			logrus.Debugf("Resolved to absolute path: %s", configPath)
+
+		// CONFIG_PATH is interpreted relative to the project config directory.
+		// Absolute paths are intentionally rejected to prevent loading files
+		// from arbitrary locations.
+		if filepath.IsAbs(configPath) {
+			return nil, fmt.Errorf("CONFIG_PATH must be relative to %s: %s", configRoot, configPath)
 		}
+
 		return LoadConfig(configPath)
 	}
 
-	// Check if we're in test environment
+	// Check if we're in test environment.
 	if os.Getenv("GO_ENV") == "test" {
-		configPath := findProjectRoot() + "/config/config-test.yml"
-		logrus.Debugf("Using test config: %s", configPath)
-		return LoadConfig(configPath)
+		logrus.Debug("Using test config: config/config-test.yml")
+		return LoadConfig("config-test.yml")
 	}
 
-	configPath := findProjectRoot() + "/config/config.yml"
-	logrus.Debugf("Using default config: %s", configPath)
-	return LoadConfig(configPath)
+	logrus.Debug("Using default config: config/config.yml")
+	return LoadConfig("config.yml")
 }
 
 func getWorkingDir() string {
@@ -110,25 +160,27 @@ func getWorkingDir() string {
 	}
 	return wd
 }
+
 func findProjectRoot() string {
 	wd, err := os.Getwd()
 	if err != nil {
-		// Try to return current directory if we can't get working directory
+		// Try to return current directory if we can't get working directory.
 		logrus.Errorf("Cannot get working directory: %v, using current directory", err)
 		return "."
 	}
 
-	// First check if go.mod exists in current directory
+	// First check if go.mod exists in current directory.
 	if _, err := os.Stat(filepath.Join(wd, "go.mod")); err == nil {
 		return wd
 	}
 
-	// Search parent directories
+	// Search parent directories.
 	originalWd := wd
 	for {
 		if _, err := os.Stat(filepath.Join(wd, "go.mod")); err == nil {
 			return wd
 		}
+
 		parent := filepath.Dir(wd)
 		if parent == wd {
 			break
