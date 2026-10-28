@@ -123,7 +123,7 @@ docker-down:
 # Run golangci-lint
 lint:
 	@echo "Running golangci-lint..."
-	GOTOOLCHAIN=$(LINT_TOOLCHAIN) $(HOME)/go/bin/golangci-lint run --config=.golangci.yml --timeout=10m
+	GOTOOLCHAIN=local $(HOME)/go/bin/golangci-lint run --config=.golangci.yml --timeout=10m
 	@echo "Lint completed"
 
 # Run CI checks locally
@@ -145,7 +145,7 @@ ci-check: install generate format
 	@echo "Running go vet..."
 	go vet ./...
 	@echo "Running golangci-lint..."
-	GOTOOLCHAIN=$(LINT_TOOLCHAIN) $(HOME)/go/bin/golangci-lint run --config=.golangci.yml --timeout=10m
+	GOTOOLCHAIN=local $(HOME)/go/bin/golangci-lint run --config=.golangci.yml --timeout=10m
 	@echo "Building..."
 	go build -v ./...
 	@echo "Running tests..."
