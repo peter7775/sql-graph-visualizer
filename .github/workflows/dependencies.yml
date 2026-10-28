@@ -43,6 +43,19 @@ jobs:
       - name:  Download dependencies
         run: go mod download
 
+      - name: Generate GraphQL code
+        run: |
+          set -euxo pipefail
+          go tool gqlgen generate
+
+      - name: Verify GraphQL packages
+        run: |
+          set -euxo pipefail
+          test -s internal/interfaces/graphql/generated/exec.go
+          test -s internal/interfaces/graphql/models/models_gen.go
+          go list ./internal/interfaces/graphql/generated
+          go list ./internal/interfaces/graphql/models
+
       - name:  Run Govulncheck
         run: |
           go install golang.org/x/vuln/cmd/govulncheck@latest
@@ -98,6 +111,19 @@ jobs:
         uses: actions/setup-go@v4
         with:
           go-version: ${{ env.GO_VERSION }}
+
+      - name: Generate GraphQL code
+        run: |
+          set -euxo pipefail
+          go tool gqlgen generate
+
+      - name: Verify GraphQL packages
+        run: |
+          set -euxo pipefail
+          test -s internal/interfaces/graphql/generated/exec.go
+          test -s internal/interfaces/graphql/models/models_gen.go
+          go list ./internal/interfaces/graphql/generated
+          go list ./internal/interfaces/graphql/models
 
       - name:  Check licenses
         run: |
