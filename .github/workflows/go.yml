@@ -62,10 +62,10 @@ jobs:
             exit 1
           fi
 
-      - name: Run golangci-lint
-        uses: golangci/golangci-lint-action@v7
+      - uses: golangci/golangci-lint-action@v7
         with:
-          version: v2.11
+           version: v2.13.2
+           install-mode: binary
 
       - name: Vet
         run: go vet ./...
