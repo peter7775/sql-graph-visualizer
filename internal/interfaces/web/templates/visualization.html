@@ -64,6 +64,13 @@
                     </select>
                     <span id="perfOverlayStatus" class="text-muted small ms-2"></span>
                 </div>
+                <div class="col-auto d-flex align-items-center">
+                    <div class="form-check form-switch mb-0 me-2">
+                        <input class="form-check-input" type="checkbox" id="liveBenchToggle">
+                        <label class="form-check-label" for="liveBenchToggle">Live benchmark</label>
+                    </div>
+                    <span id="liveBenchStatus" class="text-muted small" aria-live="polite"></span>
+                </div>
             </div>
             <div class="col-auto d-flex align-items-center gap-2">
                 <a href="/benchmark-live" class="btn btn-outline-secondary btn-sm">Live benchmark</a>
@@ -73,7 +80,11 @@
         <div id="viz"></div>
     </div>
 
-    <script src="/static/js/visualization.js?v=4"></script>
+    <script src="/static/js/vendor/d3.min.js"></script>
+    <script src="/static/js/live-graph.js"></script>
+    <script src="/static/js/live-benchmark-feed.js"></script>
+    <script src="/static/js/live-benchmark-overlay.js"></script>
+    <script src="/static/js/visualization.js?v=5"></script>
     <script src="/static/js/theme-toggle.js"></script>
 </body>
 </html>

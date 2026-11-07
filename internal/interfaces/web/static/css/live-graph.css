@@ -1,0 +1,29 @@
+/* Shared graph styles; isolated from the domain graph and dashboard. */
+.live-graph { width: 100%; height: 100%; display: block; }
+.live-graph-tooltip { color: var(--text, var(--text-color, #e6edf3)); background: var(--panel, var(--card-bg, #171d26)); }
+.live-graph .node-circle { cursor: pointer; transition: filter 0.7s; }
+.live-graph .node-label { fill: var(--text, var(--text-color, #e6edf3)); font-size: 15px; font-weight: 600; text-anchor: middle; pointer-events: none; paint-order: stroke; stroke: var(--panel-2, var(--card-bg, #1d2530)); stroke-width: 4px; stroke-linejoin: round; }
+.live-graph .node-sub { fill: var(--muted, var(--muted-text, #8b98a9)); font-size: 12px; text-anchor: middle; pointer-events: none; paint-order: stroke; stroke: var(--panel-2, var(--card-bg, #1d2530)); stroke-width: 4px; stroke-linejoin: round; font-variant-numeric: tabular-nums; }
+.live-graph .edge-label { fill: var(--text, var(--text-color, #e6edf3)); font-size: 12px; font-weight: 600; text-anchor: middle; pointer-events: none; paint-order: stroke; stroke: var(--panel-2, var(--card-bg, #1d2530)); stroke-width: 5px; stroke-linejoin: round; font-variant-numeric: tabular-nums; }
+.live-graph .edge-hit { stroke: transparent; stroke-width: 22px; cursor: pointer; fill: none; }
+.live-graph .edge-line { stroke-linecap: round; fill: none; }
+
+.live-graph-tooltip {
+    position: absolute;
+    z-index: 5;
+    pointer-events: none;
+    padding: 8px 11px;
+    border-radius: 8px;
+    border: 1px solid var(--border, var(--border-color, #2a3442));
+    background: var(--panel, var(--card-bg, #171d26));
+    box-shadow: 0 6px 20px var(--shadow, rgba(0, 0, 0, 0.25));
+    font-size: 0.8rem;
+    line-height: 1.5;
+    font-variant-numeric: tabular-nums;
+    max-width: 280px;
+}
+.live-graph-tooltip[hidden] { display: none; }
+.live-graph-tooltip b { font-size: 0.9rem; }
+.live-graph-tooltip .t-row { display: flex; justify-content: space-between; gap: 18px; }
+.live-graph-tooltip .t-muted { color: var(--muted, var(--muted-text, #8b98a9)); }
+

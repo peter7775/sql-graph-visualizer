@@ -585,41 +585,9 @@
                 <div class="controls-panel">
                     <h6><i class="fas fa-sliders-h me-2"></i>Visualization Controls</h6>
                     
-                    <div class="control-group">
-                        <div class="control-label">Display Options</div>
-                        <div class="form-check">
-                            <input class="form-check-input" type="checkbox" id="enableAnimations" checked>
-                            <label class="form-check-label" for="enableAnimations">
-                                Enable Animations
-                            </label>
-                        </div>
-                        <div class="form-check">
-                            <input class="form-check-input" type="checkbox" id="enableHeatmap" checked>
-                            <label class="form-check-label" for="enableHeatmap">
-                                Show Performance Heatmap
-                            </label>
-                        </div>
-                    </div>
-
-                    <div class="control-group">
-                        <div class="control-label">Performance Filters</div>
-                        <select class="form-select form-select-sm" id="performanceFilter">
-                            <option value="all">Show All Tables</option>
-                            <option value="slow">Slow Queries Only</option>
-                            <option value="hotspot">Hotspots Only</option>
-                            <option value="errors">Tables with Errors</option>
-                        </select>
-                    </div>
-
-                    <div class="control-group">
-                        <div class="control-label">Update Frequency</div>
-                        <select class="form-select form-select-sm" id="updateFrequency">
-                            <option value="1000">1 second</option>
-                            <option value="5000" selected>5 seconds</option>
-                            <option value="10000">10 seconds</option>
-                            <option value="30000">30 seconds</option>
-                        </select>
-                    </div>
+                    <p class="text-muted">Node colour = heat; size = QPS. Edge colour = latency; width = load.</p>
+                    <p class="text-muted">Live samples arrive from benchmarks started here or on another page.</p>
+                    <a href="/benchmark-live">Open live benchmark, suggestions and history</a>
                 </div>
 
                 <!-- Performance Metrics Chart -->
@@ -647,7 +615,7 @@
                     <div class="d-flex justify-content-between align-items-center mb-3">
                         <h5 class="chart-title mb-0"><i class="fas fa-tachometer-alt me-2"></i>Benchmark Control</h5>
                         <div>
-                            <button class="btn btn-primary btn-sm" id="startBenchmark">
+                            <button class="btn btn-primary btn-sm" id="startBenchmark" disabled>
                                 <i class="fas fa-play me-1"></i>Start Benchmark
                             </button>
                             <button class="btn btn-danger btn-sm" id="stopBenchmark" disabled>
@@ -655,6 +623,8 @@
                             </button>
                         </div>
                     </div>
+                    <label for="benchmarkQuerySet" class="control-label">Query set</label>
+                    <select id="benchmarkQuerySet" class="form-select mb-3"></select>
                     <div class="row">
                         <div class="col-md-8">
                             <canvas id="benchmarkChart" width="800" height="300"></canvas>
@@ -678,7 +648,9 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
 
     <!-- Performance graph visualizer (needs D3) -->
-    <script src="/static/js/performance-visualization.js"></script>
+    <link rel="stylesheet" href="/static/css/live-graph.css">
+    <script src="/static/js/live-graph.js"></script>
+    <script src="/static/js/live-benchmark-feed.js"></script>
     
     <!-- Shared theme toggle functionality -->
     <script>
@@ -703,6 +675,7 @@
                 localStorage.setItem("theme", newTheme);
                 toggleBtn.textContent = newTheme === "dark" ? "☀️" : "🌙";
                 
+                if (performanceVisualizer) performanceVisualizer.recolor();
                 if (typeof trendsChart !== 'undefined' && trendsChart) {
                     updateChartTheme(trendsChart);
                 }
@@ -808,46 +781,62 @@
                 message + '</div>';
         }
 
-        function initializePerformanceGraph() {
+        let liveConfig = null;
+        let lastGraphSample = null;
+        let unsubscribeBenchmark = null;
+
+        async function initializePerformanceGraph() {
             const container = document.getElementById('performanceGraph');
-            if (!container) return;
-            if (typeof d3 === 'undefined' || typeof PerformanceGraphVisualizer === 'undefined') {
-                showGraphPlaceholder('Performance graph is unavailable (visualization scripts failed to load).');
-                return;
-            }
-
+            if (!container || !window.LiveGraph) return;
             try {
-                performanceVisualizer = new PerformanceGraphVisualizer('performanceGraph', {
-                    width: container.clientWidth || 800,
-                    height: container.clientHeight || 480,
-                    enableAnimations: document.getElementById('enableAnimations').checked,
-                    enableHeatmap: document.getElementById('enableHeatmap').checked,
-                    updateInterval: parseInt(document.getElementById('updateFrequency').value, 10) || 5000
-                });
-            } catch (error) {
-                console.error('Failed to initialize performance graph:', error);
-                performanceVisualizer = null;
-                showGraphPlaceholder('Performance graph could not be initialized.');
-                return;
-            }
-
-            // Seed the graph once; live updates arrive over the WebSocket.
-            loadPerformanceGraph();
-        }
-
-        async function loadPerformanceGraph() {
-            if (!performanceVisualizer) return;
-            try {
-                const response = await fetch('/api/performance/data/graph');
+                const response = await fetch('/api/performance/live/config');
                 if (!response.ok) throw new Error('HTTP ' + response.status);
                 const body = await response.json();
-                const graph = body && body.success ? body.data : null;
-                if (graph && Array.isArray(graph.nodes) && graph.nodes.length > 0) {
-                    performanceVisualizer.updatePerformanceData(graph);
+                if (!body.success) throw new Error('Live configuration unavailable');
+                liveConfig = body.data;
+                container.innerHTML = '<svg role="img" aria-label="Live table performance graph"></svg>';
+                performanceVisualizer = window.LiveGraph.create(container.querySelector('svg'));
+                performanceVisualizer.init(liveConfig.topology);
+                const select = document.getElementById('benchmarkQuerySet');
+                select.innerHTML = (liveConfig.query_sets || []).map(function(set) {
+                    return '<option value="' + escapeHtml(set.name) + '">' + escapeHtml(set.name) + '</option>';
+                }).join('');
+                document.getElementById('startBenchmark').disabled = !(liveConfig.query_sets || []).length;
+                unsubscribeBenchmark = window.LiveBenchmarkFeed.subscribe(function(sample) {
+                    renderLiveGraphSample(sample);
+                    if (!currentBenchmarkId || sample.benchmark_id === currentBenchmarkId) addBenchmarkSample(sample);
+                });
+                const historyResponse = await fetch('/api/performance/benchmarks/history?limit=1');
+                if (historyResponse.ok) {
+                    const history = await historyResponse.json();
+                    const run = history.data && history.data.runs && history.data.runs[0];
+                    if (run && !lastGraphSample) {
+                        const replay = await fetch('/api/performance/benchmarks/' + encodeURIComponent(run.id) + '/samples?since=0');
+                        if (replay.ok) {
+                            const samples = await replay.json();
+                            const all = samples.data.samples || [];
+                            if (all.length && !lastGraphSample) renderLiveGraphSample(all[all.length - 1]);
+                        }
+                    }
                 }
             } catch (error) {
-                console.warn('Performance graph data unavailable:', error.message);
+                showGraphPlaceholder('Live graph unavailable: ' + escapeHtml(error.message));
             }
+        }
+
+        function renderLiveGraphSample(sample) {
+            if (!performanceVisualizer || !sample) return;
+            if (lastGraphSample && lastGraphSample.benchmark_id === sample.benchmark_id && sample.seq <= lastGraphSample.seq) return;
+            if (!lastGraphSample || sample.benchmark_id !== lastGraphSample.benchmark_id) performanceVisualizer.reset();
+            lastGraphSample = sample;
+            performanceVisualizer.update(sample.graph);
+            const interval = sample.interval || {};
+            updateMetricCards({ queries_per_second: interval.qps, average_latency_ms: interval.avg_latency_ms,
+                error_rate: interval.queries ? 100 * interval.errors / interval.queries : 0, active_connections: sample.threads });
+            document.getElementById('topQueriesList').textContent = (sample.queries || []).map(function(q) {
+                return (q.description || q.pattern) + ' — ' + Number(q.avg_latency_ms || 0).toFixed(2) + ' ms';
+            }).join('\n') || 'No per-query data in this sample.';
+            document.getElementById('topQueriesList').style.whiteSpace = 'pre-wrap';
         }
 
         function initializeTrendsChart() {
@@ -982,26 +971,6 @@
         }
 
         function setupEventHandlers() {
-            // Control handlers
-            document.getElementById('enableAnimations').addEventListener('change', function(e) {
-                if (performanceVisualizer && performanceVisualizer.options) {
-                    performanceVisualizer.options.enableAnimations = e.target.checked;
-                }
-            });
-
-            document.getElementById('enableHeatmap').addEventListener('change', function(e) {
-                if (performanceVisualizer && performanceVisualizer.options) {
-                    performanceVisualizer.options.enableHeatmap = e.target.checked;
-                }
-            });
-
-            document.getElementById('updateFrequency').addEventListener('change', function(e) {
-                const interval = parseInt(e.target.value);
-                if (performanceVisualizer && performanceVisualizer.options) {
-                    performanceVisualizer.options.updateInterval = interval;
-                }
-            });
-
             // Benchmark controls
             document.getElementById('startBenchmark').addEventListener('click', startBenchmark);
             document.getElementById('stopBenchmark').addEventListener('click', stopBenchmark);
@@ -1186,8 +1155,17 @@
             }
         }
 
+        let chartBenchmarkId = null;
         function addBenchmarkSample(sample) {
-            if (!sample || sample.seq <= benchmarkLastSeq) return;
+            if (!sample) return;
+            if (chartBenchmarkId !== sample.benchmark_id) {
+                chartBenchmarkId = sample.benchmark_id;
+                benchmarkLastSeq = 0;
+                benchmarkChart.data.labels = [];
+                benchmarkChart.data.datasets[0].data = [];
+            }
+            if (sample.seq <= benchmarkLastSeq) return;
+            renderLiveGraphSample(sample);
             benchmarkLastSeq = sample.seq;
             const interval = sample.interval || {};
             const maxPoints = 120;
@@ -1281,8 +1259,10 @@
                         'Content-Type': 'application/json',
                     },
                     body: JSON.stringify({
-                        benchmark_type: 'sysbench',
-                        duration_seconds: 60,
+                        tool: 'custom',
+                        query_set: document.getElementById('benchmarkQuerySet').value,
+                        threads: 8,
+                        duration_seconds: 30,
                         description: 'Dashboard initiated benchmark'
                     })
                 });
@@ -1338,6 +1318,12 @@
                 showBenchmarkMessage('error', '<strong>Failed to stop benchmark</strong><br>' + escapeHtml(error.message));
             }
         }
+
+        window.addEventListener('pagehide', function() {
+            closeBenchmarkFeeds();
+            if (unsubscribeBenchmark) unsubscribeBenchmark();
+            if (performanceVisualizer) performanceVisualizer.destroy();
+        });
 
         function toggleFullscreen() {
             const container = document.querySelector('.performance-graph-container');

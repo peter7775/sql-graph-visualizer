@@ -4,10 +4,11 @@
  * tested without the Go backend / MySQL.
  *
  *   node internal/interfaces/web/dev/mock-server.js
- *   open http://localhost:3999/
+ *   open http://localhost:3999/benchmark-live
  *
- * Env: PORT (default 3999), TICK_MS (sample interval, default 1000; lower it
- * for faster headless tests).
+ * Env: MODE=demo|generic (default demo), DB_TYPE=mysql|postgresql (default
+ * mysql), PORT (default 3999), TICK_MS (sample interval, default 1000; lower it
+ * for faster tests). State persists for the lifetime of this process.
  *
  * Serves static files from internal/interfaces/web and implements the contract:
  *   GET  /api/demo/scenarios
@@ -18,16 +19,24 @@
  *   GET  /api/performance/benchmarks/compare?a=&b=
  *   GET  /api/performance/benchmarks/{id}/stream   (SSE, replay + live)
  *   GET  /api/performance/benchmarks/{id}/samples?since=
+ *   GET  /api/performance/live/config, /topology, /live/mapping
+ *   GET  /api/performance/benchmarks/history
+ *   GET  /api/performance/optimization/suggestions?benchmark_id=
+ *   POST /api/performance/benchmarks (tool=custom, query_set, threads, duration_seconds)
+ *   GET  /api/graph
+ *   WS   /ws/performance (subscribe to topic benchmark)
  */
 'use strict';
 
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
-const { randomUUID } = require('crypto');
+const { randomUUID, createHash } = require('crypto');
 
-const PORT = Number(process.env.PORT) || 3999;
+const PORT = process.env.PORT === undefined ? 3999 : Number(process.env.PORT);
 const TICK_MS = Number(process.env.TICK_MS) || 1000;
+const MODE = process.env.MODE === 'generic' ? 'generic' : 'demo';
+const DB_TYPE = process.env.DB_TYPE === 'postgresql' ? 'postgresql' : 'mysql';
 const WEB_ROOT = path.resolve(__dirname, '..');
 
 // ---------------------------------------------------------------------------
@@ -35,6 +44,7 @@ const WEB_ROOT = path.resolve(__dirname, '..');
 // ---------------------------------------------------------------------------
 
 const TOPOLOGY = {
+  source: 'config',
   nodes: [
     { id: 'customers', table: 'customers', label: 'Customers' },
     { id: 'products', table: 'products', label: 'Products' },
@@ -43,10 +53,10 @@ const TOPOLOGY = {
     { id: 'order_items', table: 'order_items', label: 'Order items' },
   ],
   edges: [
-    { id: 'orders-customers', source: 'orders', target: 'customers', relation: 'orders.customer_id -> customers.id' },
+    { id: 'customers-orders', source: 'orders', target: 'customers', relation: 'orders.customer_id -> customers.id' },
     { id: 'order_items-orders', source: 'order_items', target: 'orders', relation: 'order_items.order_id -> orders.id' },
     { id: 'order_items-products', source: 'order_items', target: 'products', relation: 'order_items.product_id -> products.id' },
-    { id: 'products-categories', source: 'products', target: 'categories', relation: 'products.category_id -> categories.id' },
+    { id: 'categories-products', source: 'products', target: 'categories', relation: 'products.category_id -> categories.id' },
   ],
 };
 
@@ -55,17 +65,46 @@ const SCENARIOS = [
   { name: 'catalog-browse', title: 'Catalog browsing', description: 'Read-heavy product catalog traffic.', threads: 8, duration_seconds: 20 },
   { name: 'mixed-oltp', title: 'Mixed OLTP', description: 'Reads with a steady stream of order inserts.', threads: 24, duration_seconds: 30 },
 ];
+SCENARIOS.forEach((scenario) => { scenario.query_set = scenario.name; });
+const QUERY_SETS = SCENARIOS.map((scenario) => ({
+  ...scenario, query_count: 5, tables: TOPOLOGY.nodes.map((node) => node.table),
+}));
+const MAPPING = {
+  source: 'transform_rules',
+  labels: { Order: { table: 'orders' }, Customer: { table: 'customers' }, Product: { table: 'products' }, Category: { table: 'categories' } },
+  relationships: {
+    PLACED_ORDER: { edge: 'customers-orders', edges: ['customers-orders'], from_label: 'Customer', to_label: 'Order' },
+    CONTAINS_PRODUCT: { edge: 'order_items-orders', edges: ['order_items-orders', 'order_items-products'], from_label: 'Order', to_label: 'Product' },
+    BELONGS_TO_CATEGORY: { edge: 'categories-products', edges: ['categories-products'], from_label: 'Product', to_label: 'Category' },
+  },
+};
+const DOMAIN_GRAPH = {
+  nodes: [
+    { id: 'customer-1', label: 'Customer', properties: { id: '1', name: 'Customer Alice' } },
+    { id: 'order-1', label: 'Order', properties: { id: '101', name: 'Order 101' } },
+    { id: 'product-1', label: 'Product', properties: { id: '201', name: 'Product Keyboard' } },
+    { id: 'category-1', label: 'Category', properties: { id: '301', name: 'Category Electronics' } },
+  ],
+  relationships: [
+    { from: 'customer-1', to: 'order-1', type: 'PLACED_ORDER', properties: { id: '1' } },
+    { from: 'order-1', to: 'product-1', type: 'CONTAINS_PRODUCT', properties: { id: '2' } },
+    { from: 'product-1', to: 'category-1', type: 'BELONGS_TO_CATEGORY', properties: { id: '3' } },
+  ],
+};
 
 // weight = share of traffic; before/after = base avg latency in ms without / with the index.
 const QUERIES = [
-  { pattern: 'SELECT * FROM orders WHERE customer_id = ? ORDER BY created_at DESC LIMIT 20', description: 'Orders by customer', type: 'SELECT', tables: ['orders', 'customers'], edge: 'orders-customers', weight: 0.28, before: 340, after: 2.4 },
+  { pattern: 'SELECT * FROM orders WHERE customer_id = ? ORDER BY created_at DESC LIMIT 20', description: 'Orders by customer', type: 'SELECT', tables: ['orders', 'customers'], edge: 'customers-orders', weight: 0.28, before: 340, after: 2.4 },
   { pattern: 'SELECT o.id, SUM(oi.price * oi.quantity) FROM orders o JOIN order_items oi ON oi.order_id = o.id WHERE o.customer_id = ? GROUP BY o.id', description: 'Customer order totals', type: 'SELECT', tables: ['orders', 'order_items'], edge: 'order_items-orders', weight: 0.2, before: 520, after: 4.1 },
-  { pattern: 'SELECT p.* FROM products p JOIN categories c ON c.id = p.category_id WHERE c.id = ?', description: 'Products in category', type: 'SELECT', tables: ['products', 'categories'], edge: 'products-categories', weight: 0.22, before: 38, after: 1.9 },
+  { pattern: 'SELECT p.* FROM products p JOIN categories c ON c.id = p.category_id WHERE c.id = ?', description: 'Products in category', type: 'SELECT', tables: ['products', 'categories'], edge: 'categories-products', weight: 0.22, before: 38, after: 1.9 },
   { pattern: 'SELECT p.name, oi.quantity FROM order_items oi JOIN products p ON p.id = oi.product_id WHERE oi.order_id = ?', description: 'Order lines with products', type: 'SELECT', tables: ['order_items', 'products'], edge: 'order_items-products', weight: 0.2, before: 120, after: 3.0 },
   { pattern: 'INSERT INTO orders (customer_id, status, created_at) VALUES (?, ?, NOW())', description: 'Create order', type: 'INSERT', tables: ['orders'], edge: null, weight: 0.1, before: 9, after: 6 },
 ];
 
 const OPTIMIZATION = {
+  available: true,
+  can_apply: true,
+  database_type: DB_TYPE,
   name: 'idx_orders_customer',
   title: 'Index orders.customer_id',
   description: 'Orders are looked up by customer_id, but the column has no index, so every lookup scans the whole table.',
@@ -74,6 +113,37 @@ const OPTIMIZATION = {
 };
 
 const benchmarks = new Map();
+const sockets = new Set();
+
+function optimizationConfig() {
+  return MODE === 'demo' ? OPTIMIZATION : { available: false, can_apply: false };
+}
+
+function historyRow(benchmark) {
+  return {
+    id: benchmark.id, scenario: benchmark.scenario, query_set: benchmark.scenario,
+    status: benchmark.status, started_at: benchmark.start_time, duration_seconds: benchmark.duration,
+    ...(benchmark.summary || summarize(benchmark)), has_samples: benchmark.samples.length > 0,
+    labels: { index_applied: String(benchmark.indexed) },
+  };
+}
+
+function suggestions(benchmark) {
+  if (benchmark.indexed) return [];
+  return [{
+    id: 'idx_orders_customer_id', title: 'Index orders.customer_id',
+    description: 'Measured customer lookup latency indicates a table scan.',
+    table: 'orders', columns: ['customer_id'], statements: OPTIMIZATION.statements,
+    rollback: [DB_TYPE === 'postgresql' ? 'DROP INDEX idx_orders_customer_id' : 'DROP INDEX idx_orders_customer_id ON orders'],
+    queries: [QUERIES[0].pattern], confidence: 0.92, source: 'explain', applied: OPTIMIZATION.applied,
+  }, {
+    id: 'idx_order_items_order_id', title: 'Index order_items.order_id',
+    description: 'Measured join cost is high.', table: 'order_items', columns: ['order_id'],
+    statements: ['CREATE INDEX idx_order_items_order_id ON order_items (order_id)'],
+    rollback: [DB_TYPE === 'postgresql' ? 'DROP INDEX idx_order_items_order_id' : 'DROP INDEX idx_order_items_order_id ON order_items'],
+    queries: [QUERIES[1].pattern], confidence: 0.7, source: 'heuristic', applied: false,
+  }];
+}
 
 // ---------------------------------------------------------------------------
 // Sample generation
@@ -233,6 +303,7 @@ function startBenchmark(scenario, threads, duration) {
     seq += 1;
     const sample = buildSample(b, seq);
     b.samples.push(sample);
+    broadcastSample(sample);
     for (const res of b.subs) sse(res, 'sample', sample, sample.seq);
     if (seq >= duration) finishBenchmark(b, 'completed');
   }, TICK_MS);
@@ -358,11 +429,44 @@ const server = http.createServer(async (req, res) => {
 
   try {
     // --- API ---
+    if (m === 'GET' && p === '/api/performance/live/config') return ok(res, {
+      mode: MODE, database_type: DB_TYPE, query_sets: QUERY_SETS,
+      scenarios: MODE === 'demo' ? SCENARIOS : [], optimization: optimizationConfig(), topology: TOPOLOGY,
+    });
+    if (m === 'GET' && p === '/api/performance/topology') return ok(res, TOPOLOGY);
+    if (m === 'GET' && p === '/api/performance/live/mapping') return ok(res, MAPPING);
+    if (m === 'GET' && p === '/api/graph') return sendJSON(res, 200, DOMAIN_GRAPH);
+    if (m === 'GET' && p === '/api/performance/benchmarks/history') {
+      const limit = Math.max(1, Math.min(1000, Number(u.searchParams.get('limit')) || 20));
+      const querySet = u.searchParams.get('query_set');
+      return ok(res, { runs: [...benchmarks.values()].reverse()
+        .filter((b) => !querySet || b.scenario === querySet).slice(0, limit).map(historyRow) });
+    }
+    if (m === 'GET' && p === '/api/performance/optimization/suggestions') {
+      const benchmark = benchmarks.get(u.searchParams.get('benchmark_id'));
+      if (!benchmark) return fail(res, 404, 'benchmark_not_found', 'Benchmark not found');
+      if (benchmark.status === 'running') return fail(res, 409, 'benchmark_running', 'Benchmark is still running');
+      return ok(res, { benchmark_id: benchmark.id, suggestions: suggestions(benchmark) });
+    }
+    if (m === 'GET' && p === '/api/performance/metrics/summary') {
+      const benchmark = [...benchmarks.values()].pop();
+      const sample = benchmark && benchmark.samples[benchmark.samples.length - 1];
+      return ok(res, {
+        queries_per_second: sample ? sample.interval.qps : 0,
+        average_latency_ms: sample ? sample.interval.avg_latency_ms : 0,
+        error_rate: sample ? 100 * sample.interval.errors / sample.interval.queries : 0,
+        active_connections: benchmark && benchmark.status === 'running' ? benchmark.threads : 0,
+      });
+    }
+    if (m === 'GET' && p === '/api/performance/data') return ok(res, { summary: {} });
+    if (m === 'GET' && p === '/api/performance/metrics/queries') return ok(res, []);
+    if (m === 'GET' && p === '/api/performance/data/graph') return ok(res, { nodes: [], edges: [] });
     if (m === 'GET' && p === '/api/demo/scenarios') return ok(res, SCENARIOS);
     if (m === 'GET' && p === '/api/demo/topology') return ok(res, TOPOLOGY);
     if (m === 'GET' && p === '/api/demo/optimization') return ok(res, OPTIMIZATION);
 
     if (m === 'POST' && (p === '/api/demo/optimization/apply' || p === '/api/demo/optimization/revert')) {
+      if (MODE !== 'demo') return fail(res, 403, 'demo_only', 'Index actions are only available in demo mode');
       const apply = p.endsWith('apply');
       await new Promise((r) => setTimeout(r, 600));
       OPTIMIZATION.applied = apply;
@@ -370,6 +474,7 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (m === 'POST' && (match = p.match(/^\/api\/demo\/scenarios\/([^/]+)\/run$/))) {
+      if (MODE !== 'demo') return fail(res, 404, 'demo_only', 'Demo scenarios are disabled');
       const scenario = SCENARIOS.find((s) => s.name === decodeURIComponent(match[1]));
       if (!scenario) return fail(res, 404, 'scenario_not_found', 'Unknown scenario');
       const body = await readBody(req);
@@ -383,13 +488,17 @@ const server = http.createServer(async (req, res) => {
       return ok(res, { id: b.id, scenario: b.scenario, start_time: b.start_time });
     }
 
-    // Used by the legacy /performance dashboard: starts the first scenario.
     if (m === 'POST' && p === '/api/performance/benchmarks') {
+      const body = await readBody(req);
+      if (!body) return fail(res, 400, 'bad_request', 'Invalid JSON body');
+      const querySet = QUERY_SETS.find((set) => set.name === body.query_set);
+      if (body.tool !== 'custom' || !querySet) return fail(res, 400, 'bad_request', 'Select tool custom and a configured query set');
       for (const b of benchmarks.values()) {
         if (b.status === 'running') return fail(res, 409, 'benchmark_running', 'Another benchmark is already running');
       }
-      const b = startBenchmark(SCENARIOS[0], SCENARIOS[0].threads, 20);
-      return ok(res, { id: b.id, scenario: b.scenario, start_time: b.start_time });
+      const b = startBenchmark(querySet, Math.max(1, Math.min(256, Number(body.threads) || querySet.threads)),
+        Math.max(2, Math.min(600, Number(body.duration_seconds) || querySet.duration_seconds)));
+      return ok(res, { id: b.id, status: 'started', scenario: b.scenario, start_time: b.start_time });
     }
 
     if (m === 'GET' && p === '/api/performance/benchmarks/compare') {
@@ -430,9 +539,9 @@ const server = http.createServer(async (req, res) => {
 
     // --- Pages + static ---
     if (m === 'GET') {
-      if (p === '/' || p === '/benchmark-live') return serveFile(res, path.join(WEB_ROOT, 'templates', 'benchmark_live.html'));
+      if (p === '/benchmark-live') return serveFile(res, path.join(WEB_ROOT, 'templates', 'benchmark_live.html'));
       if (p === '/performance') return serveFile(res, path.join(WEB_ROOT, 'templates', 'performance_dashboard.html'));
-      if (p === '/graph') return serveFile(res, path.join(WEB_ROOT, 'templates', 'visualization.html'));
+      if (p === '/' || p === '/graph') return serveFile(res, path.join(WEB_ROOT, 'templates', 'visualization.html'));
       if (p.startsWith('/static/')) return serveFile(res, path.join(WEB_ROOT, p));
     }
     return fail(res, 404, 'not_found', 'Not found');
@@ -442,12 +551,71 @@ const server = http.createServer(async (req, res) => {
   }
 });
 
-server.listen(PORT, () => {
-  console.log(`mock server on http://localhost:${PORT}/ (tick ${TICK_MS} ms)`);
+// Minimal RFC 6455 transport for local development, no third-party dependency.
+function wsFrame(payload, opcode = 1) {
+  const data = Buffer.isBuffer(payload) ? payload : Buffer.from(payload);
+  const header = Buffer.alloc(data.length < 126 ? 2 : data.length < 65536 ? 4 : 10);
+  header[0] = 0x80 | opcode;
+  if (data.length < 126) header[1] = data.length;
+  else if (data.length < 65536) { header[1] = 126; header.writeUInt16BE(data.length, 2); }
+  else { header[1] = 127; header.writeBigUInt64BE(BigInt(data.length), 2); }
+  return Buffer.concat([header, data]);
+}
+
+function broadcastSample(sample) {
+  const frame = wsFrame(JSON.stringify({
+    type: 'data', topic: 'benchmark', data: sample, timestamp: new Date().toISOString(), id: `msg-${sample.benchmark_id}-${sample.seq}`,
+  }));
+  for (const client of sockets) {
+    if (client.subscribed && !client.socket.destroyed) client.socket.write(frame);
+  }
+}
+
+server.on('upgrade', (req, socket, head) => {
+  if (req.url !== '/ws/performance' || !req.headers['sec-websocket-key']) { socket.destroy(); return; }
+  const accept = createHash('sha1').update(req.headers['sec-websocket-key'] + '258EAFA5-E914-47DA-95CA-C5AB0DC85B11').digest('base64');
+  socket.write('HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Accept: ' + accept + '\r\n\r\n');
+  const client = { socket, subscribed: false, buffer: Buffer.alloc(0), fragments: [] };
+  sockets.add(client);
+  function receive(chunk) {
+    client.buffer = Buffer.concat([client.buffer, chunk]);
+    while (client.buffer.length >= 2) {
+      const buffer = client.buffer;
+      const opcode = buffer[0] & 15, final = !!(buffer[0] & 0x80), masked = !!(buffer[1] & 0x80);
+      let length = buffer[1] & 127, offset = 2;
+      if (length === 126) { if (buffer.length < 4) return; length = buffer.readUInt16BE(2); offset = 4; }
+      if (length === 127) { if (buffer.length < 10) return; const large = buffer.readBigUInt64BE(2); if (large > 65536n) { socket.destroy(); return; } length = Number(large); offset = 10; }
+      if (!masked || length > 65536) { socket.destroy(); return; }
+      if (buffer.length < offset + 4 + length) return;
+      const mask = buffer.subarray(offset, offset + 4); offset += 4;
+      const payload = Buffer.from(buffer.subarray(offset, offset + length));
+      payload.forEach((value, index) => { payload[index] = value ^ mask[index % 4]; });
+      client.buffer = buffer.subarray(offset + length);
+      if (opcode === 8) { socket.end(wsFrame(payload, 8)); return; }
+      if (opcode === 9) { socket.write(wsFrame(payload, 10)); continue; }
+      if (opcode !== 1 && opcode !== 0) continue;
+      client.fragments.push(payload);
+      if (!final) continue;
+      try {
+        const message = JSON.parse(Buffer.concat(client.fragments).toString());
+        if (message.type === 'subscribe' && message.topic === 'benchmark') client.subscribed = true;
+      } catch (error) { /* ignore malformed development subscriptions */ }
+      client.fragments = [];
+    }
+  }
+  socket.on('data', receive);
+  socket.on('error', () => sockets.delete(client));
+  socket.on('close', () => sockets.delete(client));
+  if (head.length) receive(head);
+});
+
+server.listen(PORT, '127.0.0.1', () => {
+  console.log(`mock server on http://localhost:${server.address().port}/ (mode ${MODE}, ${DB_TYPE}, tick ${TICK_MS} ms)`);
 });
 
 function shutdown() {
   for (const b of benchmarks.values()) clearInterval(b.timer);
+  for (const client of sockets) client.socket.destroy();
   server.close(() => process.exit(0));
   setTimeout(() => process.exit(0), 500).unref();
 }

@@ -20,6 +20,7 @@ class GraphVisualizer {
 
     async initialize() {
         console.log('Initializing visualization...');
+        if (this.liveBenchmarkOverlay) this.liveBenchmarkOverlay.disable();
 
         try {
             const graphResponse = await fetch('/api/graph');
@@ -162,6 +163,7 @@ class GraphVisualizer {
             });
 
             this.initializeEventListeners();
+            if (window.LiveBenchmarkOverlay) this.liveBenchmarkOverlay = new window.LiveBenchmarkOverlay(this);
 
             this.applyThemeToNetwork();
 

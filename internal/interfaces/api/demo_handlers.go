@@ -42,19 +42,90 @@ type DemoHandlers struct {
 	benchmarkService *performance.BenchmarkService
 	db               *sql.DB
 	demo             *models.LiveDemoConfig
+	inspector        ports.IndexInspector
 
 	scenarios map[string]models.LiveDemoScenario
 	optMu     sync.Mutex
 }
 
+func (d *DemoHandlers) optimizationSpecs() ([]ports.IndexSpec, error) {
+	opt := d.demo.Optimization
+	specs := []ports.IndexSpec{}
+	if opt == nil {
+		return specs, nil
+	}
+	if len(opt.Indexes) > 0 {
+		for _, index := range opt.Indexes {
+			spec := ports.IndexSpec{Name: index.Name, Table: index.Table, Columns: index.Columns}
+			if _, err := d.inspector.BuildCreateDDL(spec); err != nil {
+				return nil, err
+			}
+			specs = append(specs, spec)
+		}
+		return specs, nil
+	}
+	if err := validateOptimization(opt); err != nil {
+		return nil, err
+	}
+	for _, statement := range opt.Apply {
+		m := createIndexRe.FindStringSubmatch(statement)
+		start, end := strings.Index(statement, "("), strings.LastIndex(statement, ")")
+		columns := strings.Split(statement[start+1:end], ",")
+		for n := range columns {
+			columns[n] = strings.TrimSpace(columns[n])
+		}
+		spec := ports.IndexSpec{Name: m[1], Table: m[2], Columns: columns}
+		if _, err := d.inspector.BuildCreateDDL(spec); err != nil {
+			return nil, err
+		}
+		specs = append(specs, spec)
+	}
+	return specs, nil
+}
+
+// OptimizationState exposes validated optimization metadata without writing an HTTP response.
+func (d *DemoHandlers) OptimizationState(ctx context.Context) ports.OptimizationState {
+	state := ports.OptimizationState{}
+	opt := d.demo.Optimization
+	if opt == nil {
+		return state
+	}
+	specs, err := d.optimizationSpecs()
+	if err != nil || len(specs) == 0 {
+		return state
+	}
+	state.Available, state.CanApply = true, true
+	state.Name, state.Title, state.Description = opt.Name, opt.Title, opt.Description
+	if state.Title == "" {
+		state.Title = opt.Name
+	}
+	state.Applied = true
+	state.Statements = []string{}
+	for _, spec := range specs {
+		ddl, _ := d.inspector.BuildCreateDDL(spec)
+		state.Statements = append(state.Statements, ddl)
+		exists, inspectErr := d.inspector.IndexExists(ctx, spec.Table, spec.Name)
+		state.Applied = state.Applied && inspectErr == nil && exists
+	}
+	return state
+}
+
 // NewDemoHandlers validates the demo configuration and creates the handlers.
 // An invalid optimization section disables only the optimization endpoints.
-func NewDemoHandlers(logger *logrus.Logger, svc *performance.BenchmarkService, db *sql.DB, demo *models.LiveDemoConfig) *DemoHandlers {
+func NewDemoHandlers(logger *logrus.Logger, svc *performance.BenchmarkService, db *sql.DB, demo *models.LiveDemoConfig, inspectors ...ports.IndexInspector) *DemoHandlers {
+	inspector, _ := performance.NewIndexInspector(db, "mysql")
+	if len(inspectors) > 0 && inspectors[0] != nil {
+		inspector = inspectors[0]
+	}
+	if demo == nil {
+		demo = &models.LiveDemoConfig{}
+	}
 	d := &DemoHandlers{
 		logger:           logger,
 		benchmarkService: svc,
 		db:               db,
 		demo:             demo,
+		inspector:        inspector,
 		scenarios:        make(map[string]models.LiveDemoScenario, len(demo.Scenarios)),
 	}
 	for _, s := range demo.Scenarios {
@@ -65,7 +136,7 @@ func NewDemoHandlers(logger *logrus.Logger, svc *performance.BenchmarkService, d
 		d.scenarios[s.Name] = s
 	}
 	if demo.Optimization != nil {
-		if err := validateOptimization(demo.Optimization); err != nil {
+		if _, err := d.optimizationSpecs(); err != nil {
 			logger.Errorf("Demo optimization disabled: %v", err)
 			d.demo = &models.LiveDemoConfig{
 				Enabled: demo.Enabled, Scenarios: demo.Scenarios, Topology: demo.Topology,
@@ -178,6 +249,7 @@ func (d *DemoHandlers) RunScenario(w http.ResponseWriter, r *http.Request) {
 		CustomParams: map[string]interface{}{
 			"query_set": sc.QuerySet,
 			"scenario":  sc.Name,
+			"labels":    map[string]string{"index_applied": fmt.Sprint(d.OptimizationState(r.Context()).Applied)},
 		},
 	}, "custom")
 	if err != nil {
@@ -234,11 +306,12 @@ func (d *DemoHandlers) GetTopology(w http.ResponseWriter, _ *http.Request) {
 // Optimization handlers
 
 type demoOptimizationInfo struct {
-	Name        string   `json:"name"`
-	Title       string   `json:"title"`
-	Description string   `json:"description"`
-	Applied     bool     `json:"applied"`
-	Statements  []string `json:"statements"`
+	DatabaseType string   `json:"database_type"`
+	Name         string   `json:"name"`
+	Title        string   `json:"title"`
+	Description  string   `json:"description"`
+	Applied      bool     `json:"applied"`
+	Statements   []string `json:"statements"`
 }
 
 // GetOptimization returns the optimization description and whether its
@@ -276,20 +349,32 @@ func (d *DemoHandlers) changeOptimization(w http.ResponseWriter, r *http.Request
 	ctx, cancel := context.WithTimeout(context.WithoutCancel(r.Context()), ddlTimeout)
 	defer cancel()
 
-	statements := opt.Revert
-	re := dropIndexRe
-	if apply {
-		statements, re = opt.Apply, createIndexRe
+	specs, err := d.optimizationSpecs()
+	if err != nil {
+		d.fail(w, http.StatusInternalServerError, "invalid_statement", "Statement not allowed", err.Error())
+		return
 	}
-	for _, stmt := range statements {
-		m := re.FindStringSubmatch(stmt)
-		if m == nil { // already validated at construction; defensive
-			d.fail(w, http.StatusInternalServerError, "invalid_statement", "Statement not allowed", stmt)
+	if !apply && len(opt.Indexes) == 0 {
+		specs = []ports.IndexSpec{}
+		for _, statement := range opt.Revert {
+			m := dropIndexRe.FindStringSubmatch(statement)
+			if m == nil {
+				d.fail(w, http.StatusInternalServerError, "invalid_statement", "Statement not allowed", "")
+				return
+			}
+			specs = append(specs, ports.IndexSpec{Name: m[1], Table: m[2]})
+		}
+	}
+	for _, spec := range specs {
+		stmt, buildErr := d.inspector.BuildDropDDL(spec)
+		if apply {
+			stmt, buildErr = d.inspector.BuildCreateDDL(spec)
+		}
+		if buildErr != nil {
+			d.fail(w, http.StatusInternalServerError, "invalid_statement", "Statement not allowed", buildErr.Error())
 			return
 		}
-		// Both statement shapes capture (index name, table name).
-		index, table := m[1], m[2]
-		exists, err := d.indexExists(ctx, table, index)
+		exists, err := d.indexExists(ctx, spec.Table, spec.Name)
 		if err != nil {
 			d.fail(w, http.StatusInternalServerError, "ddl_error", "Failed to inspect indexes", err.Error())
 			return
@@ -319,13 +404,16 @@ func (d *DemoHandlers) optimizationInfo(ctx context.Context, w http.ResponseWrit
 		return nil, false
 	}
 	applied := true
-	for _, stmt := range opt.Apply {
-		m := createIndexRe.FindStringSubmatch(stmt)
-		if m == nil {
-			applied = false
-			continue
-		}
-		exists, err := d.indexExists(ctx, m[2], m[1])
+	specs, err := d.optimizationSpecs()
+	if err != nil {
+		d.fail(w, http.StatusInternalServerError, "invalid_statement", "Invalid optimization", err.Error())
+		return nil, false
+	}
+	statements := []string{}
+	for _, spec := range specs {
+		ddl, _ := d.inspector.BuildCreateDDL(spec)
+		statements = append(statements, ddl)
+		exists, err := d.indexExists(ctx, spec.Table, spec.Name)
 		if err != nil {
 			d.fail(w, http.StatusInternalServerError, "ddl_error", "Failed to inspect indexes", err.Error())
 			return nil, false
@@ -338,19 +426,13 @@ func (d *DemoHandlers) optimizationInfo(ctx context.Context, w http.ResponseWrit
 	}
 	return &demoOptimizationInfo{
 		Name: opt.Name, Title: title, Description: opt.Description,
-		Applied: applied, Statements: opt.Apply,
+		Applied: applied, Statements: statements, DatabaseType: d.inspector.DatabaseType(),
 	}, true
 }
 
-// indexExists checks the MySQL catalog for an index on a table in the
-// current schema.
+// indexExists delegates current-schema inspection to the selected dialect.
 func (d *DemoHandlers) indexExists(ctx context.Context, table, index string) (bool, error) {
-	var n int
-	err := d.db.QueryRowContext(ctx,
-		`SELECT COUNT(*) FROM information_schema.statistics
-		 WHERE table_schema = DATABASE() AND table_name = ? AND index_name = ?`,
-		table, index).Scan(&n)
-	return n > 0, err
+	return d.inspector.IndexExists(ctx, table, index)
 }
 
 func (d *DemoHandlers) respond(w http.ResponseWriter, status int, data any) {
