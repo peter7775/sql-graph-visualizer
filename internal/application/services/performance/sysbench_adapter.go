@@ -1,8 +1,11 @@
 package performance
 
 import (
+	"bufio"
+	"bytes"
 	"context"
 	"fmt"
+	"net/url"
 	"os/exec"
 	"regexp"
 	"strconv"
@@ -24,8 +27,35 @@ type SysbenchAdapter struct {
 	version     string
 }
 
+var sysbenchInterim = regexp.MustCompile(`^\[\s*([0-9.]+)s\s*\]\s+thds:\s*(\d+).*?\bqps:\s*([0-9.]+).*?lat \(ms,95%\):\s*([0-9.]+).*?err/s:\s*([0-9.]+)`)
+
+func parseSysbenchInterim(line string, previousElapsed float64) (ports.LiveSample, bool) {
+	m := sysbenchInterim.FindStringSubmatch(line)
+	if m == nil {
+		return ports.LiveSample{}, false
+	}
+	values := make([]float64, 5)
+	for n := range values {
+		value, err := strconv.ParseFloat(m[n+1], 64)
+		if err != nil {
+			return ports.LiveSample{}, false
+		}
+		values[n] = value
+	}
+	interval := values[0] - previousElapsed
+	if interval <= 0 {
+		return ports.LiveSample{}, false
+	}
+	return ports.LiveSample{
+		Timestamp: time.Now(), ElapsedSeconds: values[0], Threads: int(values[1]),
+		Interval: ports.LiveIntervalStats{Queries: int64(values[2]*interval + 0.5), QPS: values[2], P95LatencyMs: values[3], Errors: int64(values[4]*interval + 0.5)},
+		Queries:  []ports.LiveQueryStats{}, Graph: ports.LiveGraph{Nodes: []ports.LiveGraphNode{}, Edges: []ports.LiveGraphEdge{}},
+	}, true
+}
+
 // SysbenchConfig contains sysbench-specific configuration
 type SysbenchConfig struct {
+	ReportInterval int `yaml:"report_interval" json:"report_interval"`
 	// Sysbench binary path (empty means use PATH)
 	BinaryPath string `yaml:"binary_path" json:"binary_path"`
 
@@ -83,6 +113,11 @@ func NewSysbenchAdapter(logger *logrus.Logger, config *SysbenchConfig) *Sysbench
 
 // Execute runs a sysbench benchmark
 func (s *SysbenchAdapter) Execute(ctx context.Context, config ports.BenchmarkConfig) (*ports.BenchmarkResult, error) {
+	return s.ExecuteStream(ctx, config, nil)
+}
+
+// ExecuteStream runs sysbench and emits its measured interim statistics.
+func (s *SysbenchAdapter) ExecuteStream(ctx context.Context, config ports.BenchmarkConfig, emit func(ports.LiveSample)) (*ports.BenchmarkResult, error) {
 	if !s.isAvailable {
 		return nil, fmt.Errorf("sysbench is not available")
 	}
@@ -98,10 +133,9 @@ func (s *SysbenchAdapter) Execute(ctx context.Context, config ports.BenchmarkCon
 		"test_type": config.TestType,
 		"threads":   config.Threads,
 		"duration":  config.Duration,
-		"command":   strings.Join(cmd.Args, " "),
 	}).Info("Starting sysbench benchmark")
 
-	output, err := s.executeCommand(ctx, cmd)
+	output, err := s.executeStreamCommand(ctx, cmd, emit)
 	if err != nil {
 		return nil, fmt.Errorf("sysbench execution failed: %w", err)
 	}
@@ -277,21 +311,23 @@ func (s *SysbenchAdapter) buildCommand(config ports.BenchmarkConfig) (*exec.Cmd,
 		// Database-specific parameters
 		switch config.DatabaseType {
 		case "mysql":
-			if s.config.MySQLDefaults.Engine != "" {
-				args = append(args, fmt.Sprintf("--mysql-engine=%s", s.config.MySQLDefaults.Engine))
-			}
 			if s.config.MySQLDefaults.StorageEngine != "" {
 				args = append(args, fmt.Sprintf("--mysql-storage-engine=%s", s.config.MySQLDefaults.StorageEngine))
 			}
 		case "postgresql":
-			if s.config.PostgreSQLDefaults.Schema != "" {
-				args = append(args, fmt.Sprintf("--pgsql-schema=%s", s.config.PostgreSQLDefaults.Schema))
+			if schema := s.config.PostgreSQLDefaults.Schema; schema != "" && schema != "public" {
+				return nil, fmt.Errorf("sysbench uses the PostgreSQL role search_path; configure that role for schema %q", schema)
 			}
 		}
 	}
 
 	args = append(args, fmt.Sprintf("--threads=%d", config.Threads))
 	args = append(args, fmt.Sprintf("--time=%d", int(config.Duration.Seconds())))
+	interval := s.config.ReportInterval
+	if interval <= 0 {
+		interval = 1
+	}
+	args = append(args, fmt.Sprintf("--report-interval=%d", interval))
 
 	// Add warmup if specified
 	if config.WarmupTime > 0 {
@@ -314,95 +350,86 @@ func (s *SysbenchAdapter) buildCommand(config ports.BenchmarkConfig) (*exec.Cmd,
 }
 
 func (s *SysbenchAdapter) parseDatabaseURL(dbURL, dbType string) ([]string, error) {
-	args := make([]string, 0)
-
-	// Simple URL parsing for MySQL and PostgreSQL
-	// Format: [db_type]://[user]:[pass]@[host]:[port]/[database]
-
-	// Remove protocol prefix
-	if strings.Contains(dbURL, "://") {
-		parts := strings.SplitN(dbURL, "://", 2)
-		if len(parts) == 2 {
-			dbURL = parts[1]
+	prefix, driver := "mysql", "mysql"
+	if dbType == "postgresql" {
+		prefix, driver = "pgsql", "pgsql"
+	} else if dbType != "mysql" && dbType != "" {
+		return nil, fmt.Errorf("unsupported sysbench database type: %s", dbType)
+	}
+	if !strings.Contains(dbURL, "://") {
+		dbURL = "db://" + dbURL
+	}
+	parsed, err := url.Parse(dbURL)
+	if err != nil {
+		return nil, fmt.Errorf("invalid database URL")
+	}
+	args := []string{"--db-driver=" + driver}
+	add := func(key, value string) {
+		if value != "" {
+			args = append(args, "--"+prefix+"-"+key+"="+value)
 		}
 	}
-
-	// Parse user:password@host:port/database
-	var userPass, hostPortDB string
-	if strings.Contains(dbURL, "@") {
-		parts := strings.SplitN(dbURL, "@", 2)
-		userPass = parts[0]
-		hostPortDB = parts[1]
-	} else {
-		hostPortDB = dbURL
-	}
-
-	// Parse user:password
-	if userPass != "" {
-		if strings.Contains(userPass, ":") {
-			parts := strings.SplitN(userPass, ":", 2)
-			args = append(args, fmt.Sprintf("--db-user=%s", parts[0]))
-			args = append(args, fmt.Sprintf("--db-password=%s", parts[1]))
-		} else {
-			args = append(args, fmt.Sprintf("--db-user=%s", userPass))
+	if parsed.User != nil {
+		add("user", parsed.User.Username())
+		if password, exists := parsed.User.Password(); exists {
+			add("password", password)
 		}
 	}
-
-	// Parse host:port/database
-	var hostPort, database string
-	if strings.Contains(hostPortDB, "/") {
-		parts := strings.SplitN(hostPortDB, "/", 2)
-		hostPort = parts[0]
-		database = parts[1]
-	} else {
-		hostPort = hostPortDB
+	add("host", parsed.Hostname())
+	add("port", parsed.Port())
+	add("db", strings.TrimPrefix(parsed.Path, "/"))
+	if driver == "pgsql" {
+		add("sslmode", parsed.Query().Get("sslmode"))
 	}
-
-	// Parse host:port
-	if strings.Contains(hostPort, ":") {
-		parts := strings.SplitN(hostPort, ":", 2)
-		args = append(args, fmt.Sprintf("--db-host=%s", parts[0]))
-		args = append(args, fmt.Sprintf("--db-port=%s", parts[1]))
-	} else if hostPort != "" {
-		args = append(args, fmt.Sprintf("--db-host=%s", hostPort))
-	}
-
-	// Add database name
-	if database != "" {
-		args = append(args, fmt.Sprintf("--db-name=%s", database))
-	}
-
-	// Add database driver
-	switch dbType {
-	case "mysql":
-		args = append(args, "--db-driver=mysql")
-	case "postgresql":
-		args = append(args, "--db-driver=pgsql")
-	}
-
 	return args, nil
 }
 
-func (s *SysbenchAdapter) executeCommand(ctx context.Context, cmd *exec.Cmd) (string, error) {
+func (s *SysbenchAdapter) executeStreamCommand(ctx context.Context, cmd *exec.Cmd, emit func(ports.LiveSample)) (string, error) {
 	// Set context for command cancellation
 	// #nosec G204 - cmd.Args are validated and constructed internally
 	cmd = exec.CommandContext(ctx, cmd.Args[0], cmd.Args[1:]...)
 
-	output, err := cmd.CombinedOutput()
+	cmd.WaitDelay = time.Second
+	var output, stderr bytes.Buffer
+	cmd.Stderr = &stderr
+	stdout, err := cmd.StdoutPipe()
 	if err != nil {
-		s.logger.WithFields(logrus.Fields{
-			"command": strings.Join(cmd.Args, " "),
-			"output":  string(output),
-			"error":   err.Error(),
-		}).Error("Sysbench command failed")
-
-		return string(output), err
+		return "", err
 	}
-
-	return string(output), nil
+	if err := cmd.Start(); err != nil {
+		return "", err
+	}
+	scanner := bufio.NewScanner(stdout)
+	scanner.Buffer(make([]byte, 4096), 1024*1024)
+	previousElapsed := 0.0
+	for scanner.Scan() {
+		line := scanner.Text()
+		output.WriteString(line + "\n")
+		if sample, ok := parseSysbenchInterim(line, previousElapsed); ok {
+			previousElapsed = sample.ElapsedSeconds
+			if emit != nil {
+				emit(sample)
+			}
+		}
+	}
+	scanErr := scanner.Err()
+	if scanErr != nil && cmd.Process != nil {
+		_ = cmd.Process.Kill()
+	}
+	waitErr := cmd.Wait()
+	if ctx.Err() != nil {
+		return output.String(), ctx.Err()
+	}
+	if scanErr != nil {
+		return output.String(), scanErr
+	}
+	if waitErr != nil {
+		return output.String(), fmt.Errorf("%w: %s", waitErr, stderr.String())
+	}
+	return output.String(), nil
 }
 
-func (s *SysbenchAdapter) parseOutput(output string, config ports.BenchmarkConfig) (*ports.PerformanceMetrics, []ports.QueryPerformance, error) {
+func (s *SysbenchAdapter) parseOutput(output string, _ ports.BenchmarkConfig) (*ports.PerformanceMetrics, []ports.QueryPerformance, error) {
 	lines := strings.Split(output, "\n")
 
 	metrics := &ports.PerformanceMetrics{}
@@ -477,7 +504,7 @@ func (s *SysbenchAdapter) parseOutput(output string, config ports.BenchmarkConfi
 		}
 	}
 
-	queryResults := s.createQueryPerformanceData(config, metrics)
+	queryResults := []ports.QueryPerformance{}
 
 	return metrics, queryResults, nil
 }
@@ -491,81 +518,6 @@ func (s *SysbenchAdapter) extractFloat(text, pattern string) float64 {
 		}
 	}
 	return 0
-}
-
-func (s *SysbenchAdapter) createQueryPerformanceData(config ports.BenchmarkConfig, metrics *ports.PerformanceMetrics) []ports.QueryPerformance {
-	queryResults := make([]ports.QueryPerformance, 0)
-
-	// Create synthetic query performance data based on sysbench test type
-	switch config.TestType {
-	case "oltp_read_write":
-		// Mixed read/write workload
-		queryResults = append(queryResults,
-			s.createQueryPerformance("SELECT", "sbtest", metrics, 0.6),
-			s.createQueryPerformance("UPDATE", "sbtest", metrics, 0.2),
-			s.createQueryPerformance("INSERT", "sbtest", metrics, 0.1),
-			s.createQueryPerformance("DELETE", "sbtest", metrics, 0.1),
-		)
-
-	case "oltp_read_only":
-		// Read-only workload
-		queryResults = append(queryResults,
-			s.createQueryPerformance("SELECT", "sbtest", metrics, 1.0),
-		)
-
-	case "oltp_write_only":
-		// Write-only workload
-		queryResults = append(queryResults,
-			s.createQueryPerformance("UPDATE", "sbtest", metrics, 0.5),
-			s.createQueryPerformance("INSERT", "sbtest", metrics, 0.3),
-			s.createQueryPerformance("DELETE", "sbtest", metrics, 0.2),
-		)
-
-	case "oltp_point_select":
-		queryResults = append(queryResults,
-			s.createQueryPerformance("SELECT", "sbtest", metrics, 1.0),
-		)
-
-	default:
-		// Generic query performance
-		queryResults = append(queryResults,
-			s.createQueryPerformance("MIXED", "sbtest", metrics, 1.0),
-		)
-	}
-
-	return queryResults
-}
-
-func (s *SysbenchAdapter) createQueryPerformance(queryType, tableName string, metrics *ports.PerformanceMetrics, weight float64) ports.QueryPerformance {
-	// Calculate query-specific metrics based on weight
-	execCount := int64(metrics.QueriesPerSecond * float64(60) * weight) // Assuming 60 second test
-	avgTime := time.Duration(metrics.AverageLatency*weight) * time.Millisecond
-
-	return ports.QueryPerformance{
-		QueryPattern:      fmt.Sprintf("%s operation on %s", queryType, tableName),
-		QueryType:         queryType,
-		ExecutionCount:    execCount,
-		TotalTime:         avgTime * time.Duration(execCount),
-		AverageTime:       avgTime,
-		MinTime:           time.Duration(metrics.MinLatency*weight) * time.Millisecond,
-		MaxTime:           time.Duration(metrics.MaxLatency*weight) * time.Millisecond,
-		SourceTables:      []string{tableName},
-		RowsExamined:      execCount * 1, // Assume 1 row per query on average
-		RowsReturned:      execCount * 1,
-		IndexUsed:         true, // Sysbench typically uses indexes
-		IndexName:         "PRIMARY",
-		RelationshipType:  "SINGLE_TABLE",
-		PerformanceImpact: s.classifyPerformanceImpact(metrics.AverageLatency * weight),
-	}
-}
-
-func (s *SysbenchAdapter) classifyPerformanceImpact(avgLatency float64) string {
-	if avgLatency < 10 {
-		return "LOW"
-	} else if avgLatency < 100 {
-		return "MEDIUM"
-	}
-	return "HIGH"
 }
 
 // DefaultSysbenchConfig returns the default sysbench adapter configuration.

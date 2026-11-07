@@ -836,8 +836,49 @@ func (pa *PerformanceAnalyzer) countByPriority(_ []ports.PerformanceIssue, _, _ 
 	return 0
 }
 
-func (pa *PerformanceAnalyzer) generateIndexSuggestions(_ *ports.PerformanceAnalysis) []ports.OptimizationSuggestion {
-	return nil
+func (pa *PerformanceAnalyzer) generateIndexSuggestions(analysis *ports.PerformanceAnalysis) []ports.OptimizationSuggestion {
+	suggestions := []ports.OptimizationSuggestion{}
+	if analysis == nil {
+		return suggestions
+	}
+	patterns := []string{}
+	for _, issue := range analysis.Issues {
+		if issue.Type == ports.IssueTypeMissingIndex || issue.Type == ports.IssueTypeFullTableScan {
+			patterns = appendUnique(patterns, issue.Location.QueryPattern)
+		}
+	}
+	if analysis.QueryPatterns != nil {
+		for _, group := range analysis.QueryPatterns.PatternGroups {
+			if group.AverageLatency > indexLatencyThreshold {
+				patterns = appendUnique(patterns, group.PatternTemplate)
+			}
+		}
+	}
+	seen := map[string]bool{}
+	for _, pattern := range patterns {
+		for _, candidate := range candidateColumns(pattern) {
+			key := candidate.table + "." + candidate.column
+			if seen[key] {
+				continue
+			}
+			seen[key] = true
+			name := "idx_" + candidate.table + "_" + candidate.column
+			if len(name) > 63 {
+				name = name[:63]
+			}
+			suggestions = append(suggestions, ports.OptimizationSuggestion{
+				ID: name, Type: ports.OptimizationTypeIndex, Title: "Consider index on " + key,
+				Description: "Heuristic only: verify existing indexes and EXPLAIN before applying.",
+				Confidence:  0.4, Priority: 5,
+				Implementation: ports.OptimizationImplementation{
+					Code:            "CREATE INDEX " + name + " ON " + candidate.table + " (" + candidate.column + ")",
+					Steps:           []string{"Inspect existing indexes", "Confirm a scan with EXPLAIN", "Benchmark before and after"},
+					DifficultyLevel: ports.EffortLow,
+				},
+			})
+		}
+	}
+	return suggestions
 }
 func (pa *PerformanceAnalyzer) generateQueryOptimizationSuggestions(_ *ports.PerformanceAnalysis) []ports.OptimizationSuggestion {
 	return nil

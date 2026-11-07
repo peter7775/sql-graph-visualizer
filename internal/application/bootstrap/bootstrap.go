@@ -47,7 +47,6 @@ type Resources struct {
 	TransformService    *transform.TransformService
 	DeploymentAdapter   ports.DeploymentPort
 	PerformanceServices *PerformanceServiceContainer
-	MetricsInjector     *performance.SimpleMetricsInjector
 	cleanupFuncs        []func()
 }
 
@@ -143,20 +142,6 @@ func InitAll(ctx context.Context, configPath string) (*Resources, error) {
 		logrus.Info("Performance services initialized")
 	} else {
 		logrus.Info("Performance monitoring is disabled")
-	}
-
-	// Metrics injector
-	logrus.Info("Initializing performance metrics visualization...")
-	metricsConfig := &performance.SimpleMetricsConfig{
-		UpdateInterval:   5 * time.Second,
-		MetricsRetention: 1 * time.Hour,
-		SimulationMode:   true,
-	}
-	res.MetricsInjector = performance.NewSimpleMetricsInjector(res.Neo4jRepo, logrus.StandardLogger(), metricsConfig)
-	if err := res.MetricsInjector.Start(ctx); err != nil {
-		logrus.Errorf("Failed to start metrics injector: %v", err)
-	} else {
-		logrus.Info("Performance metrics visualization started")
 	}
 
 	logrus.Info("Services initialized")

@@ -201,30 +201,53 @@ func (r *Resources) startAPIServer() (*http.Server, error) {
 		performanceHandlers.RegisterRoutes(router)
 		logrus.Info("Performance API routes registered")
 
-		// Live benchmark capabilities, topology and Neo4j label mapping.
+		// Live benchmark capabilities, topology, Neo4j label mapping, and the
+		// index tooling (suggestions work for MySQL and PostgreSQL).
+		logger := logrus.StandardLogger()
+		benchmarkService := r.PerformanceServices.BenchmarkService
 		querySets := createCustomQuerySets(r.Config)
 		dbType := databaseTypeName(r.Config)
+
+		var inspector ports.IndexInspector
+		if r.DB != nil {
+			if insp, err := performance.NewIndexInspector(r.DB, dbType); err != nil {
+				logrus.Infof("Index suggestions are not available for database type %q: %v", dbType, err)
+			} else {
+				inspector = insp
+			}
+		}
+
+		// The demo API can create/drop indexes, so it is opt-in and never served
+		// outside DEMO_MODE.
+		var optimizationState func(context.Context) ports.OptimizationState
+		demoActive := demoModeEnabled(r.Config) && r.DB != nil
+		if demoActive {
+			demoHandlers := api.NewDemoHandlers(logger, benchmarkService, r.DB, r.Config.LiveDemo, inspector)
+			demoHandlers.RegisterRoutes(router)
+			optimizationState = demoHandlers.OptimizationState
+			logrus.Info("Live benchmark demo API routes registered (DEMO_MODE)")
+		}
+
+		if inspector != nil {
+			advisor := performance.NewIndexAdvisor(logger, r.DB, inspector)
+			api.NewOptimizationHandlers(logger, benchmarkService, advisor, querySets).RegisterRoutes(router)
+			logrus.Info("Index suggestion API route registered")
+		}
+
 		var topologyOverride *models.LiveDemoTopology
 		if r.Config.LiveDemo != nil {
 			topologyOverride = r.Config.LiveDemo.Topology
 		}
 		api.NewLiveConfigHandlers(api.LiveConfigDeps{
-			Logger:       logrus.StandardLogger(),
-			Topology:     performance.NewTopologyService(logrus.StandardLogger(), r.DB, dbType, querySets, topologyOverride),
+			Logger:       logger,
+			Topology:     performance.NewTopologyService(logger, r.DB, dbType, querySets, topologyOverride),
 			Mapping:      labelMapping,
 			QuerySets:    querySets,
 			LiveDemo:     r.Config.LiveDemo,
-			DemoMode:     demoModeEnabled(r.Config),
+			DemoMode:     demoActive,
 			DatabaseType: dbType,
+			Optimization: optimizationState,
 		}).RegisterRoutes(router)
-
-		// Live benchmarking demo API: opt-in, and never outside DEMO_MODE
-		// because it can create/drop indexes on the source database.
-		if demoModeEnabled(r.Config) && r.DB != nil {
-			api.NewDemoHandlers(logrus.StandardLogger(), r.PerformanceServices.BenchmarkService, r.DB, r.Config.LiveDemo).
-				RegisterRoutes(router)
-			logrus.Info("Live benchmark demo API routes registered (DEMO_MODE)")
-		}
 	}
 
 	// Debug endpoint
@@ -697,6 +720,9 @@ func createSysbenchConfig(cfg *models.Config) *performance.SysbenchConfig {
 		}
 		if d := b.Sysbench.Defaults; d != nil && d.TableSize > 0 {
 			sbConfig.DefaultTableSize = d.TableSize
+		}
+		if d := b.Sysbench.Defaults; d != nil && d.ReportInterval > 0 {
+			sbConfig.ReportInterval = d.ReportInterval
 		}
 	}
 
