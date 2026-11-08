@@ -217,21 +217,6 @@ func main() {
 		logrus.Info("Performance .monitoring is disabled")
 	}
 
-	logrus.Info("Initializing performance metrics visualization...")
-	metricsInjectorConfig := &performance.SimpleMetricsConfig{
-		UpdateInterval:   5 * time.Second,
-		MetricsRetention: 1 * time.Hour,
-		SimulationMode:   true,
-	}
-
-	metricsInjector := performance.NewSimpleMetricsInjector(neo4jRepo, logrus.StandardLogger(), metricsInjectorConfig)
-
-	if err := metricsInjector.Start(ctx); err != nil {
-		logrus.Errorf("Failed to start metrics injector: %v", err)
-	} else {
-		logrus.Info("🚀 Performance metrics visualization started!")
-	}
-
 	logrus.Infof("Services initialized")
 
 	graphqlserver.StartGraphQLServer(neo4jRepo, cfg)
@@ -596,7 +581,6 @@ type PerformanceServiceContainer struct {
 	PSAdapter           *performance.PerformanceSchemaAdapter
 	GraphMapper         *performance.GraphPerformanceMapper
 	RealtimeMonitor     *performance.RealtimePerformanceMonitor
-	MetricsInjector     *performance.SimpleMetricsInjector
 }
 
 func initializePerformanceServices(cfg *models.Config, db *sql.DB) *PerformanceServiceContainer {
@@ -687,7 +671,6 @@ func initializePerformanceServices(cfg *models.Config, db *sql.DB) *PerformanceS
 		PSAdapter:           psAdapter,
 		GraphMapper:         graphMapper,
 		RealtimeMonitor:     realtimeMonitor,
-		MetricsInjector:     nil,
 	}
 }
 
