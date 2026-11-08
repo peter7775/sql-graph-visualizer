@@ -231,7 +231,7 @@ jobs:
       - name:  Run integration tests
         env:
           GO_ENV: test
-          CONFIG_PATH: config/config-test.yml
+          CONFIG_PATH: config-test.yml
           LOG_LEVEL: info
           CI: true
         run: |
