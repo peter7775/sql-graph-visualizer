@@ -305,10 +305,27 @@ func (s *BenchmarkService) executeAsync(execution *BenchmarkExecution) {
 
 	applyResultLabels(result, execution.Config.CustomParams)
 
-	execution.mutex.Lock()
-	execution.Result = result
 	// A run that was stopped by the user must stay "cancelled" even though the
 	// tool returns a (partial) result without error.
+	execution.mutex.RLock()
+	stopped := execution.Status == ports.BenchmarkStatusCancelled
+	execution.mutex.RUnlock()
+	if stopped {
+		result.Status = ports.BenchmarkStatusCancelled
+	}
+
+	// Persist before the run is reported as finished, so anything that reacts
+	// to the finished status (history, replay after a restart) finds it.
+	if store := s.getResultStore(); store != nil {
+		// Use a background context: the execution context may already be
+		// cancelled/timed out by the time we get here.
+		if err := store.Save(context.Background(), result); err != nil {
+			s.logger.WithError(err).WithField("execution_id", execution.ID).Warn("Failed to persist benchmark result")
+		}
+	}
+
+	execution.mutex.Lock()
+	execution.Result = result
 	if execution.Status == ports.BenchmarkStatusCancelled {
 		result.Status = ports.BenchmarkStatusCancelled
 	} else {
@@ -327,14 +344,6 @@ func (s *BenchmarkService) executeAsync(execution *BenchmarkExecution) {
 			return 0
 		}(),
 	}).Info("Benchmark execution completed")
-
-	if store := s.getResultStore(); store != nil {
-		// Persist using a background context: the execution context may
-		// already be cancelled/timed out by the time we get here.
-		if err := store.Save(context.Background(), result); err != nil {
-			s.logger.WithError(err).WithField("execution_id", execution.ID).Warn("Failed to persist benchmark result")
-		}
-	}
 }
 
 // GetBenchmarkResult returns the result of a benchmark execution

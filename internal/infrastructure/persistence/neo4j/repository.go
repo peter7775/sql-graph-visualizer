@@ -15,6 +15,7 @@ import (
 	"fmt"
 	"log"
 	"sql-graph-visualizer/internal/domain/aggregates/graph"
+	"sql-graph-visualizer/internal/domain/valueobjects/transform"
 
 	"github.com/neo4j/neo4j-go-driver/v4/neo4j"
 	"github.com/sirupsen/logrus"
@@ -204,10 +205,15 @@ func (r *Neo4jRepository) ExportGraph(_ string) (any, error) {
 			relProps[key] = value
 		}
 
-		err = graphAgg.AddDirectRelationship(
+		// Nodes are keyed by (label, "id" property), so two labels may reuse the
+		// same id and the property can differ from the internal Neo4j id.
+		sourceLabel, sourceKey := graphNodeIdentity(sourceNode)
+		targetLabel, targetKey := graphNodeIdentity(targetNode)
+		err = graphAgg.AddRelationship(
 			rel.Type,
-			sourceNode.Id,
-			targetNode.Id,
+			transform.Outgoing,
+			sourceLabel, sourceKey, "id",
+			targetLabel, targetKey, "id",
 			relProps,
 		)
 		if err != nil {
@@ -227,6 +233,19 @@ func (r *Neo4jRepository) ExportGraph(_ string) (any, error) {
 		len(graphAgg.GetNodes()), len(graphAgg.GetRelationships()))
 
 	return graphAgg, nil
+}
+
+// graphNodeIdentity returns the label and "id" key under which a node was added
+// to the graph aggregate (internal Neo4j id when the property is missing).
+func graphNodeIdentity(node neo4j.Node) (string, any) {
+	label := "Unknown"
+	if len(node.Labels) > 0 {
+		label = node.Labels[0]
+	}
+	if id, ok := node.Props["id"]; ok {
+		return label, id
+	}
+	return label, node.Id
 }
 
 // Close closes the Neo4j database connection.

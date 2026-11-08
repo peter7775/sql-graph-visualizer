@@ -74,8 +74,8 @@ Latency (ms):
 		t.Errorf("Percentile99 = %v, want 45.00", metrics.Percentile99)
 	}
 
-	if len(queryResults) == 0 {
-		t.Error("parseOutput() returned no query results for oltp_read_write")
+	if len(queryResults) != 0 {
+		t.Error("parseOutput() must not fabricate per-query statistics")
 	}
 }
 
@@ -145,12 +145,12 @@ func TestSysbenchAdapter_ParseDatabaseURL(t *testing.T) {
 	}
 
 	want := map[string]bool{
-		"--db-user=user":      true,
-		"--db-password=pass":  true,
-		"--db-host=localhost": true,
-		"--db-port=3306":      true,
-		"--db-name=mydb":      true,
-		"--db-driver=mysql":   true,
+		"--mysql-user=user":      true,
+		"--mysql-password=pass":  true,
+		"--mysql-host=localhost": true,
+		"--mysql-port=3306":      true,
+		"--mysql-db=mydb":        true,
+		"--db-driver=mysql":      true,
 	}
 	if len(args) != len(want) {
 		t.Errorf("parseDatabaseURL() returned %d args, want %d: %v", len(args), len(want), args)

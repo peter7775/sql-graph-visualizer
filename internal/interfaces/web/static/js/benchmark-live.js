@@ -1,5 +1,5 @@
 /*
- * Live benchmark page: runs a demo scenario against the API, streams samples
+ * Live benchmark page: runs configured query sets against the API, streams samples
  * over SSE (polling fallback) and renders them as a heating table graph (D3),
  * rolling charts (Chart.js), a slowest-query list and a before/after
  * comparison.
@@ -12,6 +12,9 @@
     // ------------------------------------------------------------------
 
     const API = {
+        config: '/api/performance/live/config',
+        history: '/api/performance/benchmarks/history?limit=20',
+        suggestions: (id) => `/api/performance/optimization/suggestions?benchmark_id=${encodeURIComponent(id)}`,
         scenarios: '/api/demo/scenarios',
         topology: '/api/demo/topology',
         optimization: '/api/demo/optimization',
@@ -24,7 +27,6 @@
 
     const CHART_WINDOW_SECONDS = 60;
     const MAX_QUERIES_SHOWN = 6;
-    const MAX_PARTICLES = 12;
 
     const $ = (id) => document.getElementById(id);
     const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
@@ -38,13 +40,6 @@
     // Latency (ms) -> heat 0..1, used where the server gives no heat value.
     const latencyHeat = d3.scaleLinear().domain([0, 50, 200, 500]).range([0, 0.3, 0.8, 1]).clamp(true);
 
-    // Absolute latency heat on the same log scale the server uses for nodes
-    // (5 ms = cool, 500 ms = hot). Edge colour uses this so a fast join stays
-    // green even when it carries a large share of the load.
-    function logHeat(ms) {
-        if (!isFinite(ms) || ms <= 5) return 0;
-        return clamp(Math.log(ms / 5) / Math.log(100), 0, 1);
-    }
 
     function fmtNum(v) {
         if (!isFinite(v)) return '-';
@@ -96,7 +91,9 @@
         } catch (e) { /* non-JSON body */ }
         if (!res.ok || !json || json.success === false) {
             const msg = json && json.error && json.error.message ? json.error.message : `Request failed (HTTP ${res.status})`;
-            throw new ApiError(msg);
+            const error = new ApiError(msg);
+            error.status = res.status;
+            throw error;
         }
         return json.data;
     }
@@ -106,6 +103,10 @@
     // ------------------------------------------------------------------
 
     const state = {
+        mode: 'demo',
+        history: [],
+        selected: new Set(),
+        owned: new Set(),
         scenarios: [],
         optimization: null,
         topologyReady: false,
@@ -143,299 +144,7 @@
     // Graph (D3)
     // ------------------------------------------------------------------
 
-    const Graph = (function () {
-        const W = 900;
-        const H = 520;
-        let svg, edgeLayer, particleLayer, nodeLayer;
-        let nodes = [];
-        let edges = [];
-        let nodeById = new Map();
-        let edgeById = new Map();
-        let maxQps = 1;
-        let hover = null;
-        let rafId = null;
-        let lastTs = 0;
-        const reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-
-        function init(topology) {
-            svg = d3.select('#graphSvg');
-            svg.selectAll('*').remove();
-            svg.attr('viewBox', `0 0 ${W} ${H}`).attr('preserveAspectRatio', 'xMidYMid meet');
-
-            nodes = (topology.nodes || []).map((n) => ({
-                id: n.id, table: n.table || n.id, label: n.label || n.table || n.id,
-                qps: 0, lat: 0, heat: 0, queries: 0, active: false,
-            }));
-            nodeById = new Map(nodes.map((n) => [n.id, n]));
-            edges = (topology.edges || [])
-                .filter((e) => nodeById.has(e.source) && nodeById.has(e.target))
-                .map((e) => ({
-                    id: e.id || `${e.source}-${e.target}`, relation: e.relation || '',
-                    s: nodeById.get(e.source), t: nodeById.get(e.target),
-                    qps: 0, lat: 0, load: 0, rank: '', active: false,
-                    n: 0, speed: 0.2, phase: Math.random(), color: '#888', dots: [],
-                }));
-            edgeById = new Map(edges.map((e) => [e.id, e]));
-
-            layout();
-            // Put the label on the side away from the node's edges.
-            nodes.forEach((n) => {
-                const dy = edges.reduce((sum, e) => {
-                    if (e.s === n) return sum + (e.t.y - n.y);
-                    if (e.t === n) return sum + (e.s.y - n.y);
-                    return sum;
-                }, 0);
-                n.labelUp = dy > 20;
-            });
-
-            edgeLayer = svg.append('g');
-            particleLayer = svg.append('g').style('pointer-events', 'none');
-            nodeLayer = svg.append('g');
-
-            const edgeSel = edgeLayer.selectAll('g').data(edges, (d) => d.id).enter().append('g').attr('class', 'edge');
-            edgeSel.append('line').attr('class', 'edge-hit')
-                .attr('x1', (d) => d.s.x).attr('y1', (d) => d.s.y).attr('x2', (d) => d.t.x).attr('y2', (d) => d.t.y);
-            edgeSel.append('line').attr('class', 'edge-line')
-                .attr('x1', (d) => d.s.x).attr('y1', (d) => d.s.y).attr('x2', (d) => d.t.x).attr('y2', (d) => d.t.y)
-                .style('pointer-events', 'none');
-            edgeSel.append('text').attr('class', 'edge-label')
-                .attr('x', (d) => (d.s.x + d.t.x) / 2).attr('y', (d) => (d.s.y + d.t.y) / 2 + 4);
-            edgeSel.on('mouseenter mousemove', (ev, d) => showTip(ev, { type: 'edge', id: d.id }))
-                .on('mouseleave', hideTip);
-
-            edges.forEach((e) => {
-                for (let i = 0; i < MAX_PARTICLES; i++) {
-                    e.dots.push(particleLayer.append('circle').attr('r', 3).style('display', 'none').node());
-                }
-            });
-
-            const nodeSel = nodeLayer.selectAll('g').data(nodes, (d) => d.id).enter().append('g')
-                .attr('class', 'node').attr('transform', (d) => `translate(${d.x},${d.y})`);
-            nodeSel.append('circle').attr('class', 'node-circle').attr('r', 22).attr('stroke-width', 2.5);
-            nodeSel.append('text').attr('class', 'node-label').text((d) => d.label);
-            nodeSel.append('text').attr('class', 'node-sub');
-            nodeSel.on('mouseenter mousemove', (ev, d) => showTip(ev, { type: 'node', id: d.id }))
-                .on('mouseleave', hideTip);
-
-            render(false);
-            if (!rafId && !reduceMotion) rafId = requestAnimationFrame(frame);
-        }
-
-        // Force layout computed once, then frozen so the graph never jumps on updates.
-        // Several deterministic seeds are tried and the layout with the fewest edge
-        // crossings / node-edge overlaps wins, so labels stay readable.
-        function layout() {
-            const box = { x0: 120, x1: W - 120, y0: 110, y1: H - 95 };
-            const incident = edges.map((e) => [nodes.indexOf(e.s), nodes.indexOf(e.t)]);
-            const attempts = nodes.length > 40 ? 1 : 24;
-            let best = null;
-            for (let seed = 0; seed < attempts; seed++) {
-                const rnd = d3.randomLcg(seed + 1);
-                const simNodes = nodes.map((n) => ({ id: n.id, x: W / 2 + (rnd() - 0.5) * 300, y: H / 2 + (rnd() - 0.5) * 200 }));
-                const links = edges.map((e) => ({ source: e.s.id, target: e.t.id }));
-                const sim = d3.forceSimulation(simNodes)
-                    .force('link', d3.forceLink(links).id((d) => d.id).distance(200).strength(0.9))
-                    .force('charge', d3.forceManyBody().strength(-1600))
-                    .force('x', d3.forceX(W / 2).strength(0.04))
-                    .force('y', d3.forceY(H / 2).strength(0.14))
-                    .force('collide', d3.forceCollide(80))
-                    .stop();
-                for (let i = 0; i < 400; i++) sim.tick();
-                const pos = fitToBox(simNodes, box);
-                const score = layoutScore(pos, incident);
-                if (!best || score < best.score) best = { pos, score };
-                if (score === 0) break;
-            }
-            best.pos.forEach((p, i) => { nodes[i].x = p.x; nodes[i].y = p.y; });
-        }
-
-        function fitToBox(simNodes, box) {
-            const xs = simNodes.map((n) => n.x);
-            const ys = simNodes.map((n) => n.y);
-            const minX = Math.min(...xs), maxX = Math.max(...xs);
-            const minY = Math.min(...ys), maxY = Math.max(...ys);
-            const fit = (v, lo, hi, a, b) => (hi - lo < 1 ? (a + b) / 2 : a + ((v - lo) / (hi - lo)) * (b - a));
-            return simNodes.map((s) => ({ x: fit(s.x, minX, maxX, box.x0, box.x1), y: fit(s.y, minY, maxY, box.y0, box.y1) }));
-        }
-
-        function layoutScore(pos, links) {
-            const orient = (a, b, c) => (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x);
-            const crosses = (a, b, c, d) => orient(a, b, c) * orient(a, b, d) < 0 && orient(c, d, a) * orient(c, d, b) < 0;
-            const dist = (p, a, b) => {
-                const dx = b.x - a.x, dy = b.y - a.y;
-                const t = clamp(((p.x - a.x) * dx + (p.y - a.y) * dy) / (dx * dx + dy * dy || 1), 0, 1);
-                return Math.hypot(p.x - (a.x + t * dx), p.y - (a.y + t * dy));
-            };
-            let score = 0;
-            for (let i = 0; i < links.length; i++) {
-                for (let j = i + 1; j < links.length; j++) {
-                    const [a, b] = links[i];
-                    const [c, d] = links[j];
-                    if (a === c || a === d || b === c || b === d) continue;
-                    if (crosses(pos[a], pos[b], pos[c], pos[d])) score += 10000;
-                }
-                pos.forEach((p, k) => {
-                    if (k === links[i][0] || k === links[i][1]) return;
-                    const d = dist(p, pos[links[i][0]], pos[links[i][1]]);
-                    if (d < 90) score += (90 - d) * (90 - d);
-                });
-            }
-            return score;
-        }
-
-        function radius(n) {
-            return 20 + 30 * Math.sqrt(clamp(n.qps / maxQps, 0, 1));
-        }
-
-        function render(animate) {
-            const dur = animate ? 700 : 0;
-            nodeLayer.selectAll('g.node').each(function (d) {
-                const g = d3.select(this);
-                const r = radius(d);
-                const col = d.active ? heatColor(d.heat) : cssVar('--neutral-node');
-                g.select('circle')
-                    .transition('u').duration(dur).ease(d3.easeCubicOut)
-                    .attr('r', r)
-                    .style('fill', col)
-                    .style('stroke', d3.color(col).darker(0.7).formatRgb());
-                g.select('circle').style('filter', d.active && d.heat > 0.4
-                    ? `drop-shadow(0 0 ${Math.round(4 + 14 * d.heat)}px ${col})` : 'none');
-                g.select('.node-label').transition('u').duration(dur).attr('y', d.labelUp ? -(r + 27) : r + 19);
-                g.select('.node-sub').transition('u').duration(dur).attr('y', d.labelUp ? -(r + 11) : r + 35);
-                g.select('.node-sub').text(d.active ? `${fmtNum(d.qps)} qps - ${fmtMs(d.lat)} ms` : '');
-            });
-
-            edgeLayer.selectAll('g.edge').each(function (d) {
-                const g = d3.select(this);
-                const col = d.active ? heatColor(logHeat(d.lat)) : cssVar('--neutral-node');
-                const w = d.active ? 3 + 11 * Math.pow(clamp(d.load, 0, 1), 0.9) : 2.5;
-                d.color = col;
-                g.select('.edge-line').transition('u').duration(dur)
-                    .style('stroke', col).style('stroke-width', w + 'px');
-                g.select('.edge-label').text(d.active && d.qps > 0 ? `${fmtMs(d.lat)} ms` : '');
-                d.dots.forEach((el) => {
-                    el.style.fill = d3.color(col).brighter(0.9).formatRgb();
-                    el.setAttribute('r', (2.4 + w / 5).toFixed(1));
-                });
-            });
-            updateParticles();
-            if (hover) refreshTip();
-        }
-
-        function updateParticles() {
-            edges.forEach((e) => {
-                if (!e.active || e.qps <= 0) {
-                    e.n = 0;
-                } else {
-                    e.n = Math.max(1, Math.round(1 + (MAX_PARTICLES - 1) * Math.sqrt(clamp(e.qps / maxQps, 0, 1))));
-                }
-                e.speed = 0.1 + 0.5 * (1 - clamp(e.load, 0, 1));
-                e.dots.forEach((el, i) => {
-                    el.style.display = i < e.n && !reduceMotion ? '' : 'none';
-                });
-            });
-        }
-
-        function frame(ts) {
-            const dt = lastTs ? Math.min(0.1, (ts - lastTs) / 1000) : 0;
-            lastTs = ts;
-            edges.forEach((e) => {
-                if (!e.n) return;
-                e.phase = (e.phase + e.speed * dt) % 1;
-                for (let i = 0; i < e.n; i++) {
-                    const t = (e.phase + i / e.n) % 1;
-                    e.dots[i].setAttribute('cx', (e.s.x + (e.t.x - e.s.x) * t).toFixed(1));
-                    e.dots[i].setAttribute('cy', (e.s.y + (e.t.y - e.s.y) * t).toFixed(1));
-                }
-            });
-            rafId = requestAnimationFrame(frame);
-        }
-
-        function update(graph) {
-            if (!graph || !nodes.length) return;
-            (graph.nodes || []).forEach((n) => {
-                const node = nodeById.get(n.id);
-                if (!node) return;
-                node.active = true;
-                node.qps = n.qps || 0;
-                node.lat = n.avg_latency_ms || 0;
-                node.heat = clamp(n.heat != null ? n.heat : latencyHeat(node.lat), 0, 1);
-                node.queries = n.queries || 0;
-                maxQps = Math.max(maxQps, node.qps);
-            });
-            (graph.edges || []).forEach((e) => {
-                const edge = edgeById.get(e.id);
-                if (!edge) return;
-                edge.active = true;
-                edge.qps = e.qps || 0;
-                edge.lat = e.avg_latency_ms || 0;
-                edge.load = clamp(e.load != null ? e.load : latencyHeat(edge.lat), 0, 1);
-                edge.rank = e.rank || '';
-                maxQps = Math.max(maxQps, edge.qps);
-            });
-            render(true);
-        }
-
-        function reset() {
-            if (!nodes.length) return;
-            nodes.forEach((n) => { n.active = false; n.qps = 0; n.lat = 0; n.heat = 0; });
-            edges.forEach((e) => { e.active = false; e.qps = 0; e.lat = 0; e.load = 0; e.rank = ''; });
-            render(true);
-        }
-
-        // --- tooltip ---
-        function tipHtml(h) {
-            if (h.type === 'node') {
-                const n = nodeById.get(h.id);
-                if (!n) return '';
-                if (!n.active) return `<b>${esc(n.label)}</b><div class="t-muted">${esc(n.table)} - no data yet</div>`;
-                return `<b>${esc(n.label)}</b> <span class="t-muted">${esc(n.table)}</span>`
-                    + `<div class="t-row"><span>QPS</span><span>${fmtNum(n.qps)}</span></div>`
-                    + `<div class="t-row"><span>Avg latency</span><span>${fmtMs(n.lat)} ms</span></div>`
-                    + `<div class="t-row"><span>Queries</span><span>${fmtInt(n.queries)}</span></div>`
-                    + `<div class="t-row"><span>Heat</span><span>${Math.round(n.heat * 100)} %</span></div>`;
-            }
-            const e = edgeById.get(h.id);
-            if (!e) return '';
-            const head = `<b>${esc(e.s.label)} - ${esc(e.t.label)}</b>`
-                + (e.relation ? `<div class="t-muted">${esc(e.relation)}</div>` : '');
-            if (!e.active) return head + '<div class="t-muted">no data yet</div>';
-            return head
-                + `<div class="t-row"><span>QPS</span><span>${fmtNum(e.qps)}</span></div>`
-                + `<div class="t-row"><span>Avg latency</span><span>${fmtMs(e.lat)} ms</span></div>`
-                + `<div class="t-row"><span>Load</span><span>${Math.round(e.load * 100)} %</span></div>`
-                + (e.rank ? `<div class="t-row"><span>Rank</span><span>${esc(e.rank)}</span></div>` : '');
-        }
-
-        function showTip(ev, h) {
-            hover = h;
-            const tip = $('tooltip');
-            tip.innerHTML = tipHtml(h);
-            tip.hidden = false;
-            const wrap = $('graphWrap');
-            const [x, y] = d3.pointer(ev, wrap);
-            const tw = tip.offsetWidth;
-            const th = tip.offsetHeight;
-            let left = x + 16;
-            let top = y + 16;
-            if (left + tw > wrap.clientWidth - 4) left = x - tw - 16;
-            if (top + th > wrap.clientHeight - 4) top = y - th - 16;
-            tip.style.left = Math.max(4, left) + 'px';
-            tip.style.top = Math.max(4, top) + 'px';
-        }
-
-        function refreshTip() {
-            const tip = $('tooltip');
-            if (!tip.hidden) tip.innerHTML = tipHtml(hover);
-        }
-
-        function hideTip() {
-            hover = null;
-            $('tooltip').hidden = true;
-        }
-
-        return { init, update, reset, recolor: () => nodes.length && render(false) };
-    })();
+    const Graph = window.LiveGraph.create('#graphSvg');
 
     // ------------------------------------------------------------------
     // Charts (Chart.js)
@@ -503,7 +212,7 @@
             const g = state.ghost;
             if (!g) return 'Previous run';
             const letter = state.slots.A === g ? 'Run A' : state.slots.B === g ? 'Run B' : 'Previous run';
-            return `${letter} (${g.indexed ? 'index' : 'no index'})`;
+            return `${letter} (${g.indexed == null ? 'index state unknown' : g.indexed ? 'index' : 'no index'})`;
         }
 
         function render() {
@@ -660,7 +369,7 @@
             body.innerHTML = '<p class="bl-muted">Run the scenario to record Run A.</p>';
             return;
         }
-        const tag = (r) => `<span class="cmp-sub">${r.indexed ? 'index applied' : 'no index'}</span>`;
+        const tag = (r) => `<span class="cmp-sub">${r.indexed == null ? 'index state unknown' : r.indexed ? 'index applied' : 'no index'}</span>`;
         const rows = [
             ['QPS', 'qps', false, fmtNum],
             ['Avg latency', 'avg_latency_ms', true, (v) => `${fmtMs(v)} ms`],
@@ -676,7 +385,9 @@
             body.innerHTML = '<table class="cmp-table"><thead><tr><th>Metric</th><th>Run A' + tag(A) + '</th></tr></thead><tbody>'
                 + rows.map((r) => `<tr><td>${r[0]}</td><td>${r[3](a[r[1]])}</td></tr>`).join('')
                 + '</tbody></table>'
-                + '<p class="bl-muted">Apply the suggested index and run again to see the difference.</p>';
+                + `<p class="bl-muted">${state.optimization && state.optimization.can_apply
+                    ? 'Apply the suggested index and run again to see the difference.'
+                    : 'Run another benchmark or select two historical runs to compare.'}</p>`;
             return;
         }
 
@@ -723,14 +434,14 @@
         const opt = state.optimization;
         const step = currentStep();
 
-        $('startBtn').disabled = running || state.starting || !state.scenarios.length;
-        $('stopBtn').disabled = !running || state.stopping;
+        $('startBtn').disabled = running || state.starting || state.indexBusy || !state.scenarios.length;
+        $('stopBtn').disabled = !running || state.stopping || !!(state.current && state.current.external);
         $('stopBtn').textContent = state.stopping ? 'Stopping...' : 'Stop';
         ['scenarioSelect', 'threadsInput', 'durationInput'].forEach((id) => {
             $(id).disabled = running || state.starting || !state.scenarios.length;
         });
-        $('applyBtn').disabled = running || state.indexBusy || !opt || opt.applied;
-        $('revertBtn').disabled = running || state.indexBusy || !opt || !opt.applied;
+        $('applyBtn').disabled = running || state.indexBusy || !opt || !opt.can_apply || opt.applied;
+        $('revertBtn').disabled = running || state.indexBusy || !opt || !opt.can_apply || !opt.applied;
 
         $('applyBtn').classList.toggle('is-hot', step === 2);
         $('startBtn').classList.toggle('is-hot', step === 1 && !running || step === 3 && !running);
@@ -744,6 +455,8 @@
 
     function renderIndex() {
         const opt = state.optimization;
+        $('indexPanel').hidden = !opt || !opt.available;
+        document.querySelector('.bl-index-actions').hidden = !opt || !opt.can_apply;
         const badge = $('idxState');
         if (!opt) {
             $('idxTitle').textContent = '-';
@@ -790,19 +503,27 @@
         updateControls();
         try {
             // Refresh index state so the run is labelled correctly even if it changed elsewhere.
-            try { state.optimization = await api('GET', API.optimization); renderIndex(); } catch (e) { /* keep cached state */ }
+            if (state.mode === 'demo') {
+                try {
+                    state.optimization = Object.assign({}, state.optimization, await api('GET', API.optimization));
+                    renderIndex();
+                } catch (e) { /* keep cached state */ }
+            }
             const name = $('scenarioSelect').value;
-            const data = await api('POST', API.run(name), { threads, duration_seconds: duration });
+            const data = await api('POST', state.mode === 'demo' ? API.run(name) : '/api/performance/benchmarks',
+                { tool: 'custom', query_set: name, threads, duration_seconds: duration });
+            state.owned.add(data.id);
             state.ghost = state.slots.B || state.slots.A;
             state.current = {
                 id: data.id, scenario: data.scenario || name, threads, duration,
-                indexed: !!(state.optimization && state.optimization.applied),
+                indexed: state.optimization && state.optimization.available ? !!state.optimization.applied : null,
                 samples: [], lastSeq: 0, totalQueries: 0, totalErrors: 0,
                 finished: false, es: null, pollTimer: null, errCount: 0, mode: 'sse',
             };
             state.cmp = null;
             resetKpis();
             Graph.reset();
+            $('graphEmpty').hidden = true;
             Charts.render();
             $('queryList').innerHTML = '<p class="bl-muted">Waiting for the first sample.</p>';
             $('progressBar').style.width = '0';
@@ -896,20 +617,22 @@
         renderKpis(s);
         Charts.render();
         Graph.update(s.graph);
+        $('graphEmpty').hidden = !!(s.graph && s.graph.nodes && s.graph.nodes.length);
+        $('graphEmpty').textContent = 'This benchmark sample has no table-level graph data. Throughput and latency are shown in the charts.';
         renderQueries(s.queries);
         $('progressBar').style.width = `${clamp((s.elapsed_seconds / run.duration) * 100, 0, 100)}%`;
     }
 
     function summaryFromSamples(samples) {
         if (!samples.length) return { qps: 0, avg_latency_ms: 0, p50_latency_ms: 0, p95_latency_ms: 0, p99_latency_ms: 0, error_rate: 0, total_queries: 0, duration_seconds: 0 };
-        const total = samples.reduce((s, x) => s + x.interval.queries, 0) || 1;
-        const w = (k) => samples.reduce((s, x) => s + x.interval[k] * x.interval.queries, 0) / total;
+        const total = samples.reduce((s, x) => s + x.interval.queries, 0);
+        const w = (k) => samples.reduce((s, x) => s + x.interval[k] * x.interval.queries, 0) / Math.max(1, total);
         const dur = samples[samples.length - 1].elapsed_seconds || 1;
         const errors = samples.reduce((s, x) => s + x.interval.errors, 0);
         return {
             qps: total / dur, avg_latency_ms: w('avg_latency_ms'), p50_latency_ms: w('p50_latency_ms'),
             p95_latency_ms: w('p95_latency_ms'), p99_latency_ms: w('p99_latency_ms'),
-            error_rate: errors / total, total_queries: total, duration_seconds: dur,
+            error_rate: errors / Math.max(1, total), total_queries: total, duration_seconds: dur,
         };
     }
 
@@ -921,6 +644,7 @@
         state.stopping = false;
         run.status = status;
         run.summary = summary || summaryFromSamples(run.samples);
+        if (run !== state.current) return;
 
         if (status === 'failed') {
             showError(error ? `Benchmark failed: ${error}` : 'Benchmark failed.');
@@ -933,6 +657,8 @@
         updateControls();
         renderCompare();
         Charts.render();
+        refreshHistory();
+        loadSuggestions(run.id);
 
         if (state.slots.A && state.slots.B && state.slots.B === run) {
             state.cmp = localCompare(state.slots.A, state.slots.B);
@@ -958,7 +684,7 @@
 
     async function stopRun() {
         const run = state.current;
-        if (!isRunning() || state.stopping) return;
+        if (!isRunning() || state.stopping || run.external) return;
         state.stopping = true;
         updateControls();
         try {
@@ -976,13 +702,14 @@
     // ------------------------------------------------------------------
 
     async function setIndex(apply) {
-        if (isRunning() || state.indexBusy) return;
+        if (isRunning() || state.indexBusy || !state.optimization || !state.optimization.can_apply) return;
         clearError();
         state.indexBusy = true;
         $(apply ? 'applyBtn' : 'revertBtn').textContent = apply ? 'Applying...' : 'Reverting...';
         updateControls();
         try {
-            state.optimization = await api('POST', apply ? `${API.optimization}/apply` : `${API.optimization}/revert`);
+            state.optimization = Object.assign({}, state.optimization,
+                await api('POST', apply ? `${API.optimization}/apply` : `${API.optimization}/revert`));
         } catch (e) {
             showError(`Could not ${apply ? 'apply' : 'revert'} the index: ${e.message}`);
         } finally {
@@ -1078,7 +805,146 @@
     }
 
     async function loadOptimization() {
-        state.optimization = await api('GET', API.optimization);
+        state.optimization = Object.assign({ available: true, can_apply: true }, await api('GET', API.optimization));
+    }
+
+    async function loadConfig() {
+        let config;
+        try {
+            config = await api('GET', API.config);
+        } catch (error) {
+            if (error.status !== 404) throw error;
+            await Promise.all([loadScenarios(), loadTopology(), loadOptimization()]);
+            $('modeDescription').textContent = 'Demo mode · legacy server';
+            return;
+        }
+        state.mode = config.mode;
+        state.optimization = config.optimization;
+        state.scenarios = (config.mode === 'demo' ? config.scenarios : config.query_sets) || [];
+        $('modeDescription').textContent = `${config.mode === 'demo' ? 'Demo mode' : 'Generic mode'} · ${config.database_type}`;
+        $('scenarioLabel').textContent = config.mode === 'demo' ? 'Scenario' : 'Query set';
+        $('steps').hidden = config.mode !== 'demo';
+        $('scenarioSelect').innerHTML = state.scenarios.map((s) =>
+            `<option value="${esc(s.name)}">${esc(s.title || s.name)}</option>`).join('');
+        onScenarioChange();
+        Graph.init(config.topology || { nodes: [], edges: [] });
+        state.topologyReady = true;
+        if (!state.scenarios.length) showError('No query sets are configured on the server.');
+    }
+
+    async function loadSuggestions(id) {
+        const panel = $('suggestionsBody');
+        panel.textContent = 'Loading suggestions…';
+        try {
+            const data = await api('GET', API.suggestions(id));
+            if (!state.current || state.current.id !== id) return;
+            panel.innerHTML = (data.suggestions || []).map((s) =>
+                `<article class="bl-suggestion"><strong>${esc(s.title || s.name)}</strong>`
+                + (s.applied ? ' <span class="bl-badge" data-state="applied">Applied</span>' : '')
+                + `<p>${esc(s.table)} (${esc((s.columns || []).join(', '))}) · ${esc(s.source)} · confidence ${esc(s.confidence)}</p>`
+                + `<p>${esc(s.description || '')}</p>`
+                + `<pre>${esc((s.statements || []).join(';\n'))}</pre>`
+                + `<details><summary>Rollback</summary><pre>${esc(Array.isArray(s.rollback) ? s.rollback.join(';\n') : s.rollback || '')}</pre></details></article>`
+            ).join('') || '<p class="bl-muted">No index suggestions for this run</p>';
+        } catch (error) {
+            if (!state.current || state.current.id !== id) return;
+            panel.textContent = 'Index suggestions unavailable.';
+            showError(`Could not load index suggestions: ${error.message}`);
+        }
+    }
+
+    function historyRun(row) {
+        return {
+            id: row.id, scenario: row.scenario || row.query_set, duration: row.duration_seconds,
+            indexed: row.labels && row.labels.index_applied != null ? row.labels.index_applied === 'true' : null,
+            summary: row, samples: [], lastSeq: 0, totalQueries: 0, totalErrors: 0, finished: false,
+        };
+    }
+
+    async function refreshHistory() {
+        try {
+            const data = await api('GET', API.history);
+            state.history = data.runs || [];
+            $('historyBody').innerHTML = state.history.length
+                ? '<table class="cmp-table"><thead><tr><th>Select</th><th>Scenario / query set</th><th>Started</th><th>Status</th><th>QPS</th><th>p95</th><th>Index</th><th></th></tr></thead><tbody>'
+                    + state.history.map((r) => `<tr><td><input type="checkbox" data-run-select="${esc(r.id)}" aria-label="Compare ${esc(r.scenario || r.query_set)}" ${state.selected.has(r.id) ? 'checked' : ''} ${r.status === 'running' ? 'disabled' : ''}></td>`
+                        + `<td>${esc(r.scenario || r.query_set)}</td><td>${esc(new Date(r.started_at).toLocaleString())}</td>`
+                        + `<td>${esc(r.status)}</td><td>${fmtNum(r.qps || 0)}</td><td>${fmtMs(r.p95_latency_ms || 0)} ms</td>`
+                        + `<td>${!r.labels || r.labels.index_applied == null ? 'unknown' : r.labels.index_applied === 'true' ? 'index applied' : 'no index'}</td>`
+                        + `<td><button class="bl-btn" data-run-open="${esc(r.id)}" ${!r.has_samples ? 'disabled' : ''}>Open</button></td></tr>`).join('')
+                    + '</tbody></table>' : '<p class="bl-muted">No benchmark runs yet.</p>';
+        } catch (error) {
+            $('historyBody').textContent = `History unavailable: ${error.message}`;
+        }
+    }
+
+    async function openHistory(id) {
+        if (isRunning()) { showError('Stop the current benchmark before opening a historical run.'); return; }
+        try {
+            const row = state.history.find((r) => r.id === id);
+            const data = await api('GET', API.samples(id, 0));
+            const run = historyRun(row);
+            state.current = run;
+            Graph.reset();
+            resetKpis();
+            // Render the complete replay immediately, without EventSource delays.
+            (data.samples || []).forEach((s) => onSample(run, s));
+            run.finished = data.status !== 'running';
+            setPill(run.finished ? 'done' : 'live', run.finished ? 'Historical run' : 'Live (SSE)');
+            if (!run.finished) { run.external = true; connectStream(run); }
+            updateControls();
+            if (run.finished) loadSuggestions(id);
+        } catch (error) { showError(`Could not open run: ${error.message}`); }
+    }
+
+    async function compareHistory() {
+        const rows = state.history.filter((r) => state.selected.has(r.id))
+            .sort((a, b) => new Date(a.started_at) - new Date(b.started_at));
+        if (rows.length !== 2) return;
+        try {
+            const data = await api('GET', API.compare(rows[0].id, rows[1].id));
+            state.slots.A = historyRun(rows[0]);
+            state.slots.B = historyRun(rows[1]);
+            state.cmp = Object.assign({ source: 'api' }, data);
+            renderCompare();
+        } catch (error) { showError(`Could not compare runs: ${error.message}`); }
+    }
+
+    let socket, reconnectTimer, externalTimer, disposed = false;
+    function connectExternalFeed(attempt = 0) {
+        if (disposed || !window.WebSocket) return;
+        try {
+            socket = new WebSocket(`${location.protocol === 'https:' ? 'wss:' : 'ws:'}//${location.host}/ws/performance`);
+            socket.onopen = () => { attempt = 0; socket.send(JSON.stringify({ type: 'subscribe', topic: 'benchmark' })); };
+            socket.onmessage = (event) => {
+                let message;
+                try { message = JSON.parse(event.data); } catch (e) { return; }
+                const s = message.data;
+                if (message.topic !== 'benchmark' || !s || !s.benchmark_id || state.owned.has(s.benchmark_id) || state.starting) return;
+                if (isRunning() && !state.current.external) return;
+                if (!state.current || state.current.id !== s.benchmark_id) {
+                    state.current = {
+                        id: s.benchmark_id, scenario: 'External run (live)', external: true,
+                        threads: s.threads, duration: 600, samples: [], lastSeq: 0,
+                        totalQueries: 0, totalErrors: 0, finished: false,
+                    };
+                    Graph.reset(); resetKpis();
+                }
+                const run = state.current;
+                run.finished = false;
+                onSample(run, s);
+                setPill('live', 'External run (live)');
+                updateControls();
+                clearTimeout(externalTimer);
+                externalTimer = setTimeout(() => finishRun(run, 'completed'), 5000);
+            };
+            socket.onerror = () => { /* onclose reconnects; the REST/SSE UI remains usable */ };
+            socket.onclose = () => {
+                if (!disposed) reconnectTimer = setTimeout(() => connectExternalFeed(attempt + 1), Math.min(30000, 1000 * 2 ** attempt));
+            };
+        } catch (e) {
+            reconnectTimer = setTimeout(() => connectExternalFeed(attempt + 1), Math.min(30000, 1000 * 2 ** attempt));
+        }
     }
 
     async function init() {
@@ -1095,6 +961,25 @@
         $('themeToggle').addEventListener('click', (e) => { toggleTheme(); e.currentTarget.blur(); });
         $('errorClose').addEventListener('click', clearError);
         $('scenarioSelect').addEventListener('change', onScenarioChange);
+        $('historyCompare').addEventListener('click', compareHistory);
+        $('historyRefresh').addEventListener('click', refreshHistory);
+        $('historyBody').addEventListener('click', (event) => {
+            const button = event.target.closest('[data-run-open]');
+            if (button) openHistory(button.dataset.runOpen);
+        });
+        $('historyBody').addEventListener('change', (event) => {
+            const id = event.target.dataset.runSelect;
+            if (!id) return;
+            if (event.target.checked && state.selected.size >= 2) { event.target.checked = false; return; }
+            if (event.target.checked) state.selected.add(id); else state.selected.delete(id);
+            $('historyCompare').disabled = state.selected.size !== 2;
+        });
+        window.addEventListener('pagehide', () => {
+            disposed = true; clearTimeout(reconnectTimer); clearTimeout(externalTimer);
+            if (socket) socket.close();
+            if (state.current) { if (state.current.es) state.current.es.close(); clearTimeout(state.current.pollTimer); }
+            Graph.destroy();
+        });
         document.addEventListener('keydown', onKeyDown);
         document.addEventListener('keyup', onKeyUp);
         document.addEventListener('fullscreenchange', () => {
@@ -1104,21 +989,20 @@
         updateControls();
         renderIndex();
 
-        const results = await Promise.allSettled([loadScenarios(), loadTopology(), loadOptimization()]);
-        const labels = ['scenarios', 'topology', 'optimization'];
-        const failed = results
-            .map((r, i) => (r.status === 'rejected' ? `${labels[i]}: ${r.reason.message}` : null))
-            .filter(Boolean);
-        if (failed.length) {
-            showError(`Could not load demo data (${failed.join('; ')}).`);
+        try {
+            await loadConfig();
+        } catch (error) {
+            showError(`Could not load live benchmark configuration: ${error.message}`);
             if (!state.topologyReady) {
                 const empty = $('graphEmpty');
                 empty.hidden = false;
-                empty.textContent = 'The table graph is unavailable until the demo topology can be loaded.';
+                empty.textContent = 'The table graph is unavailable until the topology can be loaded.';
             }
         }
         renderIndex();
         updateControls();
+        refreshHistory();
+        connectExternalFeed();
     }
 
     document.addEventListener('DOMContentLoaded', init);

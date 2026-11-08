@@ -3,7 +3,7 @@
 
 # Must satisfy go.mod (go 1.26.2, toolchain go1.26.4). The official golang images set
 # GOTOOLCHAIN=local, so the image version has to be >= the toolchain line in go.mod.
-ARG GO_VERSION=1.26.4
+ARG GO_VERSION=1.27.0
 FROM golang:${GO_VERSION}-alpine AS builder
 
 # Install build dependencies

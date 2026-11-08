@@ -318,6 +318,8 @@ flowchart LR
 - **Sampler** - every second the collector turns constant-memory log-scale latency histograms (about 5 % bucket width) into a *live sample*: interval QPS, avg/p50/p95/p99/max latency, errors, per-query statistics and the table graph (node heat, edge latency and load).
 - **Streaming** - samples are pushed over **Server-Sent Events** (`GET /api/performance/benchmarks/{id}/stream`). A new connection first replays the buffered samples, `Last-Event-ID` resumes after a dropped connection, and `GET .../samples?since=N` is a polling fallback. The UI switches to polling by itself if the stream keeps failing.
 - **Graph mapping** - each query lists the `tables` it touches, ordered along its JOIN path; every adjacent pair becomes a graph edge. If `tables` is omitted they are derived from the `FROM`/`JOIN` clauses.
+- **History** - every run is persisted as `samples/<id>.jsonl` next to the benchmark results, so finished runs survive a restart: open an old run, replay its graph and charts, or select two runs and compare them.
+- **Suggestions** - after a run, the index advisor looks at the measured slow queries, confirms full scans with `EXPLAIN` (MySQL and PostgreSQL) and proposes `CREATE INDEX` / `DROP INDEX` statements. It never executes the benchmarked queries and never applies anything by itself.
 - **Comparison** - `GET /api/performance/benchmarks/compare?a=<id>&b=<id>` returns both summaries and the percentage change.
 - **Safe by design** - benchmark queries are limited to `SELECT`/`INSERT`/`UPDATE`. The demo endpoints that create or drop indexes exist **only when `DEMO_MODE=true`** and accept nothing but plain `CREATE INDEX` / `DROP INDEX` statements from the configuration.
 
@@ -349,7 +351,27 @@ curl -s -X POST localhost:8080/api/performance/benchmarks \
 curl -N localhost:8080/api/performance/benchmarks/<id>/stream     # live samples as SSE
 ```
 
-The `/benchmark-live` page is driven by the `live_demo` section of the configuration (scenarios, the index to apply and the graph topology). It is only served when `DEMO_MODE=true`, because it can create and drop indexes. See `config/demo-config.yml` for a complete example.
+### Generic mode (without `DEMO_MODE`)
+
+Live benchmarking is not limited to the demo. Without `DEMO_MODE=true` the app serves the same UI against your own database:
+
+- `/benchmark-live` lists your `custom_queries` sets (query set picker instead of scenarios), streams samples, keeps the run history and compares runs.
+- The table graph topology is read from the database (`information_schema` / foreign keys) unless `live_demo.topology` overrides it.
+- Index **suggestions** are shown with the statements to run yourself. **Apply / Revert** and the `/api/demo/*` routes exist only in `DEMO_MODE`, because they change the schema.
+- The `/performance` dashboard embeds the same live graph and also shows runs started elsewhere (for example via `curl`) while they are running, over the WebSocket topic `benchmark`.
+- On the main graph (`/`) the **Live benchmark** toggle colours the nodes and relationships of the Neo4j graph with the heat of their source tables from the latest run, and restores the original colours when switched off. Labels are mapped to tables through `transform_rules` (`source_table`, or the table of the rule); relationships are mapped through their rule's tables.
+
+```bash
+GET /api/performance/live/config               # mode, database type, query sets, optimization, topology
+GET /api/performance/topology[?query_set=NAME]
+GET /api/performance/live/mapping              # Neo4j label -> table, relationship -> graph edges
+GET /api/performance/benchmarks/history        # ?limit=20&query_set=NAME
+GET /api/performance/optimization/suggestions?benchmark_id=<id>
+```
+
+PostgreSQL works the same way (`database.type: postgresql`). sysbench runs (`tool: sysbench`) stream their interim reports (`--report-interval`) as live samples too.
+
+The `live_demo` section of the configuration holds the demo scenarios, the indexes to apply (dialect neutral `indexes:` with table and columns) and an optional topology override. See `config/demo-config.yml` for a complete example.
 
 <details>
 <summary>Demo API reference (<code>DEMO_MODE=true</code>)</summary>
@@ -401,6 +423,7 @@ of the story. `scripts/demo-query-timing.sh [apply|revert|explain]` times the ke
 - **Latencies are lower than described**: the dataset is sized for a laptop; on a fast machine, increase the row counts in `demo/mysql/02-seed.sql` and run `make demo-reseed`.
 - **Changing credentials**: the demo credentials are fixed (`demopass123`) in `docker-compose.demo.yml` and `config/demo-config.yml`; keep both in sync.
 - **Inspect the app**: `make demo-logs`, `curl http://localhost:8080/api/health`.
+- **`CONFIG_PATH` is rejected**: it must be relative to the `config/` directory (for example `CONFIG_PATH=demo-config.yml`); absolute paths are not accepted.
 
 ## Installation
 

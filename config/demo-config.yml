@@ -275,12 +275,15 @@ live_demo:
     name: "idx_orders_customer"
     title: "Index orders.customer_id and order_items.product_id"
     description: "Two JOIN columns have no index, so every lookup scans the whole orders / order_items table. Two composite indexes that start with those columns (and also cover the summed columns) turn the scans into index lookups."
-    apply:
-      - "CREATE INDEX idx_orders_customer_total ON orders (customer_id, total_amount)"
-      - "CREATE INDEX idx_order_items_product_qty ON order_items (product_id, quantity)"
-    revert:
-      - "DROP INDEX idx_orders_customer_total ON orders"
-      - "DROP INDEX idx_order_items_product_qty ON order_items"
+    # Dialect-neutral: the CREATE/DROP INDEX statements for the active database
+    # (MySQL or PostgreSQL) are generated from this list.
+    indexes:
+      - name: "idx_orders_customer_total"
+        table: "orders"
+        columns: ["customer_id", "total_amount"]
+      - name: "idx_order_items_product_qty"
+        table: "order_items"
+        columns: ["product_id", "quantity"]
 
   # Graph shown during a benchmark: nodes = tables, edges = logical JOIN relations.
   topology:
@@ -326,6 +329,7 @@ transform_rules:
     rule_type: "node"
     source:
       type: "query"
+      source_table: "orders"
       value: "SELECT CONCAT('order-', id) AS id, CONCAT('Order #', id) AS name, customer_id, status, total_amount, created_at FROM orders WHERE id <= 40"
     target_type: "Order"
     field_mappings:
@@ -340,6 +344,7 @@ transform_rules:
     rule_type: "node"
     source:
       type: "query"
+      source_table: "customers"
       value: "SELECT CONCAT('customer-', id) AS id, CONCAT(first_name, ' ', last_name) AS name, email, country, city FROM customers WHERE id IN (SELECT customer_id FROM orders WHERE id <= 40)"
     target_type: "Customer"
     field_mappings:
@@ -353,6 +358,7 @@ transform_rules:
     rule_type: "node"
     source:
       type: "query"
+      source_table: "products"
       value: "SELECT CONCAT('product-', id) AS id, name, price, stock_quantity, category_id FROM products WHERE id IN (SELECT product_id FROM order_items WHERE order_id <= 40)"
     target_type: "Product"
     field_mappings:
@@ -366,6 +372,7 @@ transform_rules:
     rule_type: "node"
     source:
       type: "query"
+      source_table: "categories"
       value: "SELECT CONCAT('category-', id) AS id, name, description FROM categories"
     target_type: "Category"
     field_mappings:
@@ -379,6 +386,7 @@ transform_rules:
     direction: "outgoing"
     source:
       type: "query"
+      source_table: "orders"
       value: "SELECT CONCAT('customer-', customer_id) AS customer_key, CONCAT('order-', id) AS order_key, status, total_amount FROM orders WHERE id <= 40"
     source_node:
       type: "Customer"
@@ -398,6 +406,7 @@ transform_rules:
     direction: "outgoing"
     source:
       type: "query"
+      source_table: "order_items"
       value: "SELECT CONCAT('order-', order_id) AS order_key, CONCAT('product-', product_id) AS product_key, quantity, unit_price FROM order_items WHERE order_id <= 40"
     source_node:
       type: "Order"
@@ -417,6 +426,7 @@ transform_rules:
     direction: "outgoing"
     source:
       type: "query"
+      source_table: "products"
       value: "SELECT CONCAT('product-', id) AS product_key, CONCAT('category-', category_id) AS category_key FROM products WHERE id IN (SELECT product_id FROM order_items WHERE order_id <= 40)"
     source_node:
       type: "Product"

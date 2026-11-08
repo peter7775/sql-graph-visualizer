@@ -93,7 +93,8 @@ services:
     environment:
       GO_ENV: demo
       LOG_LEVEL: ${LOG_LEVEL:-info}
-      CONFIG_PATH: /app/config/demo-config.yml
+      # Resolved relative to the config/ directory (/app/config); absolute paths are rejected.
+      CONFIG_PATH: demo-config.yml
       VIZ_PORT: "3000"
       API_PORT: "8080"
       DEMO_MODE: "true"
