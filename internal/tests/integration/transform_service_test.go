@@ -178,7 +178,24 @@ func (m *realMySQLRepo) Close() error {
 }
 
 func TestIntegrationTransformRulesAndVisualization(t *testing.T) {
-	t.Chdir("../..")
+	wd, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	for {
+		if _, err := os.Stat(filepath.Join(wd, "go.mod")); err == nil {
+			break
+		}
+		parent := filepath.Dir(wd)
+		if parent == wd {
+			t.Fatal("project root not found")
+		}
+		wd = parent
+	}
+
+	t.Chdir(wd)
+	t.Setenv("CONFIG_PATH", "config-test.yml")
 
 	ctx := context.Background()
 
